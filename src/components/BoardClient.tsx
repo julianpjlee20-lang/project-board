@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void, onUpdate: () => void }) {
   const [title, setTitle] = useState(card.title)
@@ -9,6 +9,10 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
   const [dueDate, setDueDate] = useState(card.due_date ? card.due_date.split('T')[0] : '')
   const [comment, setComment] = useState('')
   const [comments, setComments] = useState(card.comments || [])
+
+  useEffect(() => {
+    console.log('CardModal rendered for card:', card.id, card.title)
+  }, [card])
 
   const handleSave = async () => {
     await fetch('/api/cards/' + card.id, {
@@ -87,6 +91,7 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
 }
 
 function Card({ card, onClick }: { card: any, onClick: () => void }) {
+  console.log('Card rendered:', card.id, card.title, 'onClick type:', typeof onClick)
   return (
     <div onClick={onClick} className="bg-white p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md border-l-4 border-blue-500">
       <p className="font-medium">{card.title}</p>
@@ -128,7 +133,10 @@ function Column({ column, projectId, onCardClick, onAddCard, onAddColumn }: {
 
       <div className="flex-1 space-y-2 overflow-y-auto">
         {column.cards?.map((card: any) => (
-          <Card key={card.id} card={card} onClick={() => onCardClick(card)} />
+          <Card key={card.id} card={card} onClick={() => {
+            console.log('Card clicked:', card.id, card.title)
+            onCardClick(card)
+          }} />
         ))}
       </div>
 
@@ -171,6 +179,8 @@ export default function BoardClient({
   const [selectedCard, setSelectedCard] = useState<any>(null)
   const [newColumnName, setNewColumnName] = useState('')
 
+  console.log('BoardClient rendered, columns:', columns?.length, 'selectedCard:', selectedCard?.id)
+
   return (
     <>
       <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
@@ -180,7 +190,10 @@ export default function BoardClient({
               key={column.id} 
               column={column} 
               projectId={projectId}
-              onCardClick={setSelectedCard}
+              onCardClick={(card) => {
+                console.log('Setting selected card:', card.id, card.title)
+                setSelectedCard(card)
+              }}
               onAddCard={onAddCard}
               onAddColumn={onAddColumn}
             />
@@ -211,7 +224,10 @@ export default function BoardClient({
       {selectedCard && (
         <CardModal 
           card={selectedCard} 
-          onClose={() => setSelectedCard(null)} 
+          onClose={() => {
+            console.log('Closing modal')
+            setSelectedCard(null)
+          }} 
           onUpdate={onRefresh}
         />
       )}
