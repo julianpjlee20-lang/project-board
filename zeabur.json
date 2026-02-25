@@ -5,7 +5,7 @@
     "output": ".next"
   },
   "environment": {
-    "DATABASE_URL": "postgresql://root:POsGzaHMZYvx08q9U34562IEV71beRpQ@hnd1.clusters.zeabur.com:20038/zeabur",
+    "DATABASE_URL": "postgresql://root:x64niKRuPb5Yz7Q980TA2kwMC3dqecg1@43.167.227.92:32389/zeabur",
     "PORT": "8080"
   }
 }
