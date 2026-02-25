@@ -1,8 +1,22 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { query } from "@/lib/db"
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+async function getProjects() {
+  try {
+    return await query("SELECT * FROM projects ORDER BY created_at DESC")
+  } catch (e) {
+    console.error(e)
+    return []
+  }
+}
+
+export default async function Home() {
+  const projects = await getProjects()
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-16">
