@@ -223,17 +223,27 @@ function ColumnDroppable({ column, onCardClick, onAddCard, onCardMove }: {
         {column.cards?.map((card, index) => (
           <div
             key={card.id}
-            draggable
+            draggable={true}
             onDragStart={(e) => {
+              console.log('[DragStart]', card.id, index)
               e.dataTransfer.setData('text/plain', card.id)
               e.dataTransfer.setData('fromIndex', index.toString())
+              e.dataTransfer.effectAllowed = 'move'
             }}
             onDragOver={(e) => {
               e.preventDefault()
+              e.dataTransfer.dropEffect = 'move'
               setDragOverIndex(index)
             }}
+            onDragEnter={(e) => {
+              e.preventDefault()
+            }}
             onDragLeave={() => setDragOverIndex(null)}
-            onDrop={(e) => handleDrop(e, index)}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleDrop(e, index)
+            }}
             onClick={() => onCardClick(card)}
             className={`bg-white p-3 rounded-lg shadow-sm border-l-4 border-blue-500 mb-2 cursor-grab ${
               dragOverIndex === index ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
