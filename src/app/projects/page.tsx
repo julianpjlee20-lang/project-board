@@ -1,4 +1,5 @@
 import { query } from "@/lib/db"
+import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 export const dynamic = 'force-dynamic'
@@ -7,7 +8,7 @@ async function getProjects() {
   try {
     return await query("SELECT * FROM projects ORDER BY created_at DESC")
   } catch (e) {
-    console.error(e)
+    console.error("Error fetching projects:", e)
     return []
   }
 }
@@ -17,21 +18,26 @@ async function createProject(formData: FormData) {
   const name = formData.get("name") as string
   if (!name) return
   
-  await query(
-    "INSERT INTO projects (name) VALUES ($1) RETURNING *",
-    [name]
-  )
-  
-  // Create default columns
-  const project = await query("SELECT id FROM projects ORDER BY created_at DESC LIMIT 1")
-  if (project[0]) {
+  try {
     await query(
-      "INSERT INTO columns (project_id, name, position) VALUES ($1, 'To Do', 0), ($1, 'In Progress', 1), ($1, 'Done', 2)",
-      [project[0].id]
+      "INSERT INTO projects (name) VALUES ($1)",
+      [name]
     )
+    
+    // Create default columns
+    const project = await query("SELECT id FROM projects ORDER BY created_at DESC LIMIT 1")
+    if (project[0]) {
+      await query(
+        "INSERT INTO columns (project_id, name, position) VALUES ($1, 'To Do', 0), ($1, 'In Progress', 1), ($1, 'Done', 2)",
+        [project[0].id]
+      )
+    }
+    
+    revalidatePath("/projects")
+    redirect("/projects")
+  } catch (e) {
+    console.error("Error creating project:", e)
   }
-  
-  redirect("/projects")
 }
 
 export default async function ProjectsPage() {
