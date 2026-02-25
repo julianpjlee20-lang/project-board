@@ -1,17 +1,19 @@
 import { Pool } from 'pg'
 
-// Create a singleton pool
 let pool: Pool | null = null
 
 function getPool() {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL
+    console.log('DATABASE_URL:', connectionString ? 'set' : 'NOT SET')
+    
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set')
+      throw new Error('DATABASE_URL is not set')
     }
+    
     pool = new Pool({
       connectionString,
-      max: 1, // Reduce connections for serverless
+      max: 1,
       idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 5000,
     })
@@ -20,9 +22,12 @@ function getPool() {
 }
 
 export async function query(text: string, params?: any[]) {
-  const p = getPool()
-  const res = await p.query(text, params)
-  return res.rows
+  try {
+    const p = getPool()
+    const result = await p.query(text, params)
+    return result.rows
+  } catch (error) {
+    console.error('Query error:', error)
+    throw error
+  }
 }
-
-export default getPool()
