@@ -16,8 +16,8 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable,
 } from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 // Types
@@ -49,21 +49,18 @@ function SortableCard({ card, onClick }: { card: Card, onClick: () => void }) {
     setNodeRef,
     transform,
     transition,
-    isDragging
-  } = useSortable({ id: card.id })
+    isDragging,
+  } = useSortable({ 
+    id: card.id,
+    index: 0, // Required but we'll handle position differently
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    touchAction: 'none',
-  }
-
-  const handleClick = (e: React.MouseEvent) => {
-    // Only trigger click if not dragging
-    if (!isDragging && onClick) {
-      onClick()
-    }
+    zIndex: isDragging ? 999 : 'auto',
+    position: 'relative' as const,
   }
 
   return (
@@ -72,8 +69,11 @@ function SortableCard({ card, onClick }: { card: Card, onClick: () => void }) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={handleClick}
-      className="bg-white p-3 rounded-lg shadow-sm cursor-grab hover:shadow-md border-l-4 border-blue-500 select-none"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className="bg-white p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md border-l-4 border-blue-500 mb-2"
     >
       <p className="font-medium">{card.title}</p>
       <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
@@ -168,25 +168,13 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   )
 }
 
-function Column({ column, onCardClick, onAddCard, onReorderCards }: { 
+function Column({ column, onCardClick, onAddCard }: { 
   column: Column, 
   onCardClick: (card: Card) => void,
   onAddCard: (columnId: string, title: string) => void,
-  onReorderCards: (columnId: string, cards: Card[]) => void
 }) {
   const [newCardTitle, setNewCardTitle] = useState('')
   const [showAddCard, setShowAddCard] = useState(false)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
 
   const handleAddCard = (e: React.FormEvent) => {
     e.preventDefault()
@@ -194,18 +182,6 @@ function Column({ column, onCardClick, onAddCard, onReorderCards }: {
       onAddCard(column.id, newCardTitle.trim())
       setNewCardTitle('')
       setShowAddCard(false)
-    }
-  }
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    
-    if (over && active.id !== over.id) {
-      const oldIndex = column.cards.findIndex(c => c.id === active.id)
-      const newIndex = column.cards.findIndex(c => c.id === over.id)
-      
-      const newCards = arrayMove(column.cards, oldIndex, newIndex)
-      onReorderCards(column.id, newCards)
     }
   }
 
@@ -218,26 +194,15 @@ function Column({ column, onCardClick, onAddCard, onReorderCards }: {
         </h2>
       </div>
 
-      <SortableContext 
-        items={column.cards.map(c => c.id)} 
-        strategy={verticalListSortingStrategy}
-      >
-        <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px]">
-            {column.cards?.map((card) => (
-              <SortableCard 
-                key={card.id} 
-                card={card} 
-                onClick={() => onCardClick(card)} 
-              />
-            ))}
-          </div>
-        </DndContext>
-      </SortableContext>
+      <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px]">
+        {column.cards?.map((card, index) => (
+          <SortableCard 
+            key={card.id} 
+            card={card} 
+            onClick={() => onCardClick(card)}
+          />
+        ))}
+      </div>
 
       {showAddCard ? (
         <form onSubmit={handleAddCard} className="mt-2">
@@ -271,6 +236,17 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [newColumnName, setNewColumnName] = useState('')
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 10,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     fetchBoard()
@@ -310,18 +286,39 @@ export default function BoardPage() {
     fetchBoard()
   }
 
-  async function reorderCards(columnId: string, cards: Card[]) {
-    // Update local state immediately for smooth UX
-    setColumns(prev => prev.map(col => 
-      col.id === columnId ? { ...col, cards } : col
-    ))
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
     
-    // Save to server
-    await fetch('/api/cards/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ column_id: columnId, cards: cards.map((c, i) => ({ id: c.id, position: i })) })
-    })
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    // Find the column and card
+    for (const column of columns) {
+      const activeIndex = column.cards.findIndex(c => c.id === activeId)
+      const overIndex = column.cards.findIndex(c => c.id === overId)
+
+      if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
+        const newCards = arrayMove(column.cards, activeIndex, overIndex)
+        
+        // Update local state immediately
+        setColumns(prev => prev.map(col => 
+          col.id === column.id ? { ...col, cards: newCards } : col
+        ))
+
+        // Save to server
+        fetch('/api/cards/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            column_id: column.id, 
+            cards: newCards.map((c, i) => ({ id: c.id, position: i })) 
+          })
+        })
+        return
+      }
+    }
   }
 
   if (loading) {
@@ -339,21 +336,31 @@ export default function BoardPage() {
         <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
       </header>
 
-      <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
-        <div className="flex gap-4 h-full">
-          {columns.map((column) => (
-            <Column 
-              key={column.id} 
-              column={column} 
-              onCardClick={setSelectedCard}
-              onAddCard={addCard}
-              onReorderCards={reorderCards}
-            />
-          ))}
+      <DndContext 
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
+          <div className="flex gap-4 h-full">
+            {columns.map((column) => (
+              <SortableContext 
+                key={column.id}
+                items={column.cards.map(c => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <Column 
+                  column={column} 
+                  onCardClick={setSelectedCard}
+                  onAddCard={addCard}
+                />
+              </SortableContext>
+            ))}
 
-          <AddColumnForm onAdd={addColumn} />
+            <AddColumnForm onAdd={addColumn} />
+          </div>
         </div>
-      </div>
+      </DndContext>
 
       {selectedCard && (
         <CardModal 
