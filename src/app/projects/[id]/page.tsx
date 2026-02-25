@@ -183,10 +183,15 @@ function ColumnDroppable({ column, onCardClick, onAddCard, onCardMove }: {
 
   const handleDrop = (e: React.DragEvent, toIndex: number) => {
     e.preventDefault()
+    e.stopPropagation() // Prevent bubbling
+    
     const cardId = e.dataTransfer.getData('text/plain')
     const fromIndex = parseInt(e.dataTransfer.getData('fromIndex'), 10)
     
+    console.log('[Drop]', { cardId, fromIndex, toIndex })
+    
     if (!isNaN(fromIndex) && !isNaN(toIndex) && fromIndex !== toIndex) {
+      console.log('[Reorder]', { columnId: column.id, fromIndex, toIndex })
       onCardMove(column.id, fromIndex, toIndex)
     }
     setDragOverIndex(null)
@@ -316,14 +321,20 @@ export default function BoardPage() {
   }
 
   async function handleCardMove(columnId: string, fromIndex: number, toIndex: number) {
+    console.log('[handleCardMove]', { columnId, fromIndex, toIndex })
+    
     // Get the column
     const column = columns.find(c => c.id === columnId)
-    if (!column) return
+    if (!column) {
+      console.log('[handleCardMove] Column not found!')
+      return
+    }
 
     // Reorder cards locally
     const newCards = [...column.cards]
     const [movedCard] = newCards.splice(fromIndex, 1)
     newCards.splice(toIndex, 0, movedCard)
+    console.log('[handleCardMove] Reordered:', newCards.map(c => c.title))
 
     // Update local state
     setColumns(prev => prev.map(col => 
