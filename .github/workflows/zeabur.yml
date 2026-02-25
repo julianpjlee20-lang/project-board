@@ -1,0 +1,21 @@
+name: Deploy to Zeabur
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zeabur CLI
+        run: npm install -g zeabur
+
+      - name: Deploy to Zeabur
+        run: |
+          zeabur deploy --project 6997e3e6c262be11da85160d --service kanban-board --environment production
+        env:
+          ZEABUR_TOKEN: ${{ secrets.ZEABUR_TOKEN }}
