@@ -1,5 +1,6 @@
 import { query } from "@/lib/db"
-import { redirect } from "next/navigation"
+import BoardClient from "@/components/BoardClient"
+import { revalidatePath } from "next/cache"
 
 export const dynamic = 'force-dynamic'
 
@@ -11,10 +12,19 @@ async function getBoard(projectId: string) {
     )
     
     for (const col of columns) {
-      const cards = await query(
-        "SELECT * FROM cards WHERE column_id = $1 ORDER BY position",
-        [col.id]
-      )
+      const cards = await query(`
+        SELECT c.*, 
+          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
+          COALESCE(json_agg(DISTINCT jsonb_build_object('id', cmt.id, 'content', cmt.content, 'author_name', p2.name)) FILTER (WHERE cmt.id IS NOT NULL), '[]') as comments
+        FROM cards c
+        LEFT JOIN card_assignees ca ON c.id = ca.card_id
+        LEFT JOIN profiles p ON ca.user_id = p.id
+        LEFT JOIN comments cmt ON c.id = cmt.card_id
+        LEFT JOIN profiles p2 ON cmt.author_id = p2.id
+        WHERE c.column_id = $1
+        GROUP BY c.id
+        ORDER BY c.position
+      `, [col.id])
       col.cards = cards
     }
     
@@ -34,44 +44,6 @@ async function getProject(projectId: string) {
   }
 }
 
-async function createColumn(projectId: string, formData: FormData) {
-  'use server'
-  const name = formData.get("name") as string
-  if (!name) return
-  
-  const columns = await query(
-    "SELECT COALESCE(MAX(position), -1) + 1 as pos FROM columns WHERE project_id = $1",
-    [projectId]
-  )
-  const position = columns[0]?.pos || 0
-  
-  await query(
-    "INSERT INTO columns (project_id, name, position) VALUES ($1, $2, $3)",
-    [projectId, name, position]
-  )
-  
-  redirect(`/projects/${projectId}`)
-}
-
-async function createCard(columnId: string, projectId: string, formData: FormData) {
-  'use server'
-  const title = formData.get("title") as string
-  if (!title) return
-  
-  const cards = await query(
-    "SELECT COALESCE(MAX(position), -1) + 1 as pos FROM cards WHERE column_id = $1",
-    [columnId]
-  )
-  const position = cards[0]?.pos || 0
-  
-  await query(
-    "INSERT INTO cards (column_id, title, position) VALUES ($1, $2, $3)",
-    [columnId, title, position]
-  )
-  
-  redirect(`/projects/${projectId}`)
-}
-
 export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await params
   const project = await getProject(projectId)
@@ -79,6 +51,38 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
 
   if (!project) {
     return <div className="p-8">專案不存在</div>
+  }
+
+  async function addCard(columnId: string, title: string) {
+    'use server'
+    const cards = await query(
+      "SELECT COALESCE(MAX(position), -1) + 1 as pos FROM cards WHERE column_id = $1",
+      [columnId]
+    )
+    const position = cards[0]?.pos || 0
+    await query(
+      "INSERT INTO cards (column_id, title, position) VALUES ($1, $2, $3)",
+      [columnId, title, position]
+    )
+    revalidatePath(`/projects/${projectId}`)
+  }
+
+  async function addColumn(name: string) {
+    'use server'
+    const columns = await query(
+      "SELECT COALESCE(MAX(position), -1) + 1 as pos FROM columns WHERE project_id = $1",
+      [projectId]
+    )
+    const position = columns[0]?.pos || 0
+    await query(
+      "INSERT INTO columns (project_id, name, position) VALUES ($1, $2, $3)",
+      [projectId, name, position]
+    )
+    revalidatePath(`/projects/${projectId}`)
+  }
+
+  function handleRefresh() {
+    revalidatePath(`/projects/${projectId}`)
   }
 
   return (
@@ -90,67 +94,13 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
         </a>
       </header>
 
-      <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
-        <div className="flex gap-4 h-full">
-          {columns.map((column: any) => (
-            <div key={column.id} className="w-72 flex-shrink-0 flex flex-col">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-slate-700">
-                  {column.name}
-                  <span className="ml-2 text-sm text-slate-400">
-                    {column.cards?.length || 0}
-                  </span>
-                </h2>
-              </div>
-
-              <div className="flex-1 space-y-2 overflow-y-auto">
-                {column.cards?.map((card: any) => (
-                  <div key={card.id} className="bg-white p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md">
-                    <p className="font-medium">{card.title}</p>
-                    {card.due_date && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <form action={createCard.bind(null, column.id, projectId)} className="mt-2">
-                <input
-                  name="title"
-                  placeholder="新卡片標題..."
-                  className="w-full px-3 py-2 text-sm border rounded mb-2"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="w-full px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded"
-                >
-                  + 新增卡片
-                </button>
-              </form>
-            </div>
-          ))}
-
-          <div className="w-72 flex-shrink-0">
-            <form action={createColumn.bind(null, projectId)} className="flex gap-2">
-              <input
-                name="name"
-                placeholder="新欄位名稱..."
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                required
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded"
-              >
-                +
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+      <BoardClient 
+        columns={columns} 
+        projectId={projectId}
+        onRefresh={handleRefresh}
+        onAddCard={addCard}
+        onAddColumn={addColumn}
+      />
     </div>
   )
 }
