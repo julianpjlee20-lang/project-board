@@ -55,6 +55,15 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   const [dueDate, setDueDate] = useState(card.due_date ? card.due_date.split('T')[0] : '')
   const [comment, setComment] = useState('')
   const [comments, setComments] = useState(card.comments || [])
+  const [activity, setActivity] = useState<any[]>([])
+
+  // Fetch activity on mount
+  useEffect(() => {
+    fetch('/api/cards/' + card.id + '/activity')
+      .then(res => res.json())
+      .then(data => setActivity(data))
+      .catch(console.error)
+  }, [card.id])
 
   const handleSave = async () => {
     await fetch('/api/cards/' + card.id, {
@@ -119,6 +128,28 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
             <div className="flex gap-2">
               <input value={comment} onChange={e => setComment(e.target.value)} placeholder="輸入評論..." className="flex-1 border rounded px-3 py-2" />
               <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded">送出</button>
+            </div>
+          </div>
+
+          {/* Activity Log */}
+          <div>
+            <label className="block text-sm font-medium mb-1">活動紀錄</label>
+            <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded">
+              {activity.length === 0 ? (
+                <p className="text-sm text-slate-400">尚無活動紀錄</p>
+              ) : (
+                activity.map((log) => (
+                  <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2">
+                    <span className="font-medium">{log.new_value || log.action}</span>
+                    {log.old_value && log.new_value && (
+                      <span> {log.old_value} → {log.new_value}</span>
+                    )}
+                    <span className="text-slate-400 ml-1">
+                      {new Date(log.created_at).toLocaleString('zh-TW')}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
