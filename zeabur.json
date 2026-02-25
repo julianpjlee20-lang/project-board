@@ -1,0 +1,12 @@
+{
+  "$schema": "https://zeabur.com/zeabur.json",
+  "build": {
+    "command": "npm run build",
+    "output": ".next"
+  },
+  "environment": {
+    "NEXT_PUBLIC_SUPABASE_URL": "***REDACTED_SUPABASE_URL***",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "***REDACTED_SUPABASE_KEY***",
+    "PORT": "8080"
+  }
+}
