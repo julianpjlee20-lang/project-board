@@ -2,23 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 // Types
 interface Card {
@@ -41,46 +25,35 @@ interface Project {
   name: string
 }
 
-// Sortable Card Component
-function SortableCard({ card, onClick }: { card: Card, onClick: () => void }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ 
-    id: card.id,
-    index: 0, // Required but we'll handle position differently
-  })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 999 : 'auto',
-    position: 'relative' as const,
-  }
-
+// Draggable Card Component
+function CardItem({ card, index, onClick }: { card: Card, index: number, onClick: () => void }) {
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick()
-      }}
-      className="bg-white p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md border-l-4 border-blue-500 mb-2"
-    >
-      <p className="font-medium">{card.title}</p>
-      <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-        {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
-        {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
-      </div>
-    </div>
+    <Draggable draggableId={card.id} index={index}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          onClick={(e) => {
+            e.stopPropagation()
+            onClick()
+          }}
+          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-4 border-blue-500 mb-2 ${
+            snapshot.isDragging ? 'shadow-lg rotate-2' : ''
+          }`}
+          style={{
+            ...provided.draggableProps.style,
+            opacity: snapshot.isDragging ? 0.9 : 1,
+          }}
+        >
+          <p className="font-medium">{card.title}</p>
+          <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+            {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+            {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+          </div>
+        </div>
+      )}
+    </Draggable>
   )
 }
 
@@ -168,7 +141,7 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   )
 }
 
-function Column({ column, onCardClick, onAddCard }: { 
+function ColumnDroppable({ column, onCardClick, onAddCard }: { 
   column: Column, 
   onCardClick: (card: Card) => void,
   onAddCard: (columnId: string, title: string) => void,
@@ -186,44 +159,56 @@ function Column({ column, onCardClick, onAddCard }: {
   }
 
   return (
-    <div className="w-72 flex-shrink-0 flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-slate-700">
-          {column.name}
-          <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
-        </h2>
-      </div>
-
-      <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px]">
-        {column.cards?.map((card, index) => (
-          <SortableCard 
-            key={card.id} 
-            card={card} 
-            onClick={() => onCardClick(card)}
-          />
-        ))}
-      </div>
-
-      {showAddCard ? (
-        <form onSubmit={handleAddCard} className="mt-2">
-          <input
-            value={newCardTitle}
-            onChange={e => setNewCardTitle(e.target.value)}
-            placeholder="卡片標題..."
-            className="w-full px-3 py-2 text-sm border rounded mb-2"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
-            <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
+    <Droppable droppableId={column.id}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+          className="w-72 flex-shrink-0 flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-700">
+              {column.name}
+              <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
+            </h2>
           </div>
-        </form>
-      ) : (
-        <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
-          + 新增卡片
-        </button>
+
+          <div 
+            className={`flex-1 space-y-2 overflow-y-auto min-h-[100px] rounded ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+          >
+            {column.cards?.map((card, index) => (
+              <CardItem 
+                key={card.id} 
+                card={card} 
+                index={index}
+                onClick={() => onCardClick(card)} 
+              />
+            ))}
+            {provided.placeholder}
+          </div>
+
+          {showAddCard ? (
+            <form onSubmit={handleAddCard} className="mt-2">
+              <input
+                value={newCardTitle}
+                onChange={e => setNewCardTitle(e.target.value)}
+                placeholder="卡片標題..."
+                className="w-full px-3 py-2 text-sm border rounded mb-2"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
+                <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
+              </div>
+            </form>
+          ) : (
+            <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
+              + 新增卡片
+            </button>
+          )}
+        </div>
       )}
-    </div>
+    </Droppable>
   )
 }
 
@@ -236,17 +221,6 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [newColumnName, setNewColumnName] = useState('')
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
 
   useEffect(() => {
     fetchBoard()
@@ -286,38 +260,60 @@ export default function BoardPage() {
     fetchBoard()
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    
-    if (!over) return
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result
 
-    const activeId = active.id as string
-    const overId = over.id as string
+    if (!destination) return
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
     // Find the column and card
-    for (const column of columns) {
-      const activeIndex = column.cards.findIndex(c => c.id === activeId)
-      const overIndex = column.cards.findIndex(c => c.id === overId)
+    const sourceColumn = columns.find(c => c.id === source.droppableId)
+    const destColumn = columns.find(c => c.id === destination.droppableId)
+    
+    if (!sourceColumn || !destColumn) return
 
-      if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
-        const newCards = arrayMove(column.cards, activeIndex, overIndex)
-        
-        // Update local state immediately
-        setColumns(prev => prev.map(col => 
-          col.id === column.id ? { ...col, cards: newCards } : col
-        ))
+    // Create new cards array
+    const sourceCards = [...sourceColumn.cards]
+    const [movedCard] = sourceCards.splice(source.index, 1)
 
-        // Save to server
-        fetch('/api/cards/reorder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            column_id: column.id, 
-            cards: newCards.map((c, i) => ({ id: c.id, position: i })) 
-          })
+    let newColumns: Column[]
+
+    if (source.droppableId === destination.droppableId) {
+      // Same column reorder
+      sourceCards.splice(destination.index, 0, movedCard)
+      newColumns = columns.map(col => 
+        col.id === source.droppableId ? { ...col, cards: sourceCards } : col
+      )
+    } else {
+      // Different column move
+      const destCards = [...destColumn.cards]
+      destCards.splice(destination.index, 0, movedCard)
+      newColumns = columns.map(col => {
+        if (col.id === source.droppableId) return { ...col, cards: sourceCards }
+        if (col.id === destination.droppableId) return { ...col, cards: destCards }
+        return col
+      })
+    }
+
+    // Update local state immediately
+    setColumns(newColumns)
+
+    // Save to server
+    try {
+      await fetch('/api/cards/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          card_id: draggableId,
+          source_column_id: source.droppableId,
+          dest_column_id: destination.droppableId,
+          source_index: source.index,
+          dest_index: destination.index,
         })
-        return
-      }
+      })
+    } catch (e) {
+      console.error('Failed to save:', e)
+      fetchBoard() // Refresh on error
     }
   }
 
@@ -330,46 +326,37 @@ export default function BoardPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between bg-white">
-        <h1 className="text-xl font-bold">{project.name}</h1>
-        <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
-      </header>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div className="h-screen flex flex-col">
+        <header className="border-b px-6 py-4 flex items-center justify-between bg-white">
+          <h1 className="text-xl font-bold">{project.name}</h1>
+          <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
+        </header>
 
-      <DndContext 
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
         <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
           <div className="flex gap-4 h-full">
             {columns.map((column) => (
-              <SortableContext 
-                key={column.id}
-                items={column.cards.map(c => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <Column 
-                  column={column} 
-                  onCardClick={setSelectedCard}
-                  onAddCard={addCard}
-                />
-              </SortableContext>
+              <ColumnDroppable 
+                key={column.id} 
+                column={column} 
+                onCardClick={setSelectedCard}
+                onAddCard={addCard}
+              />
             ))}
 
             <AddColumnForm onAdd={addColumn} />
           </div>
         </div>
-      </DndContext>
 
-      {selectedCard && (
-        <CardModal 
-          card={selectedCard} 
-          onClose={() => setSelectedCard(null)} 
-          onUpdate={fetchBoard}
-        />
-      )}
-    </div>
+        {selectedCard && (
+          <CardModal 
+            card={selectedCard} 
+            onClose={() => setSelectedCard(null)} 
+            onUpdate={fetchBoard}
+          />
+        )}
+      </div>
+    </DragDropContext>
   )
 }
 
