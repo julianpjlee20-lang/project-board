@@ -7,8 +7,5 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "startCommand": "npm run start",
-  "environment": {
-    "DATABASE_URL": "postgresql://root:***REDACTED_DB_PASS***@43.167.227.92:32389/zeabur",
-    "PORT": "8080"
-  }
+  "outputDirectory": ".next"
 }
