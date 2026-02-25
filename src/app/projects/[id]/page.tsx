@@ -2,6 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 // Types
 interface Card {
@@ -22,6 +39,41 @@ interface Column {
 interface Project {
   id: string
   name: string
+}
+
+// Sortable Card Component
+function SortableCard({ card, onClick }: { card: Card, onClick: () => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: card.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      className="bg-white p-3 rounded-lg shadow-sm cursor-grab hover:shadow-md border-l-4 border-blue-500"
+    >
+      <p className="font-medium">{card.title}</p>
+      <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+        {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+        {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+      </div>
+    </div>
+  )
 }
 
 function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => void, onUpdate: () => void }) {
@@ -108,14 +160,92 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   )
 }
 
-function Card({ card, onClick }: { card: Card, onClick: () => void }) {
+function Column({ column, onCardClick, onAddCard, onReorderCards }: { 
+  column: Column, 
+  onCardClick: (card: Card) => void,
+  onAddCard: (columnId: string, title: string) => void,
+  onReorderCards: (columnId: string, cards: Card[]) => void
+}) {
+  const [newCardTitle, setNewCardTitle] = useState('')
+  const [showAddCard, setShowAddCard] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleAddCard = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newCardTitle.trim()) {
+      onAddCard(column.id, newCardTitle.trim())
+      setNewCardTitle('')
+      setShowAddCard(false)
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = column.cards.findIndex(c => c.id === active.id)
+      const newIndex = column.cards.findIndex(c => c.id === over.id)
+      
+      const newCards = arrayMove(column.cards, oldIndex, newIndex)
+      onReorderCards(column.id, newCards)
+    }
+  }
+
   return (
-    <div onClick={onClick} className="bg-white p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md border-l-4 border-blue-500">
-      <p className="font-medium">{card.title}</p>
-      <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-        {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
-        {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+    <div className="w-72 flex-shrink-0 flex flex-col">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-slate-700">
+          {column.name}
+          <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
+        </h2>
       </div>
+
+      <SortableContext 
+        items={column.cards.map(c => c.id)} 
+        strategy={verticalListSortingStrategy}
+      >
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px]">
+            {column.cards?.map((card) => (
+              <SortableCard 
+                key={card.id} 
+                card={card} 
+                onClick={() => onCardClick(card)} 
+              />
+            ))}
+          </div>
+        </DndContext>
+      </SortableContext>
+
+      {showAddCard ? (
+        <form onSubmit={handleAddCard} className="mt-2">
+          <input
+            value={newCardTitle}
+            onChange={e => setNewCardTitle(e.target.value)}
+            placeholder="卡片標題..."
+            className="w-full px-3 py-2 text-sm border rounded mb-2"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
+            <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
+          </div>
+        </form>
+      ) : (
+        <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
+          + 新增卡片
+        </button>
+      )}
     </div>
   )
 }
@@ -137,12 +267,10 @@ export default function BoardPage() {
   async function fetchBoard() {
     setLoading(true)
     try {
-      // Fetch project
       const projectRes = await fetch(`/api/projects/${projectId}`)
       const projectData = await projectRes.json()
       setProject(projectData)
       
-      // Fetch columns
       const columnsRes = await fetch(`/api/projects/${projectId}/columns`)
       const columnsData = await columnsRes.json()
       setColumns(columnsData)
@@ -170,6 +298,20 @@ export default function BoardPage() {
     fetchBoard()
   }
 
+  async function reorderCards(columnId: string, cards: Card[]) {
+    // Update local state immediately for smooth UX
+    setColumns(prev => prev.map(col => 
+      col.id === columnId ? { ...col, cards } : col
+    ))
+    
+    // Save to server
+    await fetch('/api/cards/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ column_id: columnId, cards: cards.map((c, i) => ({ id: c.id, position: i })) })
+    })
+  }
+
   if (loading) {
     return <div className="p-8">載入中...</div>
   }
@@ -188,22 +330,13 @@ export default function BoardPage() {
       <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
         <div className="flex gap-4 h-full">
           {columns.map((column) => (
-            <div key={column.id} className="w-72 flex-shrink-0 flex flex-col">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-slate-700">
-                  {column.name}
-                  <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
-                </h2>
-              </div>
-
-              <div className="flex-1 space-y-2 overflow-y-auto">
-                {column.cards?.map((card) => (
-                  <Card key={card.id} card={card} onClick={() => setSelectedCard(card)} />
-                ))}
-              </div>
-
-              <AddCardForm columnId={column.id} onAdd={addCard} />
-            </div>
+            <Column 
+              key={column.id} 
+              column={column} 
+              onCardClick={setSelectedCard}
+              onAddCard={addCard}
+              onReorderCards={reorderCards}
+            />
           ))}
 
           <AddColumnForm onAdd={addColumn} />
@@ -218,38 +351,6 @@ export default function BoardPage() {
         />
       )}
     </div>
-  )
-}
-
-function AddCardForm({ columnId, onAdd }: { columnId: string, onAdd: (columnId: string, title: string) => void }) {
-  const [title, setTitle] = useState('')
-  const [show, setShow] = useState(false)
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (title.trim()) {
-      onAdd(columnId, title.trim())
-      setTitle('')
-      setShow(false)
-    }
-  }
-
-  if (show) {
-    return (
-      <form onSubmit={handleSubmit} className="mt-2">
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="卡片標題..." className="w-full px-3 py-2 text-sm border rounded mb-2" autoFocus />
-        <div className="flex gap-2">
-          <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
-          <button type="button" onClick={() => setShow(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
-        </div>
-      </form>
-    )
-  }
-
-  return (
-    <button onClick={() => setShow(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
-      + 新增卡片
-    </button>
   )
 }
 
