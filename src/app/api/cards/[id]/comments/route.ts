@@ -38,11 +38,15 @@ export async function POST(
     // Activity log: Commented
     const card = await query('SELECT column_id FROM cards WHERE id = $1', [id])
     const column = card[0] ? await query('SELECT project_id FROM columns WHERE id = $1', [card[0].column_id]) : null
+    const projectId = column?.[0]?.project_id || null
     
-    if (column?.[0]) {
+    // Get truncated comment content
+    const commentPreview = content.length > 30 ? content.substring(0, 30) + '...' : content
+    
+    if (projectId) {
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, new_value) VALUES ($1, $2, $3, $4, $5)',
-        [column[0].project_id, id, 'commented', 'comment', author_name || 'Anonymous']
+        [projectId, id, '留言', '評論', `${author_name || 'Anonymous'}: ${commentPreview}`]
       )
     }
 

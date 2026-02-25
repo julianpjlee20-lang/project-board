@@ -22,6 +22,11 @@ export async function PUT(
     const oldDescription = oldCard[0]?.description
     const oldDueDate = oldCard[0]?.due_date
 
+    // Get project_id
+    const column = oldCard[0]?.column_id ? 
+      await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]) : null
+    const projectId = column?.[0]?.project_id || null
+
     // Update card
     await query(
       `UPDATE cards SET title = $1, description = $2, due_date = $3, updated_at = NOW() WHERE id = $4`,
@@ -32,32 +37,43 @@ export async function PUT(
     if (oldTitle !== title) {
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-        [oldCard[0]?.column_id ? (await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]))[0]?.project_id : null, id, 'updated', 'title', oldTitle, title]
+        [projectId, id, '修改', '標題', oldTitle, title]
       )
     }
 
     // Activity log: Description changed
     if (oldDescription !== description) {
+      const oldDesc = oldDescription ? (oldDescription.substring(0, 50) + (oldDescription.length > 50 ? '...' : '')) : '(空)'
+      const newDesc = description ? (description.substring(0, 50) + (description.length > 50 ? '...' : '')) : '(空)'
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-        [oldCard[0]?.column_id ? (await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]))[0]?.project_id : null, id, 'updated', 'description', oldDescription ? '有描述' : '無描述', description ? '有描述' : '無描述']
+        [projectId, id, '修改', '描述', oldDesc, newDesc]
       )
     }
 
     // Activity log: Due date changed
     if (String(oldDueDate) !== String(due_date)) {
+      const oldDate = oldDueDate ? oldDueDate.split('T')[0] : '(未設定)'
+      const newDate = due_date ? due_date.split('T')[0] : '(未設定)'
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-        [oldCard[0]?.column_id ? (await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]))[0]?.project_id : null, id, 'updated', 'due_date', oldDueDate ? oldDueDate.split('T')[0] : '無', due_date ? due_date.split('T')[0] : '無']
+        [projectId, id, '修改', '截止日', oldDate, newDate]
       )
     }
 
     // Handle assignee
     if (assignee !== undefined) {
+      // Get old assignee
+      const oldAssignee = await query(
+        'SELECT p.name FROM profiles p JOIN card_assignees ca ON p.id = ca.user_id WHERE ca.card_id = $1',
+        [id]
+      )
+      const oldAssigneeName = oldAssignee[0]?.name || '(未指派)'
+
       // Remove existing assignees
       await query('DELETE FROM card_assignees WHERE card_id = $1', [id])
       
-      if (assignee) {
+      if (assignee && assignee.trim()) {
         // Find or create profile
         let profiles = await query('SELECT id FROM profiles WHERE name = $1', [assignee])
         
@@ -77,10 +93,16 @@ export async function PUT(
           
           // Activity log: Assigned
           await query(
-            'INSERT INTO activity_logs (project_id, card_id, action, target, new_value) VALUES ($1, $2, $3, $4, $5)',
-            [oldCard[0]?.column_id ? (await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]))[0]?.project_id : null, id, 'assigned', 'assignee', assignee]
+            'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+            [projectId, id, '指派', '負責人', oldAssigneeName, assignee]
           )
         }
+      } else if (oldAssignee[0]?.name) {
+        // Removed assignee
+        await query(
+          'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+          [projectId, id, '指派', '負責人', oldAssigneeName, '(未指派)']
+        )
       }
     }
 
