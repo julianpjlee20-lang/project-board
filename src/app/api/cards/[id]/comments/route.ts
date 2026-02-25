@@ -35,6 +35,17 @@ export async function POST(
       [id, authorId, content]
     )
 
+    // Activity log: Commented
+    const card = await query('SELECT column_id FROM cards WHERE id = $1', [id])
+    const column = card[0] ? await query('SELECT project_id FROM columns WHERE id = $1', [card[0].column_id]) : null
+    
+    if (column?.[0]) {
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, new_value) VALUES ($1, $2, $3, $4, $5)',
+        [column[0].project_id, id, 'commented', 'comment', author_name || 'Anonymous']
+      )
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error(error)
