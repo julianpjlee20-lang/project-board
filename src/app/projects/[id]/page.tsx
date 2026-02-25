@@ -56,6 +56,14 @@ function SortableCard({ card, onClick }: { card: Card, onClick: () => void }) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    touchAction: 'none',
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only trigger click if not dragging
+    if (!isDragging && onClick) {
+      onClick()
+    }
   }
 
   return (
@@ -64,8 +72,8 @@ function SortableCard({ card, onClick }: { card: Card, onClick: () => void }) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
-      className="bg-white p-3 rounded-lg shadow-sm cursor-grab hover:shadow-md border-l-4 border-blue-500"
+      onClick={handleClick}
+      className="bg-white p-3 rounded-lg shadow-sm cursor-grab hover:shadow-md border-l-4 border-blue-500 select-none"
     >
       <p className="font-medium">{card.title}</p>
       <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
