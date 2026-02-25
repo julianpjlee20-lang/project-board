@@ -1,6 +1,12 @@
 import { query } from "@/lib/db"
-import BoardClient from "@/components/BoardClient"
 import { revalidatePath } from "next/cache"
+import dynamic from 'next/dynamic'
+
+// Force client-side rendering
+const BoardClient = dynamic(() => import('@/components/BoardClient'), { 
+  ssr: false,
+  loading: () => <div className="p-8">載入中...</div>
+})
 
 export const dynamic = 'force-dynamic'
 
