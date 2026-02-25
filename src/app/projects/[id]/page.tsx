@@ -139,12 +139,15 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
                 <p className="text-sm text-slate-400">尚無活動紀錄</p>
               ) : (
                 activity.map((log) => (
-                  <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2">
-                    <span className="font-medium">{log.new_value || log.action}</span>
-                    {log.old_value && log.new_value && (
-                      <span> {log.old_value} → {log.new_value}</span>
+                  <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2 py-1">
+                    <span className="font-medium text-blue-600">[{log.action}]</span>
+                    <span className="text-slate-700"> {log.target}</span>
+                    {log.old_value && log.new_value && log.old_value !== log.new_value ? (
+                      <span className="text-orange-600"> {log.old_value} → {log.new_value}</span>
+                    ) : (
+                      <span className="text-green-600"> {log.new_value}</span>
                     )}
-                    <span className="text-slate-400 ml-1">
+                    <span className="text-slate-400 block mt-0.5">
                       {new Date(log.created_at).toLocaleString('zh-TW')}
                     </span>
                   </div>
