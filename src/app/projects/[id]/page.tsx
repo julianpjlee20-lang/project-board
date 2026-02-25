@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 // Types
 interface Card {
@@ -25,35 +24,27 @@ interface Project {
   name: string
 }
 
-// Draggable Card Component
-function CardItem({ card, index, onClick }: { card: Card, index: number, onClick: () => void }) {
+// Simple Card Component with HTML5 Drag and Drop
+function DraggableCard({ card, index, onDragStart, onClick }: { 
+  card: Card, 
+  index: number, 
+  onDragStart: (e: React.DragEvent, cardId: string, index: number) => void,
+  onClick: () => void
+}) {
   return (
-    <Draggable draggableId={card.id} index={index}>
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          onClick={(e) => {
-            e.stopPropagation()
-            onClick()
-          }}
-          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-4 border-blue-500 mb-2 ${
-            snapshot.isDragging ? 'shadow-lg rotate-2' : ''
-          }`}
-          style={{
-            ...provided.draggableProps.style,
-            opacity: snapshot.isDragging ? 0.9 : 1,
-          }}
-        >
-          <p className="font-medium">{card.title}</p>
-          <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-            {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
-            {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
-          </div>
-        </div>
-      )}
-    </Draggable>
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, card.id, index)}
+      onClick={onClick}
+      className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-4 border-blue-500 mb-2 cursor-grab active:cursor-grabbing"
+      style={{ touchAction: 'none' }}
+    >
+      <p className="font-medium">{card.title}</p>
+      <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+        {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+        {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+      </div>
+    </div>
   )
 }
 
@@ -141,13 +132,31 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   )
 }
 
-function ColumnDroppable({ column, onCardClick, onAddCard }: { 
+function ColumnDroppable({ column, onCardClick, onAddCard, onCardMove }: { 
   column: Column, 
   onCardClick: (card: Card) => void,
   onAddCard: (columnId: string, title: string) => void,
+  onCardMove: (columnId: string, fromIndex: number, toIndex: number) => void,
 }) {
   const [newCardTitle, setNewCardTitle] = useState('')
   const [showAddCard, setShowAddCard] = useState(false)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault()
+    const cardId = e.dataTransfer.getData('text/plain')
+    const fromIndex = parseInt(e.dataTransfer.getData('fromIndex'), 10)
+    
+    if (!isNaN(fromIndex) && !isNaN(toIndex) && fromIndex !== toIndex) {
+      onCardMove(column.id, fromIndex, toIndex)
+    }
+    setDragOverIndex(null)
+  }
 
   const handleAddCard = (e: React.FormEvent) => {
     e.preventDefault()
@@ -159,56 +168,68 @@ function ColumnDroppable({ column, onCardClick, onAddCard }: {
   }
 
   return (
-    <Droppable droppableId={column.id}>
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.droppableProps}
-          className="w-72 flex-shrink-0 flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-700">
-              {column.name}
-              <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
-            </h2>
-          </div>
+    <div 
+      className="w-72 flex-shrink-0 flex flex-col"
+      onDragOver={handleDragOver}
+      onDrop={(e) => handleDrop(e, 0)}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold text-slate-700">
+          {column.name}
+          <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
+        </h2>
+      </div>
 
-          <div 
-            className={`flex-1 space-y-2 overflow-y-auto min-h-[100px] rounded ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+      <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px]">
+        {column.cards?.map((card, index) => (
+          <div
+            key={card.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', card.id)
+              e.dataTransfer.setData('fromIndex', index.toString())
+            }}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragOverIndex(index)
+            }}
+            onDragLeave={() => setDragOverIndex(null)}
+            onDrop={(e) => handleDrop(e, index)}
+            onClick={() => onCardClick(card)}
+            className={`bg-white p-3 rounded-lg shadow-sm border-l-4 border-blue-500 mb-2 cursor-grab ${
+              dragOverIndex === index ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
+            }`}
+            style={{ touchAction: 'none' }}
           >
-            {column.cards?.map((card, index) => (
-              <CardItem 
-                key={card.id} 
-                card={card} 
-                index={index}
-                onClick={() => onCardClick(card)} 
-              />
-            ))}
-            {provided.placeholder}
+            <p className="font-medium">{card.title}</p>
+            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+              {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+              {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+            </div>
           </div>
+        ))}
+      </div>
 
-          {showAddCard ? (
-            <form onSubmit={handleAddCard} className="mt-2">
-              <input
-                value={newCardTitle}
-                onChange={e => setNewCardTitle(e.target.value)}
-                placeholder="卡片標題..."
-                className="w-full px-3 py-2 text-sm border rounded mb-2"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
-                <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
-              </div>
-            </form>
-          ) : (
-            <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
-              + 新增卡片
-            </button>
-          )}
-        </div>
+      {showAddCard ? (
+        <form onSubmit={handleAddCard} className="mt-2">
+          <input
+            value={newCardTitle}
+            onChange={e => setNewCardTitle(e.target.value)}
+            placeholder="卡片標題..."
+            className="w-full px-3 py-2 text-sm border rounded mb-2"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
+            <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
+          </div>
+        </form>
+      ) : (
+        <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
+          + 新增卡片
+        </button>
       )}
-    </Droppable>
+    </div>
   )
 }
 
@@ -260,61 +281,30 @@ export default function BoardPage() {
     fetchBoard()
   }
 
-  const handleDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId } = result
+  async function handleCardMove(columnId: string, fromIndex: number, toIndex: number) {
+    // Get the column
+    const column = columns.find(c => c.id === columnId)
+    if (!column) return
 
-    if (!destination) return
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return
+    // Reorder cards locally
+    const newCards = [...column.cards]
+    const [movedCard] = newCards.splice(fromIndex, 1)
+    newCards.splice(toIndex, 0, movedCard)
 
-    // Find the column and card
-    const sourceColumn = columns.find(c => c.id === source.droppableId)
-    const destColumn = columns.find(c => c.id === destination.droppableId)
-    
-    if (!sourceColumn || !destColumn) return
-
-    // Create new cards array
-    const sourceCards = [...sourceColumn.cards]
-    const [movedCard] = sourceCards.splice(source.index, 1)
-
-    let newColumns: Column[]
-
-    if (source.droppableId === destination.droppableId) {
-      // Same column reorder
-      sourceCards.splice(destination.index, 0, movedCard)
-      newColumns = columns.map(col => 
-        col.id === source.droppableId ? { ...col, cards: sourceCards } : col
-      )
-    } else {
-      // Different column move
-      const destCards = [...destColumn.cards]
-      destCards.splice(destination.index, 0, movedCard)
-      newColumns = columns.map(col => {
-        if (col.id === source.droppableId) return { ...col, cards: sourceCards }
-        if (col.id === destination.droppableId) return { ...col, cards: destCards }
-        return col
-      })
-    }
-
-    // Update local state immediately
-    setColumns(newColumns)
+    // Update local state
+    setColumns(prev => prev.map(col => 
+      col.id === columnId ? { ...col, cards: newCards } : col
+    ))
 
     // Save to server
-    try {
-      await fetch('/api/cards/move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          card_id: draggableId,
-          source_column_id: source.droppableId,
-          dest_column_id: destination.droppableId,
-          source_index: source.index,
-          dest_index: destination.index,
-        })
+    await fetch('/api/cards/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        column_id: columnId, 
+        cards: newCards.map((c, i) => ({ id: c.id, position: i })) 
       })
-    } catch (e) {
-      console.error('Failed to save:', e)
-      fetchBoard() // Refresh on error
-    }
+    })
   }
 
   if (loading) {
@@ -326,37 +316,36 @@ export default function BoardPage() {
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="h-screen flex flex-col">
-        <header className="border-b px-6 py-4 flex items-center justify-between bg-white">
-          <h1 className="text-xl font-bold">{project.name}</h1>
-          <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
-        </header>
+    <div className="h-screen flex flex-col">
+      <header className="border-b px-6 py-4 flex items-center justify-between bg-white">
+        <h1 className="text-xl font-bold">{project.name}</h1>
+        <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
+      </header>
 
-        <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
-          <div className="flex gap-4 h-full">
-            {columns.map((column) => (
-              <ColumnDroppable 
-                key={column.id} 
-                column={column} 
-                onCardClick={setSelectedCard}
-                onAddCard={addCard}
-              />
-            ))}
+      <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
+        <div className="flex gap-4 h-full">
+          {columns.map((column) => (
+            <ColumnDroppable 
+              key={column.id} 
+              column={column} 
+              onCardClick={setSelectedCard}
+              onAddCard={addCard}
+              onCardMove={handleCardMove}
+            />
+          ))}
 
-            <AddColumnForm onAdd={addColumn} />
-          </div>
+          <AddColumnForm onAdd={addColumn} />
         </div>
-
-        {selectedCard && (
-          <CardModal 
-            card={selectedCard} 
-            onClose={() => setSelectedCard(null)} 
-            onUpdate={fetchBoard}
-          />
-        )}
       </div>
-    </DragDropContext>
+
+      {selectedCard && (
+        <CardModal 
+          card={selectedCard} 
+          onClose={() => setSelectedCard(null)} 
+          onUpdate={fetchBoard}
+        />
+      )}
+    </div>
   )
 }
 
