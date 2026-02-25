@@ -1,112 +1,275 @@
-import { query } from "@/lib/db"
-import { revalidatePath } from "next/cache"
-import dynamic from 'next/dynamic'
+'use client'
 
-// Force client-side rendering
-const BoardClient = dynamic(() => import('@/components/BoardClient'), { 
-  ssr: false,
-  loading: () => <div className="p-8">載入中...</div>
-})
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
+// Types
+interface Card {
+  id: string
+  title: string
+  description: string | null
+  due_date: string | null
+  assignees: { id: string; name: string }[]
+  comments: { id: string; content: string; author_name: string }[]
+}
 
-async function getBoard(projectId: string) {
-  try {
-    const columns = await query(
-      "SELECT * FROM columns WHERE project_id = $1 ORDER BY position",
-      [projectId]
-    )
-    
-    for (const col of columns) {
-      const cards = await query(`
-        SELECT c.*, 
-          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
-          COALESCE(json_agg(DISTINCT jsonb_build_object('id', cmt.id, 'content', cmt.content, 'author_name', p2.name)) FILTER (WHERE cmt.id IS NOT NULL), '[]') as comments
-        FROM cards c
-        LEFT JOIN card_assignees ca ON c.id = ca.card_id
-        LEFT JOIN profiles p ON ca.user_id = p.id
-        LEFT JOIN comments cmt ON c.id = cmt.card_id
-        LEFT JOIN profiles p2 ON cmt.author_id = p2.id
-        WHERE c.column_id = $1
-        GROUP BY c.id
-        ORDER BY c.position
-      `, [col.id])
-      col.cards = cards
+interface Column {
+  id: string
+  name: string
+  cards: Card[]
+}
+
+interface Project {
+  id: string
+  name: string
+}
+
+function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => void, onUpdate: () => void }) {
+  const [title, setTitle] = useState(card.title)
+  const [description, setDescription] = useState(card.description || '')
+  const [assignee, setAssignee] = useState(card.assignees?.[0]?.name || '')
+  const [dueDate, setDueDate] = useState(card.due_date ? card.due_date.split('T')[0] : '')
+  const [comment, setComment] = useState('')
+  const [comments, setComments] = useState(card.comments || [])
+
+  const handleSave = async () => {
+    await fetch('/api/cards/' + card.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description, assignee, due_date: dueDate })
+    })
+    onUpdate()
+    onClose()
+  }
+
+  const handleAddComment = async () => {
+    if (!comment.trim()) return
+    await fetch('/api/cards/' + card.id + '/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: comment, author_name: 'User' })
+    })
+    setComment('')
+    onUpdate()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b flex justify-between items-center">
+          <h2 className="text-lg font-semibold">卡片詳情</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">標題</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border rounded px-3 py-2" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">描述</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2" placeholder="輸入描述..." />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">指派</label>
+              <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">截止日</label>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">評論</label>
+            <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
+              {comments.map((c) => (
+                <div key={c.id} className="bg-gray-50 p-2 rounded text-sm">
+                  <span className="font-medium">{c.author_name || 'Anonymous'}:</span> {c.content}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input value={comment} onChange={e => setComment(e.target.value)} placeholder="輸入評論..." className="flex-1 border rounded px-3 py-2" />
+              <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded">送出</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 border-t flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 border rounded">取消</button>
+          <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded">儲存</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Card({ card, onClick }: { card: Card, onClick: () => void }) {
+  return (
+    <div onClick={onClick} className="bg-white p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md border-l-4 border-blue-500">
+      <p className="font-medium">{card.title}</p>
+      <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+        {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+        {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+      </div>
+    </div>
+  )
+}
+
+export default function BoardPage() {
+  const params = useParams()
+  const projectId = params.id as string
+  
+  const [project, setProject] = useState<Project | null>(null)
+  const [columns, setColumns] = useState<Column[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null)
+  const [newColumnName, setNewColumnName] = useState('')
+
+  useEffect(() => {
+    fetchBoard()
+  }, [projectId])
+
+  async function fetchBoard() {
+    setLoading(true)
+    try {
+      // Fetch project
+      const projectRes = await fetch(`/api/projects/${projectId}`)
+      const projectData = await projectRes.json()
+      setProject(projectData)
+      
+      // Fetch columns
+      const columnsRes = await fetch(`/api/projects/${projectId}/columns`)
+      const columnsData = await columnsRes.json()
+      setColumns(columnsData)
+    } catch (e) {
+      console.error(e)
     }
-    
-    return columns
-  } catch (e) {
-    console.error(e)
-    return []
-  }
-}
-
-async function getProject(projectId: string) {
-  try {
-    const result = await query("SELECT * FROM projects WHERE id = $1", [projectId])
-    return result[0]
-  } catch (e) {
-    return null
-  }
-}
-
-export default async function BoardPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: projectId } = await params
-  const project = await getProject(projectId)
-  const columns = await getBoard(projectId)
-
-  if (!project) {
-    return <div className="p-8">專案不存在</div>
+    setLoading(false)
   }
 
   async function addCard(columnId: string, title: string) {
-    'use server'
-    const cards = await query(
-      "SELECT COALESCE(MAX(position), -1) + 1 as pos FROM cards WHERE column_id = $1",
-      [columnId]
-    )
-    const position = cards[0]?.pos || 0
-    await query(
-      "INSERT INTO cards (column_id, title, position) VALUES ($1, $2, $3)",
-      [columnId, title, position]
-    )
-    revalidatePath(`/projects/${projectId}`)
+    await fetch('/api/cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ column_id: columnId, title })
+    })
+    fetchBoard()
   }
 
   async function addColumn(name: string) {
-    'use server'
-    const columns = await query(
-      "SELECT COALESCE(MAX(position), -1) + 1 as pos FROM columns WHERE project_id = $1",
-      [projectId]
-    )
-    const position = columns[0]?.pos || 0
-    await query(
-      "INSERT INTO columns (project_id, name, position) VALUES ($1, $2, $3)",
-      [projectId, name, position]
-    )
-    revalidatePath(`/projects/${projectId}`)
+    await fetch('/api/columns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId, name })
+    })
+    fetchBoard()
   }
 
-  function handleRefresh() {
-    revalidatePath(`/projects/${projectId}`)
+  if (loading) {
+    return <div className="p-8">載入中...</div>
+  }
+
+  if (!project) {
+    return <div className="p-8">專案不存在</div>
   }
 
   return (
     <div className="h-screen flex flex-col">
       <header className="border-b px-6 py-4 flex items-center justify-between bg-white">
         <h1 className="text-xl font-bold">{project.name}</h1>
-        <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">
-          返回專案
-        </a>
+        <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
       </header>
 
-      <BoardClient 
-        columns={columns} 
-        projectId={projectId}
-        onRefresh={handleRefresh}
-        onAddCard={addCard}
-        onAddColumn={addColumn}
-      />
+      <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
+        <div className="flex gap-4 h-full">
+          {columns.map((column) => (
+            <div key={column.id} className="w-72 flex-shrink-0 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-slate-700">
+                  {column.name}
+                  <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
+                </h2>
+              </div>
+
+              <div className="flex-1 space-y-2 overflow-y-auto">
+                {column.cards?.map((card) => (
+                  <Card key={card.id} card={card} onClick={() => setSelectedCard(card)} />
+                ))}
+              </div>
+
+              <AddCardForm columnId={column.id} onAdd={addCard} />
+            </div>
+          ))}
+
+          <AddColumnForm onAdd={addColumn} />
+        </div>
+      </div>
+
+      {selectedCard && (
+        <CardModal 
+          card={selectedCard} 
+          onClose={() => setSelectedCard(null)} 
+          onUpdate={fetchBoard}
+        />
+      )}
+    </div>
+  )
+}
+
+function AddCardForm({ columnId, onAdd }: { columnId: string, onAdd: (columnId: string, title: string) => void }) {
+  const [title, setTitle] = useState('')
+  const [show, setShow] = useState(false)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (title.trim()) {
+      onAdd(columnId, title.trim())
+      setTitle('')
+      setShow(false)
+    }
+  }
+
+  if (show) {
+    return (
+      <form onSubmit={handleSubmit} className="mt-2">
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="卡片標題..." className="w-full px-3 py-2 text-sm border rounded mb-2" autoFocus />
+        <div className="flex gap-2">
+          <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
+          <button type="button" onClick={() => setShow(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
+        </div>
+      </form>
+    )
+  }
+
+  return (
+    <button onClick={() => setShow(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
+      + 新增卡片
+    </button>
+  )
+}
+
+function AddColumnForm({ onAdd }: { onAdd: (name: string) => void }) {
+  const [name, setName] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (name.trim()) {
+      onAdd(name.trim())
+      setName('')
+    }
+  }
+
+  return (
+    <div className="w-72 flex-shrink-0">
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="新欄位名稱..." className="flex h-10 w-full rounded-md border px-3 py-2 text-sm" />
+        <button type="submit" className="px-4 py-2 bg-slate-100 rounded">+</button>
+      </form>
     </div>
   )
 }
