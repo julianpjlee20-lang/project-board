@@ -16,6 +16,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [projectName, setProjectName] = useState('')
+  const [initError, setInitError] = useState('')
 
   useEffect(() => {
     fetchProjects()
@@ -26,11 +27,36 @@ export default function ProjectsPage() {
     try {
       const res = await fetch('/api/projects')
       const data = await res.json()
-      setProjects(data)
+      if (data.error && data.detail?.includes('does not exist')) {
+        setInitError(data.detail)
+      } else {
+        setProjects(data)
+        setInitError('')
+      }
     } catch (e) {
       console.error(e)
     }
     setLoading(false)
+  }
+
+  async function initDatabase() {
+    if (!confirm('確定要初始化資料庫嗎？這會建立所有必要的表格。')) return
+    
+    setCreating(true)
+    try {
+      const res = await fetch('/api/projects', { method: 'PUT' })
+      const data = await res.json()
+      
+      if (data.success) {
+        alert('資料庫初始化成功！')
+        fetchProjects()
+      } else {
+        alert('初始化失敗：' + data.detail)
+      }
+    } catch (e) {
+      alert('初始化失敗')
+    }
+    setCreating(false)
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -89,34 +115,59 @@ export default function ProjectsPage() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
-        {/* Create Form */}
-        <form onSubmit={handleCreate} className="flex gap-3 mb-12">
-          <input
-            name="name"
-            placeholder="輸入新專案名稱..."
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            className="flex h-12 w-full max-w-md rounded-lg border px-4 text-sm transition-all focus:outline-none focus:ring-2"
-            style={{ 
-              backgroundColor: '#FFFFFF',
-              borderColor: '#316745',
-              color: '#0B1A14'
-            }}
-            required
-            disabled={creating}
-          />
-          <button
-            type="submit"
-            className="h-12 px-6 rounded-lg font-medium transition-all hover:opacity-90"
-            style={{ 
-              backgroundColor: '#F8B500',
-              color: '#0B1A14'
-            }}
-            disabled={creating}
-          >
-            {creating ? '建立中...' : '建立'}
-          </button>
-        </form>
+        {/* Create Form - Only show if database is initialized */}
+        {!initError && (
+          <form onSubmit={handleCreate} className="flex gap-3 mb-12">
+            <input
+              name="name"
+              placeholder="輸入新專案名稱..."
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="flex h-12 w-full max-w-md rounded-lg border px-4 text-sm transition-all focus:outline-none focus:ring-2"
+              style={{ 
+                backgroundColor: '#FFFFFF',
+                borderColor: '#316745',
+                color: '#0B1A14'
+              }}
+              required
+              disabled={creating}
+            />
+            <button
+              type="submit"
+              className="h-12 px-6 rounded-lg font-medium transition-all hover:opacity-90"
+              style={{ 
+                backgroundColor: '#F8B500',
+                color: '#0B1A14'
+              }}
+              disabled={creating}
+            >
+              {creating ? '建立中...' : '建立'}
+            </button>
+          </form>
+        )}
+
+        {/* Database Init Error */}
+        {initError && (
+          <div className="mb-8 p-6 rounded-lg border" style={{ backgroundColor: '#FFF5F5', borderColor: '#DC2626' }}>
+            <h3 className="font-semibold mb-2" style={{ color: '#DC2626' }}>
+              資料庫需要初始化
+            </h3>
+            <p className="text-sm mb-4" style={{ color: '#0B1A14', opacity: 0.7 }}>
+              尚未建立資料表，請點擊下方按鈕初始化資料庫。
+            </p>
+            <button
+              onClick={initDatabase}
+              className="h-12 px-6 rounded-lg font-medium transition-all hover:opacity-90"
+              style={{ 
+                backgroundColor: '#DC2626',
+                color: '#FFFFFF'
+              }}
+              disabled={creating}
+            >
+              {creating ? '初始化中...' : '初始化資料庫'}
+            </button>
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
