@@ -120,7 +120,42 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
       })
       
       if (res.ok) {
-        setOriginalData({ title, description, assignee, dueDate })
+        // Fetch fresh data after save
+        try {
+          const cardRes = await fetch('/api/cards/' + card.id)
+          if (cardRes.ok) {
+            const freshData = await cardRes.json()
+            
+            // Update form with fresh data
+            const freshTitle = freshData.title || ''
+            const freshDesc = freshData.description || ''
+            const freshAssignee = freshData.assignees?.[0]?.name || ''
+            const freshDueDate = freshData.due_date ? freshData.due_date.split('T')[0] : ''
+            
+            setTitle(freshTitle)
+            setDescription(freshDesc)
+            setAssignee(freshAssignee)
+            setDueDate(freshDueDate)
+            
+            // Update original data
+            setOriginalData({
+              title: freshTitle,
+              description: freshDesc,
+              assignee: freshAssignee,
+              dueDate: freshDueDate
+            })
+            
+            // Update comments
+            if (freshData.comments) {
+              setComments(freshData.comments)
+            }
+          }
+        } catch (fetchError) {
+          console.error('Failed to fetch fresh data:', fetchError)
+          // Still mark as saved even if fetch fails
+          setOriginalData({ title, description, assignee, dueDate })
+        }
+        
         setIsDirty(false)
         setSaveSuccess(true)
         setTimeout(() => setSaveSuccess(false), 2000)

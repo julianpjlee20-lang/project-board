@@ -1,6 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 
+// GET /api/cards/[id]
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    
+    // Get card
+    const cards = await query('SELECT * FROM cards WHERE id = $1', [id])
+    
+    if (cards.length === 0) {
+      return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+    }
+    
+    const card = cards[0]
+    
+    // Get assignees
+    const assignees = await query(`
+      SELECT p.id, p.name 
+      FROM profiles p 
+      JOIN card_assignees ca ON p.id = ca.user_id 
+      WHERE ca.card_id = $1
+    `, [id])
+    
+    // Get comments
+    const comments = await query(`
+      SELECT c.*, p.name as author_name 
+      FROM comments c 
+      LEFT JOIN profiles p ON c.author_id = p.id 
+      WHERE c.card_id = $1 
+      ORDER BY c.created_at ASC
+    `, [id])
+    
+    return NextResponse.json({
+      ...card,
+      assignees,
+      comments
+    })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json({ error: 'Failed to fetch card' }, { status: 500 })
+  }
+}
+
 // PUT /api/cards/[id]
 export async function PUT(
   request: NextRequest,
