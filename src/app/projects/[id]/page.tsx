@@ -136,12 +136,20 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
         })
       })
       
+      const data = await res.json()
+      console.log('Save response:', data)
+      
       if (res.ok) {
+        // Refresh board data
         onUpdate()
+        // Close modal
         onClose()
+      } else {
+        alert('儲存失敗: ' + (data.error || '未知錯誤'))
       }
     } catch (e) {
-      console.error(e)
+      console.error('Save error:', e)
+      alert('儲存失敗')
     }
     setIsSaving(false)
   }
