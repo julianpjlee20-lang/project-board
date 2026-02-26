@@ -17,7 +17,6 @@ export default function ProjectsPage() {
   const [creating, setCreating] = useState(false)
   const [projectName, setProjectName] = useState('')
 
-  // Fetch projects on mount
   useEffect(() => {
     fetchProjects()
   }, [])
@@ -60,53 +59,144 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">專案列表</h1>
-
-      <form onSubmit={handleCreate} className="flex gap-2 mb-8">
-        <input
-          name="name"
-          placeholder="新專案名稱..."
-          value={projectName}
-          onChange={(e) => setProjectName(e.target.value)}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 max-w-md"
-          required
-          disabled={creating}
-        />
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-          disabled={creating}
-        >
-          {creating ? '建立中...' : '建立'}
-        </button>
-      </form>
-
-      {loading ? (
-        <p>載入中...</p>
-      ) : projects.length === 0 ? (
-        <p className="text-slate-500">尚無專案，建立一個開始吧！</p>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
-                  {project.description && (
-                    <CardDescription>{project.description}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-500">
-                    建立於 {new Date(project.created_at).toLocaleDateString('zh-TW')}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+    <div className="min-h-screen" style={{ backgroundColor: '#F9F8F5' }}>
+      {/* Header */}
+      <header 
+        className="border-b"
+        style={{ 
+          backgroundColor: '#0B1A14',
+          borderColor: '#316745'
+        }}
+      >
+        <div className="container mx-auto px-6 py-8">
+          <h1 
+            className="text-3xl font-bold"
+            style={{ 
+              color: '#F9F8F5',
+              fontFamily: 'Inter, sans-serif',
+              letterSpacing: '-0.03em'
+            }}
+          >
+            專案列表
+          </h1>
+          <p 
+            className="mt-2"
+            style={{ color: '#F9F8F5', opacity: 0.7 }}
+          >
+            建立和管理你的團隊專案
+          </p>
         </div>
-      )}
+      </header>
+
+      <main className="container mx-auto px-6 py-8">
+        {/* Create Form */}
+        <form onSubmit={handleCreate} className="flex gap-3 mb-12">
+          <input
+            name="name"
+            placeholder="輸入新專案名稱..."
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            className="flex h-12 w-full max-w-md rounded-lg border px-4 text-sm transition-all focus:outline-none focus:ring-2"
+            style={{ 
+              backgroundColor: '#FFFFFF',
+              borderColor: '#316745',
+              color: '#0B1A14'
+            }}
+            required
+            disabled={creating}
+          />
+          <button
+            type="submit"
+            className="h-12 px-6 rounded-lg font-medium transition-all hover:opacity-90"
+            style={{ 
+              backgroundColor: '#F8B500',
+              color: '#0B1A14'
+            }}
+            disabled={creating}
+          >
+            {creating ? '建立中...' : '建立'}
+          </button>
+        </form>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center py-12">
+            <div className="animate-pulse text-lg" style={{ color: '#316745' }}>
+              載入中...
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && projects.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div 
+              className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+              style={{ backgroundColor: '#31674520' }}
+            >
+              <svg 
+                className="w-12 h-12" 
+                fill="none" 
+                stroke="#316745" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h3 
+              className="text-xl font-semibold mb-2"
+              style={{ color: '#0B1A14' }}
+            >
+              尚無專案
+            </h3>
+            <p 
+              className="text-center max-w-md"
+              style={{ color: '#0B1A14', opacity: 0.6 }}
+            >
+              建立第一個專案，開始追蹤你的任務進度
+            </p>
+          </div>
+        )}
+
+        {/* Project Grid */}
+        {!loading && projects.length > 0 && (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
+              <Link key={project.id} href={`/projects/${project.id}`}>
+                <Card 
+                  className="h-full transition-all hover:shadow-lg cursor-pointer border-l-4"
+                  style={{ 
+                    borderLeftColor: '#F8B500',
+                    backgroundColor: '#FFFFFF'
+                  }}
+                >
+                  <CardHeader>
+                    <CardTitle 
+                      className="text-lg"
+                      style={{ color: '#0B1A14' }}
+                    >
+                      {project.name}
+                    </CardTitle>
+                    {project.description && (
+                      <CardDescription>
+                        {project.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <p 
+                      className="text-sm"
+                      style={{ color: '#316745' }}
+                    >
+                      建立於 {new Date(project.created_at).toLocaleDateString('zh-TW')}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   )
 }
