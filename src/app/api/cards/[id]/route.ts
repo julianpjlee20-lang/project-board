@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 
+// Discord webhook URL (from env)
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
+
+// Send Discord notification
+async function sendDiscordNotification(cardTitle: string, action: string, projectName: string) {
+  if (!DISCORD_WEBHOOK_URL) return
+  
+  try {
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: `📋 ${projectName}`,
+          description: `**${action}**: ${cardTitle}`,
+          color: 0x316745,
+          timestamp: new Date().toISOString()
+        }]
+      })
+    })
+  } catch (e) {
+    console.error('Discord notification failed:', e)
+  }
+}
+
 // GET /api/cards/[id]
 export async function GET(
   request: NextRequest,
@@ -35,10 +60,24 @@ export async function GET(
       ORDER BY c.created_at ASC
     `, [id])
     
+    // Get subtasks
+    const subtasks = await query(`
+      SELECT * FROM subtasks WHERE card_id = $1 ORDER BY position
+    `, [id])
+    
+    // Get tags
+    const tags = await query(`
+      SELECT t.* FROM tags t
+      JOIN card_tags ct ON t.id = ct.tag_id
+      WHERE ct.card_id = $1
+    `, [id])
+    
     return NextResponse.json({
       ...card,
       assignees,
-      comments
+      comments,
+      subtasks,
+      tags
     })
   } catch (error) {
     console.error(error)
@@ -54,7 +93,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    let { title, description, assignee, due_date } = body
+    let { title, description, assignee, due_date, progress, subtasks, comment } = body
 
     // Fix: Convert empty string to null for due_date
     if (due_date === '') {
@@ -66,16 +105,22 @@ export async function PUT(
     const oldTitle = oldCard[0]?.title
     const oldDescription = oldCard[0]?.description
     const oldDueDate = oldCard[0]?.due_date
+    const oldProgress = oldCard[0]?.progress || 0
 
     // Get project_id
     const column = oldCard[0]?.column_id ? 
       await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]) : null
     const projectId = column?.[0]?.project_id || null
+    
+    // Get project name for notifications
+    const project = projectId ?
+      await query('SELECT name FROM projects WHERE id = $1', [projectId]) : null
+    const projectName = project?.[0]?.name || 'Project'
 
     // Update card
     await query(
-      `UPDATE cards SET title = $1, description = $2, due_date = $3, updated_at = NOW() WHERE id = $4`,
-      [title, description, due_date, id]
+      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), updated_at = NOW() WHERE id = $5`,
+      [title, description, due_date, progress, id]
     )
 
     // Activity log: Title changed
@@ -84,15 +129,22 @@ export async function PUT(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '標題', oldTitle, title]
       )
+      await sendDiscordNotification(title, '更新標題', projectName)
     }
 
     // Activity log: Description changed
     if (oldDescription !== description) {
-      const oldDesc = oldDescription ? (oldDescription.substring(0, 50) + (oldDescription.length > 50 ? '...' : '')) : '(空)'
-      const newDesc = description ? (description.substring(0, 50) + (description.length > 50 ? '...' : '')) : '(空)'
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-        [projectId, id, '修改', '描述', oldDesc, newDesc]
+        [projectId, id, '修改', '描述', oldDescription ? '有描述' : '無', description ? '有描述' : '無']
+      )
+    }
+
+    // Activity log: Progress changed
+    if (oldProgress !== progress) {
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+        [projectId, id, '修改', '進度', `${oldProgress}%`, `${progress}%`]
       )
     }
 
@@ -108,18 +160,15 @@ export async function PUT(
 
     // Handle assignee
     if (assignee !== undefined) {
-      // Get old assignee
       const oldAssignee = await query(
         'SELECT p.name FROM profiles p JOIN card_assignees ca ON p.id = ca.user_id WHERE ca.card_id = $1',
         [id]
       )
       const oldAssigneeName = oldAssignee[0]?.name || '(未指派)'
 
-      // Remove existing assignees
       await query('DELETE FROM card_assignees WHERE card_id = $1', [id])
       
       if (assignee && assignee.trim()) {
-        // Find or create profile
         let profiles = await query('SELECT id FROM profiles WHERE name = $1', [assignee])
         
         if (profiles.length === 0) {
@@ -136,25 +185,18 @@ export async function PUT(
             [id, profiles[0].id]
           )
           
-          // Activity log: Assigned
           await query(
             'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
             [projectId, id, '指派', '負責人', oldAssigneeName, assignee]
           )
+          
+          await sendDiscordNotification(title, `指派給 ${assignee}`, projectName)
         }
-      } else if (oldAssignee[0]?.name) {
-        // Removed assignee
-        await query(
-          'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-          [projectId, id, '指派', '負責人', oldAssigneeName, '(未指派)']
-        )
       }
     }
 
-    // Handle comment (optional - save together with card)
-    const newComment = body.comment
-    if (newComment && newComment.trim()) {
-      // Find or create author
+    // Handle comment (optional)
+    if (comment && comment.trim()) {
       let authorId = null
       const author_name = 'User'
       
@@ -172,18 +214,17 @@ export async function PUT(
         authorId = profiles[0].id
       }
 
-      // Insert comment
       await query(
         'INSERT INTO comments (card_id, author_id, content) VALUES ($1, $2, $3)',
-        [id, authorId, newComment.trim()]
+        [id, authorId, comment.trim()]
       )
 
-      // Activity log: Commented
-      const commentPreview = newComment.length > 30 ? newComment.substring(0, 30) + '...' : newComment
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, new_value) VALUES ($1, $2, $3, $4, $5)',
-        [projectId, id, '留言', '評論', `${author_name}: ${commentPreview}`]
+        [projectId, id, '留言', '評論', `${author_name}: ${comment.substring(0, 30)}...`]
       )
+      
+      await sendDiscordNotification(title, '新評論', projectName)
     }
 
     return NextResponse.json({ success: true })
