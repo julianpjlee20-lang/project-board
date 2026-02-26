@@ -118,7 +118,7 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
       .catch(console.error)
   }, [card.id])
 
-  // Unified save - card info + comment together
+  // Unified save - save and close modal
   const saveCard = async () => {
     if (isSaving) return
     
@@ -137,14 +137,8 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
       })
       
       if (res.ok) {
-        // Clear comment after save
-        setComment('')
-        // Update original data
-        setOriginalData({ title, description, assignee, dueDate })
-        setIsDirty(false)
-        setSaveSuccess(true)
-        setTimeout(() => setSaveSuccess(false), 2000)
         onUpdate()
+        onClose()
       }
     } catch (e) {
       console.error(e)
@@ -152,13 +146,13 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
     setIsSaving(false)
   }
 
-  // Cancel - restore original data
+  // Cancel - restore and close
   const handleCancel = () => {
     setTitle(originalData.title)
     setDescription(originalData.description)
     setAssignee(originalData.assignee)
     setDueDate(originalData.dueDate)
-    setIsDirty(false)
+    onClose()
   }
 
   return (
@@ -235,45 +229,13 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
           </div>
         </div>
 
-        <div className="p-4 border-t flex justify-between items-center">
-          {/* Status indicator */}
-          <div className="flex items-center gap-2">
-            {isSaving && (
-              <span className="text-sm text-blue-500 flex items-center gap-1">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                儲存中...
-              </span>
-            )}
-            {saveSuccess && !isSaving && (
-              <span className="text-sm text-green-600 flex items-center gap-1">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                已儲存
-              </span>
-            )}
-            {isDirty && !isSaving && !saveSuccess && (
-              <span className="text-sm text-orange-500">未儲存</span>
-            )}
-          </div>
-          
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            {isDirty && (
-              <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
-                取消
-              </button>
-            )}
-            <button onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-50">
-              關閉
-            </button>
-            <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
-              儲存
-            </button>
-          </div>
+        <div className="p-4 border-t flex justify-end gap-2">
+          <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
+            取消
+          </button>
+          <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+            {isSaving ? '儲存中...' : '儲存'}
+          </button>
         </div>
       </div>
     </div>
