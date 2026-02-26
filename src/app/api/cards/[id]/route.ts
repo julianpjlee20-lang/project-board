@@ -151,6 +151,41 @@ export async function PUT(
       }
     }
 
+    // Handle comment (optional - save together with card)
+    const newComment = body.comment
+    if (newComment && newComment.trim()) {
+      // Find or create author
+      let authorId = null
+      const author_name = 'User'
+      
+      let profiles = await query('SELECT id FROM profiles WHERE name = $1', [author_name])
+      
+      if (profiles.length === 0) {
+        const newProfile = await query(
+          'INSERT INTO profiles (id, name) VALUES (gen_random_uuid(), $1) RETURNING id',
+          [author_name]
+        )
+        profiles = newProfile
+      }
+      
+      if (profiles[0]) {
+        authorId = profiles[0].id
+      }
+
+      // Insert comment
+      await query(
+        'INSERT INTO comments (card_id, author_id, content) VALUES ($1, $2, $3)',
+        [id, authorId, newComment.trim()]
+      )
+
+      // Activity log: Commented
+      const commentPreview = newComment.length > 30 ? newComment.substring(0, 30) + '...' : newComment
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, new_value) VALUES ($1, $2, $3, $4, $5)',
+        [projectId, id, '留言', '評論', `${author_name}: ${commentPreview}`]
+      )
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error(error)
