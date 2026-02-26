@@ -1,72 +1,94 @@
-import { query } from "@/lib/db"
-import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
+'use client'
 
-export const dynamic = 'force-dynamic'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-async function getProjects() {
-  try {
-    return await query("SELECT * FROM projects ORDER BY created_at DESC")
-  } catch (e) {
-    console.error("Error fetching projects:", e)
-    return []
-  }
+interface Project {
+  id: string
+  name: string
+  description: string | null
+  created_at: string
 }
 
-async function createProject(formData: FormData) {
-  'use server'
-  const name = formData.get("name") as string
-  if (!name) return
-  
-  try {
-    await query(
-      "INSERT INTO projects (name) VALUES ($1)",
-      [name]
-    )
-    
-    // Create default columns
-    const project = await query("SELECT id FROM projects ORDER BY created_at DESC LIMIT 1")
-    if (project[0]) {
-      await query(
-        "INSERT INTO columns (project_id, name, position) VALUES ($1, 'To Do', 0), ($1, 'In Progress', 1), ($1, 'Done', 2)",
-        [project[0].id]
-      )
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [projectName, setProjectName] = useState('')
+
+  // Fetch projects on mount
+  useEffect(() => {
+    fetchProjects()
+  }, [])
+
+  async function fetchProjects() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/projects')
+      const data = await res.json()
+      setProjects(data)
+    } catch (e) {
+      console.error(e)
     }
-    
-    revalidatePath("/projects")
-    redirect("/projects")
-  } catch (e) {
-    console.error("Error creating project:", e)
+    setLoading(false)
   }
-}
 
-export default async function ProjectsPage() {
-  const projects = await getProjects()
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!projectName.trim()) return
+
+    setCreating(true)
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: projectName })
+      })
+
+      if (res.ok) {
+        setProjectName('')
+        fetchProjects()
+      } else {
+        alert('建立失敗')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('建立失敗')
+    }
+    setCreating(false)
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">專案列表</h1>
 
-      <form action={createProject} className="flex gap-2 mb-8">
+      <form onSubmit={handleCreate} className="flex gap-2 mb-8">
         <input
           name="name"
           placeholder="新專案名稱..."
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 max-w-md"
           required
+          disabled={creating}
         />
         <button
           type="submit"
           className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+          disabled={creating}
         >
-          建立
+          {creating ? '建立中...' : '建立'}
         </button>
       </form>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <p>載入中...</p>
+      ) : projects.length === 0 ? (
         <p className="text-slate-500">尚無專案，建立一個開始吧！</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project: any) => (
+          {projects.map((project) => (
             <Link key={project.id} href={`/projects/${project.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardHeader>
@@ -88,6 +110,3 @@ export default async function ProjectsPage() {
     </div>
   )
 }
-
-import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
