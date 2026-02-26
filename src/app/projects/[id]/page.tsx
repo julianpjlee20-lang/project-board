@@ -58,6 +58,14 @@ function CardItem({ card, index, onClick }: { card: Card, index: number, onClick
 }
 
 function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => void, onUpdate: () => void }) {
+  // Original data for comparison
+  const [originalData, setOriginalData] = useState({
+    title: card.title,
+    description: card.description || '',
+    assignee: card.assignees?.[0]?.name || '',
+    dueDate: card.due_date ? card.due_date.split('T')[0] : ''
+  })
+  
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || '')
   const [assignee, setAssignee] = useState(card.assignees?.[0]?.name || '')
@@ -65,6 +73,32 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   const [comment, setComment] = useState('')
   const [comments, setComments] = useState(card.comments || [])
   const [activity, setActivity] = useState<any[]>([])
+  
+  // Dirty state
+  const [isDirty, setIsDirty] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Check if dirty
+  useEffect(() => {
+    const dirty = 
+      title !== originalData.title ||
+      description !== originalData.description ||
+      assignee !== originalData.assignee ||
+      dueDate !== originalData.dueDate
+    setIsDirty(dirty)
+  }, [title, description, assignee, dueDate, originalData])
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (!isDirty) return
+    
+    const timer = setTimeout(async () => {
+      await saveCard()
+    }, 2000) // Auto-save after 2 seconds of inactivity
+    
+    return () => clearTimeout(timer)
+  }, [title, description, assignee, dueDate])
 
   // Fetch activity on mount
   useEffect(() => {
@@ -74,14 +108,36 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
       .catch(console.error)
   }, [card.id])
 
-  const handleSave = async () => {
-    await fetch('/api/cards/' + card.id, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, assignee, due_date: dueDate })
-    })
-    onUpdate()
-    onClose()
+  const saveCard = async () => {
+    if (isSaving) return
+    
+    setIsSaving(true)
+    try {
+      const res = await fetch('/api/cards/' + card.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, assignee, due_date: dueDate })
+      })
+      
+      if (res.ok) {
+        setOriginalData({ title, description, assignee, dueDate })
+        setIsDirty(false)
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 2000)
+        onUpdate()
+      }
+    } catch (e) {
+      console.error(e)
+    }
+    setIsSaving(false)
+  }
+
+  const handleCancel = () => {
+    setTitle(originalData.title)
+    setDescription(originalData.description)
+    setAssignee(originalData.assignee)
+    setDueDate(originalData.dueDate)
+    setIsDirty(false)
   }
 
   const handleAddComment = async () => {
@@ -166,9 +222,47 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
           </div>
         </div>
 
-        <div className="p-4 border-t flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 border rounded">取消</button>
-          <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded">儲存</button>
+        <div className="p-4 border-t flex justify-between items-center">
+          {/* Status indicator */}
+          <div className="flex items-center gap-2">
+            {isSaving && (
+              <span className="text-sm text-blue-500 flex items-center gap-1">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                儲存中...
+              </span>
+            )}
+            {saveSuccess && !isSaving && (
+              <span className="text-sm text-green-600 flex items-center gap-1">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                已儲存
+              </span>
+            )}
+            {isDirty && !isSaving && !saveSuccess && (
+              <span className="text-sm text-orange-500">未儲存</span>
+            )}
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            {isDirty && (
+              <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
+                取消
+              </button>
+            )}
+            <button onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-50">
+              關閉
+            </button>
+            {isDirty && (
+              <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+                儲存
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
