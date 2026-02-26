@@ -89,17 +89,6 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
     setIsDirty(dirty)
   }, [title, description, assignee, dueDate, originalData])
 
-  // Debounced auto-save
-  useEffect(() => {
-    if (!isDirty) return
-    
-    const timer = setTimeout(async () => {
-      await saveCard()
-    }, 2000) // Auto-save after 2 seconds of inactivity
-    
-    return () => clearTimeout(timer)
-  }, [title, description, assignee, dueDate])
-
   // Fetch activity on mount
   useEffect(() => {
     fetch('/api/cards/' + card.id + '/activity')
@@ -108,6 +97,7 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
       .catch(console.error)
   }, [card.id])
 
+  // Unified save - card info + comment together
   const saveCard = async () => {
     if (isSaving) return
     
@@ -116,46 +106,20 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
       const res = await fetch('/api/cards/' + card.id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, assignee, due_date: dueDate })
+        body: JSON.stringify({ 
+          title, 
+          description, 
+          assignee, 
+          due_date: dueDate,
+          comment: comment.trim() || null
+        })
       })
       
       if (res.ok) {
-        // Fetch fresh data after save
-        try {
-          const cardRes = await fetch('/api/cards/' + card.id)
-          if (cardRes.ok) {
-            const freshData = await cardRes.json()
-            
-            // Update form with fresh data
-            const freshTitle = freshData.title || ''
-            const freshDesc = freshData.description || ''
-            const freshAssignee = freshData.assignees?.[0]?.name || ''
-            const freshDueDate = freshData.due_date ? freshData.due_date.split('T')[0] : ''
-            
-            setTitle(freshTitle)
-            setDescription(freshDesc)
-            setAssignee(freshAssignee)
-            setDueDate(freshDueDate)
-            
-            // Update original data
-            setOriginalData({
-              title: freshTitle,
-              description: freshDesc,
-              assignee: freshAssignee,
-              dueDate: freshDueDate
-            })
-            
-            // Update comments
-            if (freshData.comments) {
-              setComments(freshData.comments)
-            }
-          }
-        } catch (fetchError) {
-          console.error('Failed to fetch fresh data:', fetchError)
-          // Still mark as saved even if fetch fails
-          setOriginalData({ title, description, assignee, dueDate })
-        }
-        
+        // Clear comment after save
+        setComment('')
+        // Update original data
+        setOriginalData({ title, description, assignee, dueDate })
         setIsDirty(false)
         setSaveSuccess(true)
         setTimeout(() => setSaveSuccess(false), 2000)
@@ -167,23 +131,13 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
     setIsSaving(false)
   }
 
+  // Cancel - restore original data
   const handleCancel = () => {
     setTitle(originalData.title)
     setDescription(originalData.description)
     setAssignee(originalData.assignee)
     setDueDate(originalData.dueDate)
     setIsDirty(false)
-  }
-
-  const handleAddComment = async () => {
-    if (!comment.trim()) return
-    await fetch('/api/cards/' + card.id + '/comments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: comment, author_name: 'User' })
-    })
-    setComment('')
-    onUpdate()
   }
 
   return (
@@ -216,6 +170,7 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
             </div>
           </div>
 
+          {/* Comments */}
           <div>
             <label className="block text-sm font-medium mb-1">評論</label>
             <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
@@ -225,10 +180,12 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input value={comment} onChange={e => setComment(e.target.value)} placeholder="輸入評論..." className="flex-1 border rounded px-3 py-2" />
-              <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded">送出</button>
-            </div>
+            <input 
+              value={comment} 
+              onChange={e => setComment(e.target.value)} 
+              placeholder="輸入評論..." 
+              className="w-full border rounded px-3 py-2" 
+            />
           </div>
 
           {/* Activity Log */}
@@ -292,11 +249,9 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
             <button onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-50">
               關閉
             </button>
-            {isDirty && (
-              <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
-                儲存
-              </button>
-            )}
+            <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+              儲存
+            </button>
           </div>
         </div>
       </div>
