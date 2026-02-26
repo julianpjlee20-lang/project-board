@@ -6,9 +6,12 @@ export async function GET() {
   try {
     const projects = await query("SELECT * FROM projects ORDER BY created_at DESC")
     return NextResponse.json(projects)
-  } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 })
+  } catch (error: any) {
+    console.error('GET /api/projects error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to fetch projects',
+      detail: error.message || String(error)
+    }, { status: 500 })
   }
 }
 
@@ -35,8 +38,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, id: projectId })
-  } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Failed to create project' }, { status: 500 })
+  } catch (error: any) {
+    console.error('POST /api/projects error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to create project',
+      detail: error.message || String(error)
+    }, { status: 500 })
   }
 }
