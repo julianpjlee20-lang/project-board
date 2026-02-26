@@ -110,7 +110,30 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
     setIsDirty(dirty)
   }, [title, description, assignee, dueDate, originalData])
 
-  // Fetch activity on mount
+  // Fetch card data and activity on mount
+  useEffect(() => {
+    // Fetch fresh card data
+    fetch('/api/cards/' + card.id)
+      .then(res => res.json())
+      .then(data => {
+        setTitle(data.title)
+        setDescription(data.description || '')
+        setAssignee(data.assignees?.[0]?.name || '')
+        setDueDate(data.due_date ? data.due_date.split('T')[0] : '')
+        setComments(data.comments || [])
+        setActivity(data.activity || [])
+        // Also update original data
+        setOriginalData({
+          title: data.title,
+          description: data.description || '',
+          assignee: data.assignees?.[0]?.name || '',
+          dueDate: data.due_date ? data.due_date.split('T')[0] : ''
+        })
+      })
+      .catch(console.error)
+  }, [card.id])
+
+  // Fetch activity
   useEffect(() => {
     fetch('/api/cards/' + card.id + '/activity')
       .then(res => res.json())
