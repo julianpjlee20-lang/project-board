@@ -3,30 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-
-// Types
-interface Card {
-  id: string
-  title: string
-  description: string | null
-  due_date: string | null
-  assignees: { id: string; name: string }[]
-  comments: { id: string; content: string; author_name: string }[]
-}
-
-interface Column {
-  id: string
-  name: string
-  cards: Card[]
-}
-
-interface Project {
-  id: string
-  name: string
-}
+import { ListView, CalendarView, ProgressView } from './views'
+import type { Card, Column, Project, ViewType } from './types'
 
 // Draggable Card Component
-function CardItem({ card, index, onClick }: { card: Card, index: number, onClick: () => void }) {
+function CardItem({ card, index, onClick, color = '#3B82F6' }: { card: Card, index: number, onClick: () => void, color?: string }) {
   return (
     <Draggable draggableId={card.id} index={index}>
       {(provided, snapshot) => (
@@ -38,14 +19,54 @@ function CardItem({ card, index, onClick }: { card: Card, index: number, onClick
             e.stopPropagation()
             onClick()
           }}
-          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-4 border-blue-500 mb-2 ${
+          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-4 mb-2 ${
             snapshot.isDragging ? 'shadow-lg rotate-2' : ''
           }`}
           style={{
             ...provided.draggableProps.style,
             opacity: snapshot.isDragging ? 0.9 : 1,
+            borderLeftColor: color,
           }}
         >
+          {/* Tags */}
+          {card.tags && card.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {card.tags.slice(0, 3).map(tag => (
+                <span 
+                  key={tag.id} 
+                  className="text-xs px-1.5 py-0.5 rounded"
+                  style={{ backgroundColor: tag.color + '30', color: tag.color }}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+          
+          <p className="font-medium">{card.title}</p>
+          
+          {/* Progress bar */}
+          {(card.progress || 0) > 0 && (
+            <div className="mt-2">
+              <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full rounded-full"
+                  style={{ 
+                    width: `${card.progress}%`,
+                    backgroundColor: card.progress === 100 ? '#10B981' : '#3B82F6'
+                  }} 
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+            {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+            {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
+            {card.subtasks && card.subtasks.length > 0 && (
+              <span>☑️ {card.subtasks.filter(s => s.is_completed).length}/{card.subtasks.length}</span>
+            )}
+          </div>
           <p className="font-medium">{card.title}</p>
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
             {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
@@ -299,7 +320,8 @@ function ColumnDroppable({ column, onCardClick, onAddCard }: {
                 key={card.id} 
                 card={card} 
                 index={index}
-                onClick={() => onCardClick(card)} 
+                onClick={() => onCardClick(card)}
+                color={column.color}
               />
             ))}
             {provided.placeholder}
@@ -339,6 +361,14 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [newColumnName, setNewColumnName] = useState('')
+  const [currentView, setCurrentView] = useState<ViewType>('board')
+
+  const viewTabs = [
+    { id: 'board' as ViewType, label: 'Board', icon: '📋' },
+    { id: 'list' as ViewType, label: 'List', icon: '📝' },
+    { id: 'calendar' as ViewType, label: 'Calendar', icon: '📅' },
+    { id: 'progress' as ViewType, label: 'Progress', icon: '📊' },
+  ]
 
   useEffect(() => {
     fetchBoard()
@@ -448,22 +478,46 @@ export default function BoardPage() {
       <div className="h-screen flex flex-col">
         <header className="border-b px-6 py-4 flex items-center justify-between bg-white">
           <h1 className="text-xl font-bold">{project.name}</h1>
-          <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
+          <div className="flex items-center gap-4">
+            <div className="flex bg-slate-100 rounded-lg p-1">
+              {viewTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentView(tab.id)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    currentView === tab.id 
+                      ? 'bg-white shadow text-slate-900' 
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.icon} {tab.label}
+                </button>
+              ))}
+            </div>
+            <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
+          </div>
         </header>
 
-        <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
-          <div className="flex gap-4 h-full">
-            {columns.map((column) => (
-              <ColumnDroppable 
-                key={column.id} 
-                column={column} 
-                onCardClick={setSelectedCard}
-                onAddCard={addCard}
-              />
-            ))}
+        <div className="flex-1 overflow-auto p-6 bg-slate-50">
+          {currentView === 'board' && (
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <div className="flex gap-4 h-full">
+                {columns.map((column) => (
+                  <ColumnDroppable 
+                    key={column.id} 
+                    column={column} 
+                    onCardClick={setSelectedCard}
+                    onAddCard={addCard}
+                  />
+                ))}
+                <AddColumnForm onAdd={addColumn} />
+              </div>
+            </DragDropContext>
+          )}
 
-            <AddColumnForm onAdd={addColumn} />
-          </div>
+          {currentView === 'list' && <ListView columns={columns} onCardClick={setSelectedCard} />}
+          {currentView === 'calendar' && <CalendarView columns={columns} onCardClick={setSelectedCard} />}
+          {currentView === 'progress' && <ProgressView columns={columns} />}
         </div>
 
         {selectedCard && (
