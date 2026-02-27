@@ -67,11 +67,6 @@ function CardItem({ card, index, onClick, color = '#3B82F6' }: { card: Card, ind
               <span>☑️ {card.subtasks.filter(s => s.is_completed).length}/{card.subtasks.length}</span>
             )}
           </div>
-          <p className="font-medium">{card.title}</p>
-          <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-            {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
-            {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
-          </div>
         </div>
       )}
     </Draggable>
@@ -114,7 +109,12 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   useEffect(() => {
     // Fetch fresh card data
     fetch('/api/cards/' + card.id)
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+          throw new Error('無法載入卡片資料')
+        }
+        return res.json()
+      })
       .then(data => {
         setTitle(data.title)
         setDescription(data.description || '')
@@ -130,15 +130,26 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
           dueDate: data.due_date ? data.due_date.split('T')[0] : ''
         })
       })
-      .catch(console.error)
+      .catch(err => {
+        console.error('載入卡片錯誤:', err)
+        alert('無法載入卡片資料，請重新整理頁面')
+      })
   }, [card.id])
 
   // Fetch activity
   useEffect(() => {
     fetch('/api/cards/' + card.id + '/activity')
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+          throw new Error('無法載入活動紀錄')
+        }
+        return res.json()
+      })
       .then(data => setActivity(data))
-      .catch(console.error)
+      .catch(err => {
+        console.error('載入活動紀錄錯誤:', err)
+        // 活動紀錄失敗不阻擋使用者操作，只記錄錯誤
+      })
   }, [card.id])
 
   // Unified save - save and close modal
@@ -371,34 +382,64 @@ export default function BoardPage() {
     setLoading(true)
     try {
       const projectRes = await fetch(`/api/projects/${projectId}`)
+      if (!projectRes.ok) {
+        throw new Error('無法載入專案資料')
+      }
       const projectData = await projectRes.json()
       setProject(projectData)
-      
+
       const columnsRes = await fetch(`/api/projects/${projectId}/columns`)
+      if (!columnsRes.ok) {
+        throw new Error('無法載入欄位資料')
+      }
       const columnsData = await columnsRes.json()
       setColumns(columnsData)
     } catch (e) {
-      console.error(e)
+      console.error('載入看板錯誤:', e)
+      alert(e instanceof Error ? e.message : '載入看板失敗，請重新整理頁面')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function addCard(columnId: string, title: string) {
-    await fetch('/api/cards', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ column_id: columnId, title })
-    })
-    fetchBoard()
+    try {
+      const res = await fetch('/api/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ column_id: columnId, title })
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || '新增卡片失敗')
+      }
+
+      await fetchBoard()
+    } catch (error) {
+      console.error('新增卡片錯誤:', error)
+      alert(error instanceof Error ? error.message : '新增卡片失敗，請重試')
+    }
   }
 
   async function addColumn(name: string) {
-    await fetch('/api/columns', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, name })
-    })
-    fetchBoard()
+    try {
+      const res = await fetch('/api/columns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId, name })
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || '新增欄位失敗')
+      }
+
+      await fetchBoard()
+    } catch (error) {
+      console.error('新增欄位錯誤:', error)
+      alert(error instanceof Error ? error.message : '新增欄位失敗，請重試')
+    }
   }
 
   const handleDragEnd = async (result: DropResult) => {
@@ -493,19 +534,17 @@ export default function BoardPage() {
 
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
           {currentView === 'board' && (
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <div className="flex gap-4 h-full">
-                {columns.map((column) => (
-                  <ColumnDroppable 
-                    key={column.id} 
-                    column={column} 
-                    onCardClick={setSelectedCard}
-                    onAddCard={addCard}
-                  />
-                ))}
-                <AddColumnForm onAdd={addColumn} />
-              </div>
-            </DragDropContext>
+            <div className="flex gap-4 h-full">
+              {columns.map((column) => (
+                <ColumnDroppable
+                  key={column.id}
+                  column={column}
+                  onCardClick={setSelectedCard}
+                  onAddCard={addCard}
+                />
+              ))}
+              <AddColumnForm onAdd={addColumn} />
+            </div>
           )}
 
           {currentView === 'list' && <ListView columns={columns} onCardClick={setSelectedCard} />}
