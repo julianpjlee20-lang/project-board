@@ -13,9 +13,9 @@ function getPool() {
     
     pool = new Pool({
       connectionString,
-      max: 1,
-      idleTimeoutMillis: 1000,
-      connectionTimeoutMillis: 5000,
+      max: process.env.NODE_ENV === 'production' ? 10 : 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
     })
   }
   return pool
