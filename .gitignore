@@ -41,7 +41,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# 環境變數檔案
 .env
 .env.local
-.env.*
-.env.local
+.env.production
+.env.development
+.env.test
+
+# 專案文件（根據需求決定是否提交）
+PROJECT_PROGRESS.md
+
+# 資料庫備份
+*.sql.backup
+/database/backups/
