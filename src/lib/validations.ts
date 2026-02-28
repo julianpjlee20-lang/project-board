@@ -114,7 +114,7 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown) {
   } else {
     return {
       success: false as const,
-      errors: result.error.errors.map((err) => ({
+      errors: result.error.issues.map((err) => ({
         path: err.path.join('.'),
         message: err.message,
       })),
