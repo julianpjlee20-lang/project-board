@@ -21,8 +21,11 @@ export const optionalNonEmptyString = z.string().min(1).optional().or(z.literal(
 /** 顏色驗證（十六進位格式） */
 export const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, { message: '顏色格式必須為 #RRGGBB' }).optional()
 
-/** 日期字串驗證（ISO 8601 格式） */
-export const dateSchema = z.string().datetime({ message: '無效的日期格式' }).optional().or(z.literal(''))
+/** 日期字串驗證（支援 YYYY-MM-DD 或 ISO 8601 格式） */
+export const dateSchema = z.string()
+  .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, { message: '無效的日期格式，需為 YYYY-MM-DD 或 ISO 8601 格式' })
+  .optional()
+  .or(z.literal(''))
 
 /** 進度百分比驗證（0-100） */
 export const progressSchema = z.number().int().min(0).max(100, { message: '進度必須在 0-100 之間' }).optional()
