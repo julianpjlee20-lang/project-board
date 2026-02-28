@@ -101,7 +101,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
           )}
 
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-            {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
+            {card.due_date && <span>📅 {new Date(card.due_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')}</span>}
             {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
             {totalSubtasks > 0 && (
               <span className={completedSubtasks === totalSubtasks ? 'text-green-600' : ''}>
@@ -143,7 +143,7 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
       const res = await fetch(`/api/cards/${cardId}/subtasks`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: subtask.id, is_completed: !subtask.is_completed })
+        body: JSON.stringify({ subtask_id: subtask.id, is_completed: !subtask.is_completed })
       })
       if (!res.ok) {
         // Revert on failure
@@ -347,7 +347,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
           title,
           description,
           assignee,
-          due_date: dueDate,
+          due_date: dueDate || null,
           priority,
           phase_id: phaseId,
         })
@@ -411,7 +411,19 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">截止日</label>
-                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
+                  <div className="relative flex items-center">
+                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2 pr-8" />
+                    {dueDate && (
+                      <button
+                        type="button"
+                        onClick={() => setDueDate('')}
+                        className="absolute right-2 text-slate-400 hover:text-slate-600 text-sm leading-none"
+                        title="清除日期"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
