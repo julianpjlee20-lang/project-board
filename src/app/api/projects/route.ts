@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { createProjectSchema, validateData } from '@/lib/validations'
 
 // GET /api/projects
 export async function GET() {
@@ -19,7 +20,17 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, description, status, start_date, end_date } = body
+
+    // Zod 驗證
+    const validation = validateData(createProjectSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { name, description, status, start_date, end_date } = validation.data
 
     // Insert project
     const result = await query(

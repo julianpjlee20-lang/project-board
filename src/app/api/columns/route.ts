@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { createColumnSchema, updateColumnSchema, deleteColumnSchema, validateData } from '@/lib/validations'
 
 // GET /api/columns
 export async function GET() {
@@ -16,7 +17,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { project_id, name, color } = body
+
+    // Zod 驗證
+    const validation = validateData(createColumnSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { project_id, name, color } = validation.data
 
     // Get max position
     const posResult = await query(
@@ -41,7 +52,17 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, color, position } = body
+
+    // Zod 驗證
+    const validation = validateData(updateColumnSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { id, name, color, position } = validation.data
 
     const result = await query(
       'UPDATE columns SET name = COALESCE($1, name), color = COALESCE($2, color), position = COALESCE($3, position) WHERE id = $4 RETURNING *',
@@ -61,11 +82,16 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
-    if (!id) {
-      return NextResponse.json({ error: 'Column ID required' }, { status: 400 })
+    // Zod 驗證
+    const validation = validateData(deleteColumnSchema, { id })
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
     }
 
-    await query('DELETE FROM columns WHERE id = $1', [id])
+    await query('DELETE FROM columns WHERE id = $1', [validation.data.id])
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { updateCardSchema, validateData } from '@/lib/validations'
 
 // Discord webhook URL (from env)
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
@@ -93,7 +94,17 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    let { title, description, assignee, due_date, progress, subtasks, comment } = body
+
+    // Zod 驗證
+    const validation = validateData(updateCardSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    let { title, description, assignee, due_date, progress, subtasks, comment } = validation.data
 
     // Fix: Convert empty string to null for due_date
     if (due_date === '') {
