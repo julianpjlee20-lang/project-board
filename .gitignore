@@ -54,3 +54,4 @@ PROJECT_PROGRESS.md
 # 資料庫備份
 *.sql.backup
 /database/backups/
+.dev-progress.md
