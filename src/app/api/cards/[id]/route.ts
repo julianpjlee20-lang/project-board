@@ -132,7 +132,7 @@ export async function PUT(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '標題', oldTitle, title]
       )
-      await sendDiscordNotification(title, '更新標題', projectName)
+      await sendDiscordNotification(title ?? oldTitle ?? '', '更新標題', projectName)
     }
 
     // Activity log: Description changed
@@ -193,7 +193,7 @@ export async function PUT(
             [projectId, id, '指派', '負責人', oldAssigneeName, assignee]
           )
           
-          await sendDiscordNotification(title, `指派給 ${assignee}`, projectName)
+          await sendDiscordNotification(title ?? oldTitle ?? '', `指派給 ${assignee}`, projectName)
         }
       }
     }
