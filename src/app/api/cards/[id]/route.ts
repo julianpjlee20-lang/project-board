@@ -96,8 +96,10 @@ export async function PUT(
     const body = await request.json()
 
     // Zod 驗證
+    console.log('[PUT /api/cards] Request body:', JSON.stringify(body, null, 2))
     const validation = validateData(updateCardSchema, body)
     if (!validation.success) {
+      console.error('[PUT /api/cards] Validation failed:', validation.errors)
       return NextResponse.json({
         error: '輸入驗證失敗',
         details: validation.errors
@@ -242,5 +244,23 @@ export async function PUT(
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Failed to update card' }, { status: 500 })
+  }
+}
+
+// DELETE /api/cards/[id]
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    // Delete card (CASCADE will delete related assignees, comments, subtasks, etc.)
+    await query('DELETE FROM cards WHERE id = $1', [id])
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json({ error: 'Failed to delete card' }, { status: 500 })
   }
 }

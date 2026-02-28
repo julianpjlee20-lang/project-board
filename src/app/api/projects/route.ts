@@ -48,7 +48,16 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({ success: true, id: projectId })
+    // 返回完整的專案資料
+    return NextResponse.json({
+      success: true,
+      id: projectId,
+      name,
+      description: description || null,
+      status: status || 'active',
+      start_date: start_date || null,
+      end_date: end_date || null
+    })
   } catch (error: any) {
     console.error('POST /api/projects error:', error)
     return NextResponse.json({ 

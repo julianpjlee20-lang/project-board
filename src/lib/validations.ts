@@ -45,12 +45,20 @@ export const createCardSchema = z.object({
 
 /** PUT /api/cards/[id] - 更新卡片 */
 export const updateCardSchema = z.object({
-  title: nonEmptyString.max(200, { message: '標題不可超過 200 字元' }),
-  description: z.string().max(5000, { message: '描述不可超過 5000 字元' }).optional().or(z.literal('')),
-  assignee: z.string().max(100, { message: '負責人名稱不可超過 100 字元' }).optional().or(z.literal('')),
-  due_date: dateSchema.or(z.null()),
-  progress: progressSchema,
-  comment: z.string().max(1000, { message: '評論不可超過 1000 字元' }).optional().or(z.literal('')),
+  title: z.union([
+    z.string().min(1, { message: '標題不可為空' }).max(200, { message: '標題不可超過 200 字元' }),
+    z.undefined()
+  ]),
+  description: z.union([z.string().max(5000), z.literal(''), z.undefined()]),
+  assignee: z.union([z.string().max(100), z.literal(''), z.undefined()]),
+  due_date: z.union([
+    z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/),
+    z.literal(''),
+    z.null(),
+    z.undefined()
+  ]),
+  progress: z.union([z.number().int().min(0).max(100), z.undefined()]),
+  comment: z.union([z.string().max(1000), z.literal(''), z.undefined()]),
 })
 
 // ========================================

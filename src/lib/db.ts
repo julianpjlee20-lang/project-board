@@ -15,7 +15,8 @@ function getPool() {
       connectionString,
       max: process.env.NODE_ENV === 'production' ? 10 : 5,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: 20000, // 增加到 20 秒,因為遠端資料庫
+      statement_timeout: 15000, // SQL 語句超時 15 秒
     })
   }
   return pool
