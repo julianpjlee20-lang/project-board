@@ -1,5 +1,7 @@
 export type ViewType = 'board' | 'list' | 'calendar' | 'progress'
 
+export type CalendarMode = 'month' | 'quarter' | 'year'
+
 export interface Card {
   id: string
   title: string
