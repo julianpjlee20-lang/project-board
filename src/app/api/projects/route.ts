@@ -166,16 +166,8 @@ export async function PUT() {
       )
     `)
 
-    // Create comments table
-    await query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        card_id UUID REFERENCES cards ON DELETE CASCADE,
-        author_id UUID REFERENCES profiles ON DELETE SET NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      )
-    `)
+    // Drop comments table (feature removed)
+    await query(`DROP TABLE IF EXISTS comments`)
 
     // Create activity_logs table
     await query(`

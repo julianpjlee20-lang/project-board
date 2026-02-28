@@ -61,3 +61,13 @@ PROJECT_PROGRESS.md
 *.sql.backup
 /database/backups/
 .dev-progress.md
+
+# Claude Code 本機設定
+.claude/
+
+# Cypress 測試產出物
+cypress/videos/
+cypress/screenshots/
+
+# Windows 產生的雜檔
+nul

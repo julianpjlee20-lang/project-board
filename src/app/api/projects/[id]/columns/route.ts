@@ -18,14 +18,11 @@ export async function GET(
     // Get cards for each column
     for (const col of columns) {
       const cards = await query(`
-        SELECT c.*, 
-          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
-          COALESCE(json_agg(DISTINCT jsonb_build_object('id', cmt.id, 'content', cmt.content, 'author_name', p2.name)) FILTER (WHERE cmt.id IS NOT NULL), '[]') as comments
+        SELECT c.*,
+          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees
         FROM cards c
         LEFT JOIN card_assignees ca ON c.id = ca.card_id
         LEFT JOIN profiles p ON ca.user_id = p.id
-        LEFT JOIN comments cmt ON c.id = cmt.card_id
-        LEFT JOIN profiles p2 ON cmt.author_id = p2.id
         WHERE c.column_id = $1
         GROUP BY c.id
         ORDER BY c.position
