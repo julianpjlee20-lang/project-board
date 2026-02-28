@@ -104,7 +104,7 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    let { title, description, assignee, due_date, progress, subtasks, comment } = validation.data
+    let { title, description, assignee, due_date, progress, comment } = validation.data
 
     // Fix: Convert empty string to null for due_date
     if (due_date === '') {
