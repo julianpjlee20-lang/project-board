@@ -18,3 +18,21 @@ export async function GET(
     return NextResponse.json({ error: 'Failed to fetch project' }, { status: 500 })
   }
 }
+
+// DELETE /api/projects/[id]
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+
+    // Delete project (CASCADE will delete related columns, cards, etc.)
+    await query('DELETE FROM projects WHERE id = $1', [id])
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json({ error: 'Failed to delete project' }, { status: 500 })
+  }
+}
