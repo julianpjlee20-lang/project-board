@@ -1,9 +1,15 @@
 'use client'
 
-import type { Card, Column } from './types'
+import type { Card, Column, Phase } from './types'
+
+const PRIORITY_CONFIG = {
+  high:   { color: 'bg-red-500',    label: '高' },
+  medium: { color: 'bg-yellow-400', label: '中' },
+  low:    { color: 'bg-green-500',  label: '低' },
+} as const
 
 // List View Component
-export function ListView({ columns, onCardClick }: { columns: Column[], onCardClick: (card: Card) => void }) {
+export function ListView({ columns, phases, onCardClick }: { columns: Column[], phases?: Phase[], onCardClick: (card: Card) => void }) {
   const allCards = columns.flatMap(col => 
     col.cards.map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
   )
@@ -14,6 +20,8 @@ export function ListView({ columns, onCardClick }: { columns: Column[], onCardCl
         <thead className="bg-slate-50 border-b">
           <tr>
             <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">標題</th>
+            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">階段</th>
+            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">優先度</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">欄位</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">指派</th>
             <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">截止日</th>
@@ -32,6 +40,33 @@ export function ListView({ columns, onCardClick }: { columns: Column[], onCardCl
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: card.columnColor }} />
                   <span className="font-medium">{card.title}</span>
                 </div>
+              </td>
+              <td className="px-4 py-3 text-sm">
+                {(() => {
+                  const phase = card.phase_id ? phases?.find(p => p.id === card.phase_id) : null
+                  return phase ? (
+                    <span
+                      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+                      style={{ backgroundColor: phase.color }}
+                    >
+                      {phase.name}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )
+                })()}
+              </td>
+              <td className="px-4 py-3 text-sm">
+                {(() => {
+                  const priority = card.priority || 'medium'
+                  const config = PRIORITY_CONFIG[priority]
+                  return (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${config.color}`} />
+                      <span className="text-slate-600">{config.label}</span>
+                    </span>
+                  )
+                })()}
               </td>
               <td className="px-4 py-3 text-sm text-slate-600">{card.columnName}</td>
               <td className="px-4 py-3 text-sm text-slate-600">
@@ -58,7 +93,7 @@ export function ListView({ columns, onCardClick }: { columns: Column[], onCardCl
           ))}
           {allCards.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+              <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                 尚無任務
               </td>
             </tr>

@@ -2,7 +2,21 @@
 
 import { useState, useEffect } from 'react'
 
-function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void, onUpdate: () => void }) {
+interface CardData {
+  id: string
+  title: string
+  description: string | null
+  due_date: string | null
+  assignees?: { id: string; name: string }[]
+}
+
+interface ColumnData {
+  id: string
+  name: string
+  cards?: CardData[]
+}
+
+function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () => void, onUpdate: () => void }) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || '')
   const [assignee, setAssignee] = useState(card.assignees?.[0]?.name || '')
@@ -31,7 +45,7 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
           <h2 className="text-lg font-semibold">卡片詳情</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
         </div>
-        
+
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">標題</label>
@@ -65,7 +79,7 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
   )
 }
 
-function Card({ card, onClick }: { card: any, onClick: () => void }) {
+function Card({ card, onClick }: { card: CardData, onClick: () => void }) {
   console.log('Card rendered:', card.id, card.title, 'onClick type:', typeof onClick)
   return (
     <div onClick={onClick} className="bg-white p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md border-l-4 border-blue-500">
@@ -78,12 +92,10 @@ function Card({ card, onClick }: { card: any, onClick: () => void }) {
   )
 }
 
-function Column({ column, projectId, onCardClick, onAddCard, onAddColumn }: { 
-  column: any, 
-  projectId: string,
-  onCardClick: (card: any) => void,
+function Column({ column, onCardClick, onAddCard }: {
+  column: ColumnData,
+  onCardClick: (card: CardData) => void,
   onAddCard: (columnId: string, title: string) => void,
-  onAddColumn: (name: string) => void
 }) {
   const [newCardTitle, setNewCardTitle] = useState('')
   const [showAddCard, setShowAddCard] = useState(false)
@@ -107,7 +119,7 @@ function Column({ column, projectId, onCardClick, onAddCard, onAddColumn }: {
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto">
-        {column.cards?.map((card: any) => (
+        {column.cards?.map((card: CardData) => (
           <Card key={card.id} card={card} onClick={() => {
             console.log('Card clicked:', card.id, card.title)
             onCardClick(card)
@@ -138,20 +150,19 @@ function Column({ column, projectId, onCardClick, onAddCard, onAddColumn }: {
   )
 }
 
-export default function BoardClient({ 
-  columns, 
-  projectId,
+export default function BoardClient({
+  columns,
   onRefresh,
   onAddCard,
   onAddColumn
-}: { 
-  columns: any[], 
+}: {
+  columns: ColumnData[],
   projectId: string,
   onRefresh: () => void,
   onAddCard: (columnId: string, title: string) => void,
   onAddColumn: (name: string) => void
 }) {
-  const [selectedCard, setSelectedCard] = useState<any>(null)
+  const [selectedCard, setSelectedCard] = useState<CardData | null>(null)
   const [newColumnName, setNewColumnName] = useState('')
 
   console.log('BoardClient rendered, columns:', columns?.length, 'selectedCard:', selectedCard?.id)
@@ -160,17 +171,15 @@ export default function BoardClient({
     <>
       <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
         <div className="flex gap-4 h-full">
-          {columns.map((column: any) => (
-            <Column 
-              key={column.id} 
-              column={column} 
-              projectId={projectId}
+          {columns.map((column: ColumnData) => (
+            <Column
+              key={column.id}
+              column={column}
               onCardClick={(card) => {
                 console.log('Setting selected card:', card.id, card.title)
                 setSelectedCard(card)
               }}
               onAddCard={onAddCard}
-              onAddColumn={onAddColumn}
             />
           ))}
 
@@ -197,12 +206,12 @@ export default function BoardClient({
       </div>
 
       {selectedCard && (
-        <CardModal 
-          card={selectedCard} 
+        <CardModal
+          card={selectedCard}
           onClose={() => {
             console.log('Closing modal')
             setSelectedCard(null)
-          }} 
+          }}
           onUpdate={onRefresh}
         />
       )}

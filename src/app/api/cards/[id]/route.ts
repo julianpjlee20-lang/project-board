@@ -96,7 +96,8 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    let { title, description, assignee, due_date, progress } = validation.data
+    const { title, description, assignee, progress, priority, phase_id } = validation.data
+    let { due_date } = validation.data
 
     // Fix: Convert empty string to null for due_date
     if (due_date === '') {
@@ -109,12 +110,14 @@ export async function PUT(
     const oldDescription = oldCard[0]?.description
     const oldDueDate = oldCard[0]?.due_date
     const oldProgress = oldCard[0]?.progress || 0
+    const oldPriority = oldCard[0]?.priority
+    const oldPhaseId = oldCard[0]?.phase_id
 
     // Get project_id
-    const column = oldCard[0]?.column_id ? 
+    const column = oldCard[0]?.column_id ?
       await query('SELECT project_id FROM columns WHERE id = $1', [oldCard[0].column_id]) : null
     const projectId = column?.[0]?.project_id || null
-    
+
     // Get project name for notifications
     const project = projectId ?
       await query('SELECT name FROM projects WHERE id = $1', [projectId]) : null
@@ -122,8 +125,8 @@ export async function PUT(
 
     // Update card
     await query(
-      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), updated_at = NOW() WHERE id = $5`,
-      [title, description, due_date, progress, id]
+      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, updated_at = NOW() WHERE id = $8`,
+      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id]
     )
 
     // Activity log: Title changed
@@ -153,11 +156,40 @@ export async function PUT(
 
     // Activity log: Due date changed
     if (String(oldDueDate) !== String(due_date)) {
-      const oldDate = oldDueDate ? oldDueDate.split('T')[0] : '(未設定)'
-      const newDate = due_date ? due_date.split('T')[0] : '(未設定)'
+      const oldDate = oldDueDate ? String(oldDueDate).split('T')[0] : '(未設定)'
+      const newDate = due_date ? String(due_date).split('T')[0] : '(未設定)'
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '截止日', oldDate, newDate]
+      )
+    }
+
+    // Activity log: Priority changed
+    if (priority !== undefined && oldPriority !== priority) {
+      const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高' }
+      const oldLabel = priorityLabel[oldPriority] || oldPriority || '(未設定)'
+      const newLabel = priorityLabel[priority] || priority
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+        [projectId, id, '修改', '優先度', oldLabel, newLabel]
+      )
+    }
+
+    // Activity log: Phase changed
+    if (phase_id !== undefined && oldPhaseId !== phase_id) {
+      let oldPhaseName = '(未設定)'
+      let newPhaseName = '(未設定)'
+      if (oldPhaseId) {
+        const oldPhase = await query('SELECT name FROM phases WHERE id = $1', [oldPhaseId])
+        oldPhaseName = oldPhase[0]?.name || '(已刪除)'
+      }
+      if (phase_id) {
+        const newPhase = await query('SELECT name FROM phases WHERE id = $1', [phase_id])
+        newPhaseName = newPhase[0]?.name || '(未知階段)'
+      }
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+        [projectId, id, '修改', '階段', oldPhaseName, newPhaseName]
       )
     }
 

@@ -59,11 +59,15 @@ Cypress.Commands.add('createTestCard', (columnId: string, title: string = '測�
 
 // TypeScript 類型聲明
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     interface Chainable {
       cleanupTestData(projectId?: string): Chainable<void>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createTestProject(name?: string): Chainable<any>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createTestColumn(projectId: string, name?: string, position?: number): Chainable<any>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createTestCard(columnId: string, title?: string): Chainable<any>
     }
   }

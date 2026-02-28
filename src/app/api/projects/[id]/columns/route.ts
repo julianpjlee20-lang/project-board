@@ -19,7 +19,17 @@ export async function GET(
     for (const col of columns) {
       const cards = await query(`
         SELECT c.*,
-          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees
+          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
+          COALESCE(
+            (SELECT json_agg(json_build_object('id', s.id, 'title', s.title, 'is_completed', s.is_completed, 'position', s.position) ORDER BY s.position)
+             FROM subtasks s WHERE s.card_id = c.id),
+            '[]'
+          ) as subtasks,
+          COALESCE(
+            (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
+             FROM tags t JOIN card_tags ct ON t.id = ct.tag_id WHERE ct.card_id = c.id),
+            '[]'
+          ) as tags
         FROM cards c
         LEFT JOIN card_assignees ca ON c.id = ca.card_id
         LEFT JOIN profiles p ON ca.user_id = p.id
