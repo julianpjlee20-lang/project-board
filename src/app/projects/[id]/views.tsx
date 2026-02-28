@@ -73,7 +73,7 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
                 {card.assignees?.[0]?.name || '-'}
               </td>
               <td className="px-4 py-3 text-sm text-slate-600">
-                {card.due_date ? new Date(card.due_date).toLocaleDateString('zh-TW') : '-'}
+                {card.due_date ? new Date(card.due_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW') : '-'}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
       columnColor: col.color
     }))
   ).filter(card => {
-    const due = new Date(card.due_date!)
+    const due = new Date(card.due_date!.split('T')[0] + 'T00:00:00')
     return due.getFullYear() === year && due.getMonth() === month
   })
 
@@ -139,7 +139,7 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
         ))}
         {blanks.map(i => <div key={`blank-${i}`} className="h-24" />)}
         {days.map(day => {
-          const dayCards = cardsWithDue.filter(c => new Date(c.due_date!).getDate() === day)
+          const dayCards = cardsWithDue.filter(c => new Date(c.due_date!.split('T')[0] + 'T00:00:00').getDate() === day)
           return (
             <div key={day} className="h-24 border rounded p-1">
               <div className="text-sm text-slate-500 mb-1">{day}</div>

@@ -24,6 +24,12 @@ export const colorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, { message: '顏
 /** 日期字串驗證（支援 YYYY-MM-DD 或 ISO 8601 格式） */
 export const dateSchema = z.string()
   .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, { message: '無效的日期格式，需為 YYYY-MM-DD 或 ISO 8601 格式' })
+  .refine((val) => {
+    const dateStr = val.split('T')[0]
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
+    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
+  }, { message: '無效的日期，請輸入真實存在的日期' })
   .optional()
   .or(z.literal(''))
 
@@ -57,7 +63,14 @@ export const updateCardSchema = z.object({
   description: z.union([z.string().max(5000), z.literal(''), z.undefined()]),
   assignee: z.union([z.string().max(100), z.literal(''), z.undefined()]),
   due_date: z.union([
-    z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/),
+    z.string()
+      .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, { message: '無效的日期格式' })
+      .refine((val) => {
+        const dateStr = val.split('T')[0]
+        const [y, m, d] = dateStr.split('-').map(Number)
+        const date = new Date(y, m - 1, d)
+        return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
+      }, { message: '無效的日期，請輸入真實存在的日期' }),
     z.literal(''),
     z.null(),
     z.undefined()
