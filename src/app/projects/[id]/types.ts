@@ -6,9 +6,21 @@ export interface Card {
   description: string | null
   due_date: string | null
   progress: number
+  priority: 'low' | 'medium' | 'high'
+  phase_id: string | null
   assignees: { id: string; name: string }[]
   tags: { id: string; name: string; color: string }[]
   subtasks: { id: string; title: string; is_completed: boolean }[]
+}
+
+export interface Phase {
+  id: string
+  name: string
+  color: string
+  position: number
+  total_cards: number
+  completed_cards: number
+  progress: number
 }
 
 export interface Column {

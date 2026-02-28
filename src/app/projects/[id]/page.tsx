@@ -3,11 +3,30 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import Link from 'next/link'
 import { ListView, CalendarView, ProgressView } from './views'
-import type { Card, Column, Project, ViewType } from './types'
+import type { Card, Column, Project, ViewType, Phase } from './types'
+
+// Priority color mapping
+const PRIORITY_COLORS: Record<Card['priority'], string> = {
+  high: '#EF4444',
+  medium: '#F59E0B',
+  low: '#10B981',
+}
+
+const PRIORITY_LABELS: Record<Card['priority'], string> = {
+  high: '高',
+  medium: '中',
+  low: '低',
+}
 
 // Draggable Card Component
-function CardItem({ card, index, onClick, color = '#3B82F6' }: { card: Card, index: number, onClick: () => void, color?: string }) {
+function CardItem({ card, index, onClick, phases }: { card: Card, index: number, onClick: () => void, phases: Phase[] }) {
+  const priorityColor = PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.medium
+  const phase = card.phase_id ? phases.find(p => p.id === card.phase_id) : null
+  const completedSubtasks = card.subtasks?.filter(s => s.is_completed).length || 0
+  const totalSubtasks = card.subtasks?.length || 0
+
   return (
     <Draggable draggableId={card.id} index={index}>
       {(provided, snapshot) => (
@@ -19,52 +38,75 @@ function CardItem({ card, index, onClick, color = '#3B82F6' }: { card: Card, ind
             e.stopPropagation()
             onClick()
           }}
-          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-4 mb-2 ${
+          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 ${
             snapshot.isDragging ? 'shadow-lg rotate-2' : ''
           }`}
           style={{
             ...provided.draggableProps.style,
             opacity: snapshot.isDragging ? 0.9 : 1,
-            borderLeftColor: color,
+            borderLeftColor: priorityColor,
           }}
         >
+          {/* Top row: Phase badge + Priority indicator */}
+          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+            {phase && (
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
+                style={{ backgroundColor: phase.color }}
+              >
+                {phase.name}
+              </span>
+            )}
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+              style={{ backgroundColor: priorityColor + '20', color: priorityColor }}
+            >
+              {PRIORITY_LABELS[card.priority] || '中'}
+            </span>
+          </div>
+
           {/* Tags */}
           {card.tags && card.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {card.tags.slice(0, 3).map(tag => (
-                <span 
-                  key={tag.id} 
+                <span
+                  key={tag.id}
                   className="text-xs px-1.5 py-0.5 rounded"
                   style={{ backgroundColor: tag.color + '30', color: tag.color }}
                 >
                   {tag.name}
                 </span>
               ))}
+              {card.tags.length > 3 && (
+                <span className="text-xs text-slate-400">+{card.tags.length - 3}</span>
+              )}
             </div>
           )}
-          
-          <p className="font-medium">{card.title}</p>
-          
+
+          <p className="font-medium text-sm">{card.title}</p>
+
           {/* Progress bar */}
           {(card.progress || 0) > 0 && (
             <div className="mt-2">
               <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full rounded-full"
-                  style={{ 
+                  style={{
                     width: `${card.progress}%`,
                     backgroundColor: card.progress === 100 ? '#10B981' : '#3B82F6'
-                  }} 
+                  }}
                 />
               </div>
             </div>
           )}
-          
+
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
             {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
             {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
-            {card.subtasks && card.subtasks.length > 0 && (
-              <span>☑️ {card.subtasks.filter(s => s.is_completed).length}/{card.subtasks.length}</span>
+            {totalSubtasks > 0 && (
+              <span className={completedSubtasks === totalSubtasks ? 'text-green-600' : ''}>
+                ✓ {completedSubtasks}/{totalSubtasks}
+              </span>
             )}
           </div>
         </div>
@@ -73,34 +115,180 @@ function CardItem({ card, index, onClick, color = '#3B82F6' }: { card: Card, ind
   )
 }
 
-function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => void, onUpdate: () => void }) {
+// Subtask Checklist Component
+function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange }: {
+  cardId: string
+  subtasks: { id: string; title: string; is_completed: boolean }[]
+  onSubtasksChange: (subtasks: { id: string; title: string; is_completed: boolean }[]) => void
+}) {
+  const [subtasks, setSubtasks] = useState(initialSubtasks || [])
+  const [newTitle, setNewTitle] = useState('')
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setSubtasks(initialSubtasks || [])
+  }, [initialSubtasks])
+
+  const completedCount = subtasks.filter(s => s.is_completed).length
+  const totalCount = subtasks.length
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+
+  const toggleSubtask = async (subtask: { id: string; title: string; is_completed: boolean }) => {
+    const updated = { ...subtask, is_completed: !subtask.is_completed }
+    const newSubtasks = subtasks.map(s => s.id === subtask.id ? updated : s)
+    setSubtasks(newSubtasks)
+    onSubtasksChange(newSubtasks)
+
+    try {
+      const res = await fetch(`/api/cards/${cardId}/subtasks`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: subtask.id, is_completed: !subtask.is_completed })
+      })
+      if (!res.ok) {
+        // Revert on failure
+        setSubtasks(subtasks)
+        onSubtasksChange(subtasks)
+      }
+    } catch {
+      setSubtasks(subtasks)
+      onSubtasksChange(subtasks)
+    }
+  }
+
+  const addSubtask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTitle.trim()) return
+
+    try {
+      const res = await fetch(`/api/cards/${cardId}/subtasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() })
+      })
+      if (!res.ok) throw new Error('新增子任務失敗')
+      const created = await res.json()
+      const newSubtasks = [...subtasks, created]
+      setSubtasks(newSubtasks)
+      onSubtasksChange(newSubtasks)
+      setNewTitle('')
+    } catch (err) {
+      console.error('新增子任務錯誤:', err)
+    }
+  }
+
+  const deleteSubtask = async (id: string) => {
+    const newSubtasks = subtasks.filter(s => s.id !== id)
+    setSubtasks(newSubtasks)
+    onSubtasksChange(newSubtasks)
+
+    try {
+      const res = await fetch(`/api/cards/${cardId}/subtasks?id=${id}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) {
+        setSubtasks(subtasks)
+        onSubtasksChange(subtasks)
+      }
+    } catch {
+      setSubtasks(subtasks)
+      onSubtasksChange(subtasks)
+    }
+  }
+
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">子任務</label>
+
+      {/* Progress bar */}
+      {totalCount > 0 && (
+        <div className="mb-2">
+          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+            <span>{completedCount}/{totalCount} 完成</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${progressPercent}%`,
+                backgroundColor: progressPercent === 100 ? '#10B981' : '#3B82F6'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Subtask list */}
+      <div className="space-y-1 mb-2">
+        {subtasks.map(subtask => (
+          <div
+            key={subtask.id}
+            className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-slate-50"
+            onMouseEnter={() => setHoveredId(subtask.id)}
+            onMouseLeave={() => setHoveredId(null)}
+          >
+            <input
+              type="checkbox"
+              checked={subtask.is_completed}
+              onChange={() => toggleSubtask(subtask)}
+              className="w-4 h-4 rounded border-slate-300 text-blue-500 cursor-pointer"
+            />
+            <span className={`flex-1 text-sm ${subtask.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+              {subtask.title}
+            </span>
+            {hoveredId === subtask.id && (
+              <button
+                onClick={() => deleteSubtask(subtask.id)}
+                className="text-slate-400 hover:text-red-500 text-xs px-1"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Add subtask */}
+      <form onSubmit={addSubtask} className="flex gap-2">
+        <input
+          value={newTitle}
+          onChange={e => setNewTitle(e.target.value)}
+          placeholder="新增子任務..."
+          className="flex-1 text-sm border rounded px-2 py-1.5"
+        />
+        <button
+          type="submit"
+          className="text-sm px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded"
+        >
+          +
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Phase[], onClose: () => void, onUpdate: () => void }) {
   const [isFormReady, setIsFormReady] = useState(false)
   const [originalData, setOriginalData] = useState({
     title: '',
     description: '',
     assignee: '',
-    dueDate: ''
+    dueDate: '',
+    priority: 'medium' as Card['priority'],
+    phase_id: null as string | null,
   })
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assignee, setAssignee] = useState('')
   const [dueDate, setDueDate] = useState('')
-  const [activity, setActivity] = useState<any[]>([])
+  const [priority, setPriority] = useState<Card['priority']>('medium')
+  const [phaseId, setPhaseId] = useState<string | null>(null)
+  const [activity, setActivity] = useState<{ id: string; action: string; target: string; old_value: string; new_value: string; created_at: string }[]>([])
+  const [cardSubtasks, setCardSubtasks] = useState<{ id: string; title: string; is_completed: boolean }[]>([])
 
-  // Dirty state
-  const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-
-  // Check if dirty
-  useEffect(() => {
-    const dirty =
-      title !== originalData.title ||
-      description !== originalData.description ||
-      assignee !== originalData.assignee ||
-      dueDate !== originalData.dueDate
-    setIsDirty(dirty)
-  }, [title, description, assignee, dueDate, originalData])
 
   // Fetch card data and activity on mount - populate form only after fetch completes
   useEffect(() => {
@@ -121,14 +309,19 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
         title: cardData.title,
         description: cardData.description || '',
         assignee: cardData.assignees?.[0]?.name || '',
-        dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : ''
+        dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
+        priority: (cardData.priority || 'medium') as Card['priority'],
+        phase_id: cardData.phase_id || null,
       }
       setTitle(formData.title)
       setDescription(formData.description)
       setAssignee(formData.assignee)
       setDueDate(formData.dueDate)
+      setPriority(formData.priority)
+      setPhaseId(formData.phase_id)
       setOriginalData(formData)
       setActivity(activityData)
+      setCardSubtasks(cardData.subtasks || [])
       setIsFormReady(true)
     }).catch(err => {
       console.error('載入卡片錯誤:', err)
@@ -154,7 +347,9 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
           title,
           description,
           assignee,
-          due_date: dueDate
+          due_date: dueDate,
+          priority,
+          phase_id: phaseId,
         })
       })
 
@@ -181,6 +376,8 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
     setDescription(originalData.description)
     setAssignee(originalData.assignee)
     setDueDate(originalData.dueDate)
+    setPriority(originalData.priority)
+    setPhaseId(originalData.phase_id)
     onClose()
   }
 
@@ -217,6 +414,57 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
                   <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
                 </div>
               </div>
+
+              {/* Priority Selector */}
+              <div>
+                <label className="block text-sm font-medium mb-1">優先度</label>
+                <div className="flex gap-2">
+                  {(['high', 'medium', 'low'] as const).map(level => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setPriority(level)}
+                      className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border-2 transition-all ${
+                        priority === level
+                          ? 'border-current shadow-sm'
+                          : 'border-transparent bg-slate-50 hover:bg-slate-100'
+                      }`}
+                      style={{
+                        color: priority === level ? PRIORITY_COLORS[level] : '#64748b',
+                        backgroundColor: priority === level ? PRIORITY_COLORS[level] + '15' : undefined,
+                        borderColor: priority === level ? PRIORITY_COLORS[level] : 'transparent',
+                      }}
+                    >
+                      <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: PRIORITY_COLORS[level] }} />
+                      {PRIORITY_LABELS[level]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Phase Selector */}
+              <div>
+                <label className="block text-sm font-medium mb-1">階段</label>
+                <select
+                  value={phaseId || ''}
+                  onChange={e => setPhaseId(e.target.value || null)}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                >
+                  <option value="">無階段</option>
+                  {phases.map(phase => (
+                    <option key={phase.id} value={phase.id}>
+                      {phase.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subtask Checklist */}
+              <SubtaskChecklist
+                cardId={card.id}
+                subtasks={cardSubtasks}
+                onSubtasksChange={setCardSubtasks}
+              />
 
               {/* Activity Log */}
               <div>
@@ -259,8 +507,9 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
   )
 }
 
-function ColumnDroppable({ column, onCardClick, onAddCard }: { 
-  column: Column, 
+function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
+  column: Column,
+  phases: Phase[],
   onCardClick: (card: Card) => void,
   onAddCard: (columnId: string, title: string) => void,
 }) {
@@ -291,16 +540,16 @@ function ColumnDroppable({ column, onCardClick, onAddCard }: {
             </h2>
           </div>
 
-          <div 
+          <div
             className={`flex-1 space-y-2 overflow-y-auto min-h-[100px] rounded ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
           >
             {column.cards?.map((card, index) => (
-              <CardItem 
-                key={card.id} 
-                card={card} 
+              <CardItem
+                key={card.id}
+                card={card}
                 index={index}
                 onClick={() => onCardClick(card)}
-                color={column.color}
+                phases={phases}
               />
             ))}
             {provided.placeholder}
@@ -331,16 +580,131 @@ function ColumnDroppable({ column, onCardClick, onAddCard }: {
   )
 }
 
+// Phase Filter Bar
+function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeletePhase }: {
+  phases: Phase[]
+  selectedPhase: string | null
+  onSelect: (phaseId: string | null) => void
+  onAddPhase: (name: string, color: string) => void
+  onDeletePhase: (id: string) => void
+}) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newColor, setNewColor] = useState('#6366F1')
+
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newName.trim()) {
+      onAddPhase(newName.trim(), newColor)
+      setNewName('')
+      setNewColor('#6366F1')
+      setShowAdd(false)
+    }
+  }
+
+  const presetColors = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444', '#06B6D4']
+
+  return (
+    <div className="flex items-center gap-2 px-6 py-2 bg-white border-b overflow-x-auto">
+      {/* "All" button */}
+      <button
+        onClick={() => onSelect(null)}
+        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+          selectedPhase === null
+            ? 'bg-slate-800 text-white shadow-sm'
+            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }`}
+      >
+        全部
+      </button>
+
+      {/* Phase buttons */}
+      {phases.map(phase => (
+        <div key={phase.id} className="relative group flex items-center">
+          <button
+            onClick={() => onSelect(phase.id)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              selectedPhase === phase.id
+                ? 'text-white shadow-sm'
+                : 'text-slate-600 hover:opacity-80'
+            }`}
+            style={{
+              backgroundColor: selectedPhase === phase.id ? phase.color : phase.color + '20',
+              color: selectedPhase === phase.id ? '#fff' : phase.color,
+            }}
+          >
+            {phase.name}
+            {phase.total_cards > 0 && (
+              <span className={`text-xs ${selectedPhase === phase.id ? 'text-white/80' : 'opacity-60'}`}>
+                {phase.progress}%
+              </span>
+            )}
+          </button>
+          {/* Delete button on hover */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (confirm(`確定要刪除階段「${phase.name}」嗎？`)) {
+                onDeletePhase(phase.id)
+              }
+            }}
+            className="hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-500 hover:bg-red-200 text-xs ml-1"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+
+      {/* Add phase button */}
+      {showAdd ? (
+        <form onSubmit={handleAdd} className="flex items-center gap-2">
+          <input
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="階段名稱..."
+            className="px-2 py-1 text-sm border rounded w-28"
+            autoFocus
+          />
+          <div className="flex gap-1">
+            {presetColors.map(c => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setNewColor(c)}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${newColor === c ? 'border-slate-800 scale-110' : 'border-transparent'}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+          <button type="submit" className="px-2 py-1 text-sm bg-blue-500 text-white rounded">新增</button>
+          <button type="button" onClick={() => setShowAdd(false)} className="px-2 py-1 text-sm border rounded">取消</button>
+        </form>
+      ) : (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="px-3 py-1.5 rounded-full text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+        >
+          + 新增階段
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function BoardPage() {
   const params = useParams()
   const projectId = params.id as string
-  
+
   const [project, setProject] = useState<Project | null>(null)
   const [columns, setColumns] = useState<Column[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [newColumnName, setNewColumnName] = useState('')
   const [currentView, setCurrentView] = useState<ViewType>('board')
+
+  // Phase state
+  const [phases, setPhases] = useState<Phase[]>([])
+  const [selectedPhase, setSelectedPhase] = useState<string | null>(null)
 
   const viewTabs = [
     { id: 'board' as ViewType, label: 'Board', icon: '📋' },
@@ -356,24 +720,69 @@ export default function BoardPage() {
   async function fetchBoard() {
     setLoading(true)
     try {
-      const projectRes = await fetch(`/api/projects/${projectId}`)
-      if (!projectRes.ok) {
-        throw new Error('無法載入專案資料')
-      }
-      const projectData = await projectRes.json()
-      setProject(projectData)
+      const [projectRes, columnsRes, phasesRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}`),
+        fetch(`/api/projects/${projectId}/columns`),
+        fetch(`/api/projects/${projectId}/phases`).catch(() => null),
+      ])
 
-      const columnsRes = await fetch(`/api/projects/${projectId}/columns`)
-      if (!columnsRes.ok) {
-        throw new Error('無法載入欄位資料')
-      }
+      if (!projectRes.ok) throw new Error('無法載入專案資料')
+      if (!columnsRes.ok) throw new Error('無法載入欄位資料')
+
+      const projectData = await projectRes.json()
       const columnsData = await columnsRes.json()
+      setProject(projectData)
       setColumns(columnsData)
+
+      // Phases may not exist yet (API not ready), handle gracefully
+      if (phasesRes && phasesRes.ok) {
+        const phasesData = await phasesRes.json()
+        setPhases(phasesData)
+      }
     } catch (e) {
       console.error('載入看板錯誤:', e)
       alert(e instanceof Error ? e.message : '載入看板失敗，請重新整理頁面')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Phase management
+  async function addPhase(name: string, color: string) {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/phases`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color })
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || '新增階段失敗')
+      }
+      await fetchBoard()
+    } catch (error) {
+      console.error('新增階段錯誤:', error)
+      alert(error instanceof Error ? error.message : '新增階段失敗')
+    }
+  }
+
+  async function deletePhase(id: string) {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/phases?id=${id}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || '刪除階段失敗')
+      }
+      // If the deleted phase was selected, reset filter
+      if (selectedPhase === id) {
+        setSelectedPhase(null)
+      }
+      await fetchBoard()
+    } catch (error) {
+      console.error('刪除階段錯誤:', error)
+      alert(error instanceof Error ? error.message : '刪除階段失敗')
     }
   }
 
@@ -417,6 +826,14 @@ export default function BoardPage() {
     }
   }
 
+  // Apply phase filter to columns
+  const filteredColumns = selectedPhase
+    ? columns.map(col => ({
+        ...col,
+        cards: col.cards.filter(card => card.phase_id === selectedPhase)
+      }))
+    : columns
+
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
 
@@ -426,7 +843,7 @@ export default function BoardPage() {
     // Find the column and card
     const sourceColumn = columns.find(c => c.id === source.droppableId)
     const destColumn = columns.find(c => c.id === destination.droppableId)
-    
+
     if (!sourceColumn || !destColumn) return
 
     // Create new cards array
@@ -438,7 +855,7 @@ export default function BoardPage() {
     if (source.droppableId === destination.droppableId) {
       // Same column reorder
       sourceCards.splice(destination.index, 0, movedCard)
-      newColumns = columns.map(col => 
+      newColumns = columns.map(col =>
         col.id === source.droppableId ? { ...col, cards: sourceCards } : col
       )
     } else {
@@ -494,8 +911,8 @@ export default function BoardPage() {
                   key={tab.id}
                   onClick={() => setCurrentView(tab.id)}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    currentView === tab.id 
-                      ? 'bg-white shadow text-slate-900' 
+                    currentView === tab.id
+                      ? 'bg-white shadow text-slate-900'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -503,17 +920,27 @@ export default function BoardPage() {
                 </button>
               ))}
             </div>
-            <a href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</a>
+            <Link href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</Link>
           </div>
         </header>
+
+        {/* Phase Filter Bar */}
+        <PhaseFilterBar
+          phases={phases}
+          selectedPhase={selectedPhase}
+          onSelect={setSelectedPhase}
+          onAddPhase={addPhase}
+          onDeletePhase={deletePhase}
+        />
 
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
           {currentView === 'board' && (
             <div className="flex gap-4 h-full">
-              {columns.map((column) => (
+              {filteredColumns.map((column) => (
                 <ColumnDroppable
                   key={column.id}
                   column={column}
+                  phases={phases}
                   onCardClick={setSelectedCard}
                   onAddCard={addCard}
                 />
@@ -522,15 +949,16 @@ export default function BoardPage() {
             </div>
           )}
 
-          {currentView === 'list' && <ListView columns={columns} onCardClick={setSelectedCard} />}
-          {currentView === 'calendar' && <CalendarView columns={columns} onCardClick={setSelectedCard} />}
-          {currentView === 'progress' && <ProgressView columns={columns} />}
+          {currentView === 'list' && <ListView columns={filteredColumns} onCardClick={setSelectedCard} />}
+          {currentView === 'calendar' && <CalendarView columns={filteredColumns} onCardClick={setSelectedCard} />}
+          {currentView === 'progress' && <ProgressView columns={filteredColumns} />}
         </div>
 
         {selectedCard && (
-          <CardModal 
-            card={selectedCard} 
-            onClose={() => setSelectedCard(null)} 
+          <CardModal
+            card={selectedCard}
+            phases={phases}
+            onClose={() => setSelectedCard(null)}
             onUpdate={fetchBoard}
           />
         )}

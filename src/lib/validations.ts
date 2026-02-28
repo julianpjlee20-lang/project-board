@@ -33,6 +33,11 @@ export const progressSchema = z.number().int().min(0).max(100, { message: '進�
 /** 位置索引驗證（非負整數） */
 export const positionSchema = z.number().int().min(0, { message: '位置索引必須為非負整數' }).optional()
 
+/** 優先度驗證 */
+export const prioritySchema = z.enum(['low', 'medium', 'high'], {
+  message: '優先度必須為 low, medium 或 high'
+}).optional()
+
 // ========================================
 // Cards API 驗證
 // ========================================
@@ -58,6 +63,26 @@ export const updateCardSchema = z.object({
     z.undefined()
   ]),
   progress: z.union([z.number().int().min(0).max(100), z.undefined()]),
+  priority: prioritySchema,
+  phase_id: z.union([uuidSchema, z.null(), z.undefined()]),
+})
+
+// ========================================
+// Phases API 驗證
+// ========================================
+
+/** POST /api/projects/[id]/phases - 建立階段 */
+export const createPhaseSchema = z.object({
+  name: nonEmptyString.max(100, { message: '階段名稱不可超過 100 字元' }),
+  color: colorSchema,
+})
+
+/** PUT /api/projects/[id]/phases - 更新階段 */
+export const updatePhaseSchema = z.object({
+  id: uuidSchema,
+  name: nonEmptyString.max(100, { message: '階段名稱不可超過 100 字元' }).optional(),
+  color: colorSchema,
+  position: positionSchema,
 })
 
 // ========================================

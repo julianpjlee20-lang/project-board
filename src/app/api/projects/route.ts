@@ -7,11 +7,11 @@ export async function GET() {
   try {
     const projects = await query("SELECT * FROM projects ORDER BY created_at DESC")
     return NextResponse.json(projects)
-  } catch (error: any) {
+  } catch (error) {
     console.error('GET /api/projects error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to fetch projects',
-      detail: error.message || String(error)
+      detail: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }
@@ -58,11 +58,11 @@ export async function POST(request: Request) {
       start_date: start_date || null,
       end_date: end_date || null
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('POST /api/projects error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to create project',
-      detail: error.message || String(error)
+      detail: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }
@@ -184,6 +184,18 @@ export async function PUT() {
       )
     `)
 
+    // Create phases table
+    await query(`
+      CREATE TABLE IF NOT EXISTS phases (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID REFERENCES projects ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        color TEXT DEFAULT '#4EA7FC',
+        position INTEGER NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `)
+
     // Add new columns if tables exist (for existing data)
     try {
       await query("ALTER TABLE projects ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'")
@@ -191,16 +203,18 @@ export async function PUT() {
       await query("ALTER TABLE projects ADD COLUMN IF NOT EXISTS end_date DATE")
       await query("ALTER TABLE columns ADD COLUMN IF NOT EXISTS color TEXT DEFAULT '#4EA7FC'")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0")
-    } catch (e) {
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS phase_id UUID REFERENCES phases ON DELETE SET NULL")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium'")
+    } catch (_e) {
       // Ignore if columns already exist
     }
 
     return NextResponse.json({ success: true, message: 'Database upgraded successfully' })
-  } catch (error: any) {
+  } catch (error) {
     console.error('PUT /api/projects error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to upgrade database',
-      detail: error.message || String(error)
+      detail: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }

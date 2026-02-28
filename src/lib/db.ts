@@ -22,7 +22,7 @@ function getPool() {
   return pool
 }
 
-export async function query(text: string, params?: any[]) {
+export async function query(text: string, params?: (string | number | boolean | null | undefined)[]) {
   try {
     const p = getPool()
     const result = await p.query(text, params)

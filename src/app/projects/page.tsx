@@ -18,10 +18,6 @@ export default function ProjectsPage() {
   const [projectName, setProjectName] = useState('')
   const [initError, setInitError] = useState('')
 
-  useEffect(() => {
-    fetchProjects()
-  }, [])
-
   async function fetchProjects() {
     setLoading(true)
     try {
@@ -33,11 +29,16 @@ export default function ProjectsPage() {
         setProjects(data)
         setInitError('')
       }
-    } catch (e) {
-      console.error(e)
+    } catch (_e) {
+      // ignore
     }
     setLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchProjects()
+  }, [])
 
   async function initDatabase() {
     if (!confirm('確定要初始化資料庫嗎？這會建立所有必要的表格。')) return
@@ -53,7 +54,7 @@ export default function ProjectsPage() {
       } else {
         alert('初始化失敗：' + data.detail)
       }
-    } catch (e) {
+    } catch {
       alert('初始化失敗')
     }
     setCreating(false)
