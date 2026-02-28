@@ -58,7 +58,6 @@ export const updateCardSchema = z.object({
     z.undefined()
   ]),
   progress: z.union([z.number().int().min(0).max(100), z.undefined()]),
-  comment: z.union([z.string().max(1000), z.literal(''), z.undefined()]),
 })
 
 // ========================================

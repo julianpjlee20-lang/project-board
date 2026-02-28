@@ -56,6 +56,7 @@ Cypress.Commands.add('createTestCard', (columnId: string, title: string = '測�
   })
 })
 
+
 // TypeScript 類型聲明
 declare global {
   namespace Cypress {

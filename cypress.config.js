@@ -1,6 +1,6 @@
-import { defineConfig } from 'cypress'
+const { defineConfig } = require('cypress')
 
-export default defineConfig({
+module.exports = defineConfig({
   e2e: {
     // 基礎 URL
     baseUrl: 'http://localhost:3000',
@@ -30,7 +30,6 @@ export default defineConfig({
     },
 
     setupNodeEvents(on, config) {
-      // 這裡可以添加插件
       return config
     },
   },

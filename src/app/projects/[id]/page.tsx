@@ -74,30 +74,27 @@ function CardItem({ card, index, onClick, color = '#3B82F6' }: { card: Card, ind
 }
 
 function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => void, onUpdate: () => void }) {
-  // Original data for comparison
+  const [isFormReady, setIsFormReady] = useState(false)
   const [originalData, setOriginalData] = useState({
-    title: card.title,
-    description: card.description || '',
-    assignee: card.assignees?.[0]?.name || '',
-    dueDate: card.due_date ? card.due_date.split('T')[0] : ''
+    title: '',
+    description: '',
+    assignee: '',
+    dueDate: ''
   })
-  
-  const [title, setTitle] = useState(card.title)
-  const [description, setDescription] = useState(card.description || '')
-  const [assignee, setAssignee] = useState(card.assignees?.[0]?.name || '')
-  const [dueDate, setDueDate] = useState(card.due_date ? card.due_date.split('T')[0] : '')
-  const [comment, setComment] = useState('')
-  const [comments, setComments] = useState(card.comments || [])
+
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [assignee, setAssignee] = useState('')
+  const [dueDate, setDueDate] = useState('')
   const [activity, setActivity] = useState<any[]>([])
-  
+
   // Dirty state
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [saveSuccess, setSaveSuccess] = useState(false)
 
   // Check if dirty
   useEffect(() => {
-    const dirty = 
+    const dirty =
       title !== originalData.title ||
       description !== originalData.description ||
       assignee !== originalData.assignee ||
@@ -105,87 +102,77 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
     setIsDirty(dirty)
   }, [title, description, assignee, dueDate, originalData])
 
-  // Fetch card data and activity on mount
+  // Fetch card data and activity on mount - populate form only after fetch completes
   useEffect(() => {
-    // Fetch fresh card data
-    fetch('/api/cards/' + card.id)
-      .then(async res => {
-        if (!res.ok) {
-          throw new Error('無法載入卡片資料')
-        }
-        return res.json()
-      })
-      .then(data => {
-        setTitle(data.title)
-        setDescription(data.description || '')
-        setAssignee(data.assignees?.[0]?.name || '')
-        setDueDate(data.due_date ? data.due_date.split('T')[0] : '')
-        setComments(data.comments || [])
-        setActivity(data.activity || [])
-        // Also update original data
-        setOriginalData({
-          title: data.title,
-          description: data.description || '',
-          assignee: data.assignees?.[0]?.name || '',
-          dueDate: data.due_date ? data.due_date.split('T')[0] : ''
-        })
-      })
-      .catch(err => {
-        console.error('載入卡片錯誤:', err)
-        alert('無法載入卡片資料，請重新整理頁面')
-      })
-  }, [card.id])
+    let cancelled = false
 
-  // Fetch activity
-  useEffect(() => {
-    fetch('/api/cards/' + card.id + '/activity')
-      .then(async res => {
-        if (!res.ok) {
-          throw new Error('無法載入活動紀錄')
-        }
+    Promise.all([
+      fetch('/api/cards/' + card.id).then(res => {
+        if (!res.ok) throw new Error('無法載入卡片資料')
         return res.json()
-      })
-      .then(data => setActivity(data))
-      .catch(err => {
-        console.error('載入活動紀錄錯誤:', err)
-        // 活動紀錄失敗不阻擋使用者操作，只記錄錯誤
-      })
+      }),
+      fetch('/api/cards/' + card.id + '/activity').then(res => {
+        if (!res.ok) throw new Error('無法載入活動紀錄')
+        return res.json()
+      }).catch(() => [])
+    ]).then(([cardData, activityData]) => {
+      if (cancelled) return
+      const formData = {
+        title: cardData.title,
+        description: cardData.description || '',
+        assignee: cardData.assignees?.[0]?.name || '',
+        dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : ''
+      }
+      setTitle(formData.title)
+      setDescription(formData.description)
+      setAssignee(formData.assignee)
+      setDueDate(formData.dueDate)
+      setOriginalData(formData)
+      setActivity(activityData)
+      setIsFormReady(true)
+    }).catch(err => {
+      console.error('載入卡片錯誤:', err)
+      if (!cancelled) {
+        alert('無法載入卡片資料，請重新整理頁面')
+        onClose()
+      }
+    })
+
+    return () => { cancelled = true }
   }, [card.id])
 
   // Unified save - save and close modal
   const saveCard = async () => {
     if (isSaving) return
-    
+
     setIsSaving(true)
     try {
       const res = await fetch('/api/cards/' + card.id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          title, 
-          description, 
-          assignee, 
-          due_date: dueDate,
-          comment: comment.trim() || null
+        body: JSON.stringify({
+          title,
+          description,
+          assignee,
+          due_date: dueDate
         })
       })
-      
+
       const data = await res.json()
-      console.log('Save response:', data)
-      
+
       if (res.ok) {
-        // Refresh board data
-        onUpdate()
-        // Close modal
+        // Close modal first, then refresh board data in background
         onClose()
+        onUpdate()
       } else {
         alert('儲存失敗: ' + (data.error || '未知錯誤'))
+        setIsSaving(false)
       }
     } catch (e) {
       console.error('Save error:', e)
       alert('儲存失敗')
+      setIsSaving(false)
     }
-    setIsSaving(false)
   }
 
   // Cancel - restore and close
@@ -204,81 +191,69 @@ function CardModal({ card, onClose, onUpdate }: { card: Card, onClose: () => voi
           <h2 className="text-lg font-semibold">卡片詳情</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
         </div>
-        
-        <div className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">標題</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border rounded px-3 py-2" />
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">描述</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2" placeholder="輸入描述..." />
-          </div>
+        {!isFormReady ? (
+          <div className="p-8 text-center text-slate-400">載入中...</div>
+        ) : (
+          <>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">標題</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border rounded px-3 py-2" />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">指派</label>
-              <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">截止日</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
-            </div>
-          </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">描述</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2" placeholder="輸入描述..." />
+              </div>
 
-          {/* Comments */}
-          <div>
-            <label className="block text-sm font-medium mb-1">評論</label>
-            <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
-              {comments.map((c) => (
-                <div key={c.id} className="bg-gray-50 p-2 rounded text-sm">
-                  <span className="font-medium">{c.author_name || 'Anonymous'}:</span> {c.content}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">指派</label>
+                  <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
                 </div>
-              ))}
-            </div>
-            <input 
-              value={comment} 
-              onChange={e => setComment(e.target.value)} 
-              placeholder="輸入評論..." 
-              className="w-full border rounded px-3 py-2" 
-            />
-          </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">截止日</label>
+                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
+                </div>
+              </div>
 
-          {/* Activity Log */}
-          <div>
-            <label className="block text-sm font-medium mb-1">活動紀錄</label>
-            <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded">
-              {activity.length === 0 ? (
-                <p className="text-sm text-slate-400">尚無活動紀錄</p>
-              ) : (
-                activity.map((log) => (
-                  <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2 py-1">
-                    <span className="font-medium text-blue-600">[{log.action}]</span>
-                    <span className="text-slate-700"> {log.target}</span>
-                    {log.old_value && log.new_value && log.old_value !== log.new_value ? (
-                      <span className="text-orange-600"> {log.old_value} → {log.new_value}</span>
-                    ) : (
-                      <span className="text-green-600"> {log.new_value}</span>
-                    )}
-                    <span className="text-slate-400 block mt-0.5">
-                      {new Date(log.created_at).toLocaleString('zh-TW')}
-                    </span>
-                  </div>
-                ))
-              )}
+              {/* Activity Log */}
+              <div>
+                <label className="block text-sm font-medium mb-1">活動紀錄</label>
+                <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded">
+                  {activity.length === 0 ? (
+                    <p className="text-sm text-slate-400">尚無活動紀錄</p>
+                  ) : (
+                    activity.map((log) => (
+                      <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2 py-1">
+                        <span className="font-medium text-blue-600">[{log.action}]</span>
+                        <span className="text-slate-700"> {log.target}</span>
+                        {log.old_value && log.new_value && log.old_value !== log.new_value ? (
+                          <span className="text-orange-600"> {log.old_value} → {log.new_value}</span>
+                        ) : (
+                          <span className="text-green-600"> {log.new_value}</span>
+                        )}
+                        <span className="text-slate-400 block mt-0.5">
+                          {new Date(log.created_at).toLocaleString('zh-TW')}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div className="p-4 border-t flex justify-end gap-2">
-          <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
-            取消
-          </button>
-          <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
-            {isSaving ? '儲存中...' : '儲存'}
-          </button>
-        </div>
+            <div className="p-4 border-t flex justify-end gap-2">
+              <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
+                取消
+              </button>
+              <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+                {isSaving ? '儲存中...' : '儲存'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

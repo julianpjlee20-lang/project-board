@@ -7,8 +7,7 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
   const [description, setDescription] = useState(card.description || '')
   const [assignee, setAssignee] = useState(card.assignees?.[0]?.name || '')
   const [dueDate, setDueDate] = useState(card.due_date ? card.due_date.split('T')[0] : '')
-  const [comment, setComment] = useState('')
-  const [comments, setComments] = useState(card.comments || [])
+
 
   useEffect(() => {
     console.log('CardModal rendered for card:', card.id, card.title)
@@ -24,16 +23,6 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
     onClose()
   }
 
-  const handleAddComment = async () => {
-    if (!comment.trim()) return
-    await fetch('/api/cards/' + card.id + '/comments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: comment, author_name: 'User' })
-    })
-    setComment('')
-    onUpdate()
-  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
@@ -65,20 +54,6 @@ function CardModal({ card, onClose, onUpdate }: { card: any, onClose: () => void
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">評論</label>
-            <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
-              {comments.map((c: any) => (
-                <div key={c.id} className="bg-gray-50 p-2 rounded text-sm">
-                  <span className="font-medium">{c.author_name || 'Anonymous'}:</span> {c.content}
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input value={comment} onChange={e => setComment(e.target.value)} placeholder="輸入評論..." className="flex-1 border rounded px-3 py-2" />
-              <button onClick={handleAddComment} className="bg-blue-500 text-white px-4 py-2 rounded">送出</button>
-            </div>
-          </div>
         </div>
 
         <div className="p-4 border-t flex justify-end gap-2">

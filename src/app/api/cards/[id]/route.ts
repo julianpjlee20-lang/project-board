@@ -52,15 +52,6 @@ export async function GET(
       WHERE ca.card_id = $1
     `, [id])
     
-    // Get comments
-    const comments = await query(`
-      SELECT c.*, p.name as author_name 
-      FROM comments c 
-      LEFT JOIN profiles p ON c.author_id = p.id 
-      WHERE c.card_id = $1 
-      ORDER BY c.created_at ASC
-    `, [id])
-    
     // Get subtasks
     const subtasks = await query(`
       SELECT * FROM subtasks WHERE card_id = $1 ORDER BY position
@@ -76,7 +67,6 @@ export async function GET(
     return NextResponse.json({
       ...card,
       assignees,
-      comments,
       subtasks,
       tags
     })
@@ -106,7 +96,7 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    let { title, description, assignee, due_date, progress, comment } = validation.data
+    let { title, description, assignee, due_date, progress } = validation.data
 
     // Fix: Convert empty string to null for due_date
     if (due_date === '') {
@@ -208,37 +198,6 @@ export async function PUT(
       }
     }
 
-    // Handle comment (optional)
-    if (comment && comment.trim()) {
-      let authorId = null
-      const author_name = 'User'
-      
-      let profiles = await query('SELECT id FROM profiles WHERE name = $1', [author_name])
-      
-      if (profiles.length === 0) {
-        const newProfile = await query(
-          'INSERT INTO profiles (id, name) VALUES (gen_random_uuid(), $1) RETURNING id',
-          [author_name]
-        )
-        profiles = newProfile
-      }
-      
-      if (profiles[0]) {
-        authorId = profiles[0].id
-      }
-
-      await query(
-        'INSERT INTO comments (card_id, author_id, content) VALUES ($1, $2, $3)',
-        [id, authorId, comment.trim()]
-      )
-
-      await query(
-        'INSERT INTO activity_logs (project_id, card_id, action, target, new_value) VALUES ($1, $2, $3, $4, $5)',
-        [projectId, id, '留言', '評論', `${author_name}: ${comment.substring(0, 30)}...`]
-      )
-      
-      await sendDiscordNotification(title, '新評論', projectName)
-    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

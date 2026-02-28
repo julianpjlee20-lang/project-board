@@ -7,7 +7,6 @@ export interface Card {
   due_date: string | null
   progress: number
   assignees: { id: string; name: string }[]
-  comments: { id: string; content: string; author_name: string }[]
   tags: { id: string; name: string; color: string }[]
   subtasks: { id: string; title: string; is_completed: boolean }[]
 }
