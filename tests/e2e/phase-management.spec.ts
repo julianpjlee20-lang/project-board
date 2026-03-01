@@ -1,18 +1,26 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Phase 階段管理', () => {
-  test.beforeEach(async ({ page }) => {
-    // 建立測試專案
-    await page.goto('/projects')
-    const projectName = `Phase測試 ${Date.now()}`
-    await page.getByPlaceholder('輸入新專案名稱...').fill(projectName)
-    await page.getByRole('button', { name: '建立' }).click()
-    await expect(page.getByText(projectName)).toBeVisible({ timeout: 10000 })
-    await page.getByText(projectName).click()
-    await page.waitForURL(/\/projects\/[\w-]+/)
+  let projectId: string
+
+  test.beforeAll(async ({ request }) => {
+    const res = await request.post('/api/projects', {
+      data: { name: `Phase測試 ${Date.now()}` }
+    })
+    expect(res.ok()).toBeTruthy()
+    const project = await res.json()
+    projectId = project.id
+  })
+
+  test.afterAll(async ({ request }) => {
+    if (projectId) {
+      await request.delete(`/api/projects/${projectId}`)
+    }
   })
 
   test('應能新增 Phase', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
+
     // 點擊「+ 新增階段」
     await page.getByText('+ 新增階段').click()
 
@@ -26,6 +34,8 @@ test.describe('Phase 階段管理', () => {
   })
 
   test('Phase 篩選器應能過濾卡片', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
+
     // 確認「全部」篩選器預設選中
     await expect(page.getByText('全部')).toBeVisible()
   })

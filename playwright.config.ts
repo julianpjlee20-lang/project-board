@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// 載入測試環境變數（.env.test 優先，fallback 到 .env）
+dotenv.config({ path: path.resolve(__dirname, '.env.test') });
 
 /**
  * Playwright 測試配置
@@ -6,6 +11,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/e2e',
+
+  // 全域 setup：初始化測試資料庫 schema
+  globalSetup: './tests/global-setup.ts',
 
   // 測試超時設定
   timeout: 120 * 1000, // 增加到 2 分鐘
@@ -29,7 +37,7 @@ export default defineConfig({
   // 全域設定
   use: {
     // 基礎 URL
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
 
     // 追蹤設定
     trace: 'on-first-retry',
@@ -65,10 +73,10 @@ export default defineConfig({
     // },
   ],
 
-  // Web Server 配置（自動啟動開發伺服器）
+  // Web Server 配置（使用測試環境的 port 和 .env.test）
   webServer: {
-    command: 'pnpm run dev',
-    url: 'http://localhost:3000',
+    command: `npx dotenv -e .env.test -- next dev --webpack --port ${process.env.PORT || 3000}`,
+    url: `http://localhost:${process.env.PORT || 3000}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000, // 增加到 3 分鐘,等待資料庫連接
     stdout: 'pipe',

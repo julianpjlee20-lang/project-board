@@ -1,27 +1,44 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('卡片 Modal 編輯', () => {
-  let projectUrl: string
+  let projectId: string
+  let cardColumnId: string
 
-  test.beforeEach(async ({ page }) => {
-    // 建立測試專案
-    await page.goto('/projects')
-    const projectName = `Modal測試 ${Date.now()}`
-    await page.getByPlaceholder('輸入新專案名稱...').fill(projectName)
-    await page.getByRole('button', { name: '建立' }).click()
-    await expect(page.getByText(projectName)).toBeVisible({ timeout: 10000 })
-    await page.getByText(projectName).click()
-    await page.waitForURL(/\/projects\/[\w-]+/)
-    projectUrl = page.url()
+  test.beforeAll(async ({ request }) => {
+    // 透過 API 建立共用測試專案
+    const res = await request.post('/api/projects', {
+      data: { name: `Modal測試 ${Date.now()}` }
+    })
+    expect(res.ok()).toBeTruthy()
+    const project = await res.json()
+    projectId = project.id
 
-    // 新增一張卡片
-    await page.locator('text=+ 新增卡片').first().click()
-    await page.locator('form.mt-2 input').first().fill('Modal 測試卡片')
-    await page.locator('form.mt-2 button[type="submit"]').first().click()
-    await expect(page.getByText('Modal 測試卡片')).toBeVisible({ timeout: 10000 })
+    // 取得預設欄位
+    const columnsRes = await request.get(`/api/projects/${projectId}/columns`)
+    const columns = await columnsRes.json()
+    cardColumnId = columns[0].id
+
+    // 透過 API 建立測試卡片
+    const cardRes = await request.post('/api/cards', {
+      data: {
+        title: 'Modal 測試卡片',
+        column_id: cardColumnId,
+        position: 0
+      }
+    })
+    expect(cardRes.ok()).toBeTruthy()
+  })
+
+  test.afterAll(async ({ request }) => {
+    if (projectId) {
+      await request.delete(`/api/projects/${projectId}`)
+    }
   })
 
   test('應能開啟卡片 Modal 並編輯內容', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
+    await expect(page.getByText('Modal 測試卡片')).toBeVisible({ timeout: 10000 })
+
     // 點擊卡片開啟 Modal
     await page.getByText('Modal 測試卡片').click()
 
@@ -36,6 +53,9 @@ test.describe('卡片 Modal 編輯', () => {
   })
 
   test('應能在 Modal 中新增子任務', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
+    await expect(page.getByText('Modal 測試卡片')).toBeVisible({ timeout: 10000 })
+
     await page.getByText('Modal 測試卡片').click()
     await expect(page.locator('[class*="fixed"]').or(page.locator('[role="dialog"]'))).toBeVisible({ timeout: 5000 })
 

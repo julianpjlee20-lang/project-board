@@ -13,7 +13,9 @@
     "test:chrome": "start-server-and-test dev http://localhost:3000 'cy:run --browser chrome'",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
-    "test:ci": "cypress run --headless"
+    "test:ci": "cypress run --headless",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -40,6 +42,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "cypress": "15.11.0",
+    "dotenv": "^17.3.1",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "playwright": "^1.58.2",
