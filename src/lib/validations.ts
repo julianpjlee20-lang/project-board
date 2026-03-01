@@ -170,6 +170,37 @@ export const registerSchema = z.object({
 })
 
 // ========================================
+// User Settings 驗證
+// ========================================
+
+/** PUT /api/users/me - 更新個人資料 */
+export const updateProfileSchema = z.object({
+  name: z.string().min(1, { message: '名稱不可為空' }).max(100, { message: '名稱不可超過 100 字元' }).optional(),
+  avatar_url: z.string().url({ message: '請輸入有效的 URL' }).optional().or(z.literal('')),
+})
+
+/** PUT /api/users/me/password - 更改密碼 */
+export const changePasswordSchema = z.object({
+  current_password: z.string().min(1, { message: '請輸入目前密碼' }),
+  new_password: z.string().min(6, { message: '新密碼至少 6 個字元' }).max(100),
+  confirm_password: z.string().min(1, { message: '請確認新密碼' }),
+}).refine((data) => data.new_password === data.confirm_password, {
+  message: '兩次密碼不一致',
+  path: ['confirm_password'],
+})
+
+// ========================================
+// Admin CMS 驗證
+// ========================================
+
+/** PATCH /api/admin/users/[id] - 管理員編輯使用者 */
+export const adminUpdateUserSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  role: z.enum(['user', 'admin'], { message: '角色必須為 user 或 admin' }).optional(),
+  is_active: z.boolean().optional(),
+})
+
+// ========================================
 // 通用驗證輔助函數
 // ========================================
 

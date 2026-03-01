@@ -50,6 +50,16 @@
 
 ---
 
+## Bug Fixes
+**狀態：已完成 ✅**
+
+- [x] 登入 AccessDenied — 自動建立 profiles 表 + 錯誤處理 (`e9bfb7f`)
+- [x] Discord 登入 403 — 補上既有 profiles 表缺少的欄位 (`64a4307`)
+- [x] 進度顯示 undefined% + 進度視圖永遠 0% (`7d135ec`)
+- [x] zeabur.json 改用 pnpm（與專案一致）(`abbf07c`)
+
+---
+
 ## 暫緩功能（未來 Feature）
 
 ### LINE Login
@@ -73,6 +83,8 @@
 
 ## 待驗證項目
 - [x] Discord OAuth 登入流程 ✅
+- [x] Discord 登入 403 修復 ✅
+- [x] 進度顯示修復 ✅
 - [ ] 帳密登入/註冊流程正常
 - [ ] 未登入可瀏覽、寫入操作回 401
 - [ ] Playwright E2E 無回歸
