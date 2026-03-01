@@ -252,6 +252,11 @@ export const adminUpdateUserSchema = z.object({
   is_active: z.boolean().optional(),
 })
 
+/** POST /api/admin/users/[id]/reset-password - 管理員重設密碼 */
+export const adminResetPasswordSchema = z.object({
+  new_password: z.string().min(6, { message: '密碼至少 6 個字元' }).max(100),
+})
+
 // ========================================
 // 通用驗證輔助函數
 // ========================================

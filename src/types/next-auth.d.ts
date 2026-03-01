@@ -6,6 +6,7 @@ declare module "next-auth" {
       profileId: string
       provider: string
       role: string
+      forcePasswordChange?: boolean
     } & DefaultSession["user"]
   }
 }
@@ -16,5 +17,6 @@ declare module "next-auth/jwt" {
     provider?: string
     providerAccountId?: string
     role?: string
+    forcePasswordChange?: boolean
   }
 }

@@ -70,7 +70,7 @@ export async function PUT(request: NextRequest) {
     const newHash = await bcrypt.hash(new_password, 12)
 
     await query(
-      'UPDATE profiles SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE profiles SET password_hash = $1, force_password_change = false, updated_at = NOW() WHERE id = $2',
       [newHash, user.id]
     )
 

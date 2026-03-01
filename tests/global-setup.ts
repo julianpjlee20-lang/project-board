@@ -59,7 +59,8 @@ export default async function globalSetup() {
         role TEXT DEFAULT 'user',
         is_active BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        force_password_change BOOLEAN DEFAULT FALSE
       )
     `)
 

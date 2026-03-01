@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import DbEnvBanner from "@/components/DbEnvBanner";
+import ForcePasswordBanner from "@/components/ForcePasswordBanner";
 import Providers from "./providers";
 
 const geistSans = Geist({
@@ -31,6 +32,7 @@ export default function RootLayout({
       >
         <Providers>
           <DbEnvBanner />
+          <ForcePasswordBanner />
           {children}
         </Providers>
       </body>
