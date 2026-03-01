@@ -73,9 +73,12 @@ export async function PUT(
     }
 
     const { title, description, assignee, progress, priority, phase_id } = validation.data
-    let { due_date, planned_completion_date, actual_completion_date } = validation.data
+    let { start_date, due_date, planned_completion_date, actual_completion_date } = validation.data
 
     // Fix: Convert empty string to null for date fields
+    if (start_date === '') {
+      start_date = null
+    }
     if (due_date === '') {
       due_date = null
     }
@@ -94,6 +97,7 @@ export async function PUT(
     const oldProgress = oldCard[0]?.progress || 0
     const oldPriority = oldCard[0]?.priority
     const oldPhaseId = oldCard[0]?.phase_id
+    const oldStartDate = oldCard[0]?.start_date
     const oldPlannedCompletionDate = oldCard[0]?.planned_completion_date
     const oldActualCompletionDate = oldCard[0]?.actual_completion_date
 
@@ -109,8 +113,8 @@ export async function PUT(
 
     // Update card
     await query(
-      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, planned_completion_date = CASE WHEN $9::boolean THEN $10::date ELSE planned_completion_date END, actual_completion_date = CASE WHEN $11::boolean THEN $12::date ELSE actual_completion_date END, updated_at = NOW() WHERE id = $8`,
-      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id, planned_completion_date !== undefined, planned_completion_date ?? null, actual_completion_date !== undefined, actual_completion_date ?? null]
+      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, start_date = CASE WHEN $9::boolean THEN $10::timestamptz ELSE start_date END, planned_completion_date = CASE WHEN $11::boolean THEN $12::date ELSE planned_completion_date END, actual_completion_date = CASE WHEN $13::boolean THEN $14::date ELSE actual_completion_date END, updated_at = NOW() WHERE id = $8`,
+      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id, start_date !== undefined, start_date ?? null, planned_completion_date !== undefined, planned_completion_date ?? null, actual_completion_date !== undefined, actual_completion_date ?? null]
     )
 
     // Activity log: Title changed
@@ -178,6 +182,16 @@ export async function PUT(
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '階段', oldPhaseName, newPhaseName]
+      )
+    }
+
+    // Activity log: Start date changed
+    if (start_date !== undefined && String(oldStartDate) !== String(start_date)) {
+      const oldDate = oldStartDate ? String(oldStartDate).split('T')[0] : '(未設定)'
+      const newDate = start_date ? String(start_date).split('T')[0] : '(未設定)'
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+        [projectId, id, '修改', '開始日期', oldDate, newDate]
       )
     }
 

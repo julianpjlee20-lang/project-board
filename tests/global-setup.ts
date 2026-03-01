@@ -110,6 +110,7 @@ export default async function globalSetup() {
         position INTEGER NOT NULL,
         phase_id UUID REFERENCES phases ON DELETE SET NULL,
         priority TEXT DEFAULT 'medium',
+        start_date TIMESTAMP WITH TIME ZONE,
         created_by UUID REFERENCES profiles(id),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

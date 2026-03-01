@@ -105,15 +105,45 @@
 
 ---
 
-## 未來功能：預計完成日 + 實際完成日 — 時間軸視覺化
-**狀態：待排程 📋**
+## 預計完成日 + 實際完成日 — 時間軸視覺化
+**狀態：已完成 ✅**
 **計畫檔：** `~/.claude/plans/federated-prancing-sutherland.md`
+
+### Phase 1：資料層 ✅
+- [x] 1. DB migration — cards 加 planned_completion_date, actual_completion_date (`src/app/api/projects/route.ts`)
+- [x] 2. TypeScript 類型更新 — Card +2 欄位 + created_at (`src/app/projects/[id]/types.ts`)
+- [x] 3. Zod 驗證 — updateCardSchema +2 日期驗證 (`src/lib/validations.ts`)
+- [x] 4. cards PUT API 支援新欄位 + activity log (`src/app/api/cards/[id]/route.ts`)
+- [x] 5. columns GET 確認包含新欄位 (`src/app/api/projects/[id]/columns/route.ts`)
+
+### Phase 2+3+4：前端 page.tsx ✅
+- [x] 6. CardModal 日程安排區塊 — 三日期行 + 時間軸條 + 動態摘要 (`src/app/projects/[id]/page.tsx`)
+- [x] 7. CardItem MiniTimelineBar — 4px hover→8px + tooltip (`src/app/projects/[id]/page.tsx`)
+- [x] 8. onDragEnd 拖放自動化 — 拖到最後欄自動填入實際完成日 + 回滾機制 (`src/app/projects/[id]/page.tsx`)
+
+### Phase 5+6：前端 views.tsx ✅
+- [x] 9. ListView 日程欄 — 迷你時間軸條 + hover tooltip (`src/app/projects/[id]/views.tsx`)
+- [x] 10. CalendarView 多日期標記 — ●截止/○預計/◉實際 + 圖例 (`src/app/projects/[id]/views.tsx`)
+- [x] 11. Build 驗證通過 ✅
 
 ---
 
-## 未來功能：甘特圖視圖 + Card start_date
-**狀態：待排程 📋**
+## 甘特圖視圖 + Card start_date
+**狀態：已完成 ✅**
 **計畫檔：** `~/.claude/plans/async-questing-wind.md`
+
+### Phase 1：資料層 ✅
+- [x] 1. DB migration — cards 加 start_date (`src/app/api/projects/route.ts`, `tests/global-setup.ts`)
+- [x] 2. TypeScript 類型更新 — ViewType + GanttScale + Card.start_date (`src/app/projects/[id]/types.ts`)
+- [x] 3. Zod 驗證 — updateCardSchema + start_date + 跨欄位驗證 (`src/lib/validations.ts`)
+- [x] 4. cards PUT API 支援 start_date + activity log (`src/app/api/cards/[id]/route.ts`)
+
+### Phase 2：前端 ✅
+- [x] 5. CardModal 新增開始日欄位 (`src/app/projects/[id]/page.tsx`)
+- [x] 6. CardItem 日期顯示增強 — 開始日 ~ 截止日 (`src/app/projects/[id]/page.tsx`)
+- [x] 7. GanttView 甘特圖元件 — 完整實作 (`src/app/projects/[id]/gantt.tsx`)
+- [x] 8. 主頁面整合 — viewTabs + 渲染 (`src/app/projects/[id]/page.tsx`)
+- [x] 9. Build 驗證通過 ✅
 
 ---
 

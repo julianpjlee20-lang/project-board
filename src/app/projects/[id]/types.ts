@@ -1,11 +1,14 @@
-export type ViewType = 'board' | 'list' | 'calendar' | 'progress'
+export type ViewType = 'board' | 'list' | 'calendar' | 'progress' | 'gantt'
 
 export type CalendarMode = 'month' | 'quarter' | 'year'
+
+export type GanttScale = 'week' | 'month'
 
 export interface Card {
   id: string
   title: string
   description: string | null
+  start_date: string | null
   due_date: string | null
   progress: number
   priority: 'low' | 'medium' | 'high'
