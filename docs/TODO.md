@@ -60,6 +60,63 @@
 
 ---
 
+## 當前階段：使用者設定 + Admin CMS + 帳號審核
+**狀態：已完成 ✅**
+**計畫檔：** `~/.claude/plans/crystalline-greeting-bumblebee.md`
+
+### Phase 1：資料庫 + 認證基礎 ✅
+- [x] 1. profiles 表新增 role / is_active / updated_at 欄位 (`src/auth.ts`)
+- [x] 2. ADMIN_EMAIL 環境變數機制 — 自動設定管理員 (`src/auth.ts`)
+- [x] 3. JWT / Session 型別擴展加 role (`src/types/next-auth.d.ts`)
+- [x] 4. Auth callbacks — authorize 檢查 is_active、jwt/session 傳遞 role (`src/auth.ts`)
+- [x] 5. requireAuth() / requireAdmin() 輔助函數 (`src/lib/auth.ts`)
+- [x] 6. 註冊 API — is_active=false + 審核訊息 (`src/app/api/auth/register/route.ts`)
+- [x] 7. 登入頁 — 移除略過登入、加審核提示 (`src/app/login/page.tsx`)
+- [x] 8. Zod schema — updateProfileSchema / changePasswordSchema / adminUpdateUserSchema (`src/lib/validations.ts`)
+
+### Phase 2：路由保護 ✅
+- [x] 9. Middleware（proxy.ts）— 公開/認證/admin 三級路由保護 (`src/proxy.ts`)
+
+### Phase 3：使用者設定 API ✅
+- [x] 10. GET/PUT /api/users/me — 個人資料 CRUD (`src/app/api/users/me/route.ts`)
+- [x] 11. PUT /api/users/me/password — 更改密碼 (`src/app/api/users/me/password/route.ts`)
+
+### Phase 4：Admin CMS API ✅
+- [x] 12. GET /api/admin/stats — 系統統計 (`src/app/api/admin/stats/route.ts`)
+- [x] 13. GET /api/admin/users — 使用者列表 + 搜尋/篩選/分頁 (`src/app/api/admin/users/route.ts`)
+- [x] 14. GET/PATCH /api/admin/users/[id] — 使用者詳情/編輯 (`src/app/api/admin/users/[id]/route.ts`)
+- [x] 15. GET /api/admin/projects — 專案概覽 (`src/app/api/admin/projects/route.ts`)
+
+### Phase 3 前端：使用者設定頁面 ✅
+- [x] 16. Settings 頁面 — 個人資料/更改密碼/已連結帳號/通知偏好 (`src/app/settings/page.tsx`)
+
+### Phase 4 前端：Admin CMS 頁面 ✅
+- [x] 17. Admin Layout — Sidebar 導航 (`src/app/admin/layout.tsx`)
+- [x] 18. Admin Dashboard — 統計卡片 (`src/app/admin/page.tsx`)
+- [x] 19. 使用者列表 — 搜尋/篩選/啟用停用 (`src/app/admin/users/page.tsx`)
+- [x] 20. 使用者詳情 — 編輯 role/is_active (`src/app/admin/users/[id]/page.tsx`)
+- [x] 21. 專案概覽 — 專案列表表格 (`src/app/admin/projects/page.tsx`)
+
+### Phase 5：整合 ✅
+- [x] 22. SessionProvider 加入 root layout (`src/app/layout.tsx`)
+- [x] 23. UserNav 元件 — 右上角使用者選單 (`src/components/UserNav.tsx`)
+- [x] 24. 整合 UserNav 到 projects 頁面
+- [x] 25. Build 驗證 + 功能測試
+
+---
+
+## 未來功能：預計完成日 + 實際完成日 — 時間軸視覺化
+**狀態：待排程 📋**
+**計畫檔：** `~/.claude/plans/federated-prancing-sutherland.md`
+
+---
+
+## 未來功能：甘特圖視圖 + Card start_date
+**狀態：待排程 📋**
+**計畫檔：** `~/.claude/plans/async-questing-wind.md`
+
+---
+
 ## 暫緩功能（未來 Feature）
 
 ### LINE Login

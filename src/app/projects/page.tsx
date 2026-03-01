@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import UserNav from '@/components/UserNav'
 
 interface Project {
   id: string
@@ -96,22 +97,27 @@ export default function ProjectsPage() {
         }}
       >
         <div className="container mx-auto px-6 py-8">
-          <h1 
-            className="text-3xl font-bold"
-            style={{ 
-              color: '#F9F8F5',
-              fontFamily: 'Inter, sans-serif',
-              letterSpacing: '-0.03em'
-            }}
-          >
-            專案列表
-          </h1>
-          <p 
-            className="mt-2"
-            style={{ color: '#F9F8F5', opacity: 0.7 }}
-          >
-            建立和管理你的團隊專案
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1
+                className="text-3xl font-bold"
+                style={{
+                  color: '#F9F8F5',
+                  fontFamily: 'Inter, sans-serif',
+                  letterSpacing: '-0.03em'
+                }}
+              >
+                專案列表
+              </h1>
+              <p
+                className="mt-2"
+                style={{ color: '#F9F8F5', opacity: 0.7 }}
+              >
+                建立和管理你的團隊專案
+              </p>
+            </div>
+            <UserNav />
+          </div>
         </div>
       </header>
 

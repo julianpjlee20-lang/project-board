@@ -73,11 +73,17 @@ export async function PUT(
     }
 
     const { title, description, assignee, progress, priority, phase_id } = validation.data
-    let { due_date } = validation.data
+    let { due_date, planned_completion_date, actual_completion_date } = validation.data
 
-    // Fix: Convert empty string to null for due_date
+    // Fix: Convert empty string to null for date fields
     if (due_date === '') {
       due_date = null
+    }
+    if (planned_completion_date === '') {
+      planned_completion_date = null
+    }
+    if (actual_completion_date === '') {
+      actual_completion_date = null
     }
 
     // Get old card data for activity log
@@ -88,6 +94,8 @@ export async function PUT(
     const oldProgress = oldCard[0]?.progress || 0
     const oldPriority = oldCard[0]?.priority
     const oldPhaseId = oldCard[0]?.phase_id
+    const oldPlannedCompletionDate = oldCard[0]?.planned_completion_date
+    const oldActualCompletionDate = oldCard[0]?.actual_completion_date
 
     // Get project_id
     const column = oldCard[0]?.column_id ?
@@ -101,8 +109,8 @@ export async function PUT(
 
     // Update card
     await query(
-      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, updated_at = NOW() WHERE id = $8`,
-      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id]
+      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, planned_completion_date = CASE WHEN $9::boolean THEN $10::date ELSE planned_completion_date END, actual_completion_date = CASE WHEN $11::boolean THEN $12::date ELSE actual_completion_date END, updated_at = NOW() WHERE id = $8`,
+      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id, planned_completion_date !== undefined, planned_completion_date ?? null, actual_completion_date !== undefined, actual_completion_date ?? null]
     )
 
     // Activity log: Title changed
@@ -170,6 +178,26 @@ export async function PUT(
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '階段', oldPhaseName, newPhaseName]
+      )
+    }
+
+    // Activity log: Planned completion date changed
+    if (planned_completion_date !== undefined && String(oldPlannedCompletionDate) !== String(planned_completion_date)) {
+      const oldDate = oldPlannedCompletionDate ? String(oldPlannedCompletionDate).split('T')[0] : '(未設定)'
+      const newDate = planned_completion_date ? String(planned_completion_date).split('T')[0] : '(未設定)'
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+        [projectId, id, '修改', '預計完成日', oldDate, newDate]
+      )
+    }
+
+    // Activity log: Actual completion date changed
+    if (actual_completion_date !== undefined && String(oldActualCompletionDate) !== String(actual_completion_date)) {
+      const oldDate = oldActualCompletionDate ? String(oldActualCompletionDate).split('T')[0] : '(未設定)'
+      const newDate = actual_completion_date ? String(actual_completion_date).split('T')[0] : '(未設定)'
+      await query(
+        'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+        [projectId, id, '修改', '實際完成日', oldDate, newDate]
       )
     }
 

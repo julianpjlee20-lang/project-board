@@ -10,6 +10,9 @@ export interface Card {
   progress: number
   priority: 'low' | 'medium' | 'high'
   phase_id: string | null
+  planned_completion_date: string | null
+  actual_completion_date: string | null
+  created_at?: string
   assignees: { id: string; name: string }[]
   tags: { id: string; name: string; color: string }[]
   subtasks: { id: string; title: string; is_completed: boolean }[]

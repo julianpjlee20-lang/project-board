@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import Link from 'next/link'
+import UserNav from '@/components/UserNav'
 import { ListView, CalendarView, ProgressView } from './views'
 import type { Card, Column, Project, ViewType, Phase } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -20,6 +21,87 @@ const PRIORITY_LABELS: Record<Card['priority'], string> = {
   high: '高',
   medium: '中',
   low: '低',
+}
+
+// Mini Timeline Bar for CardItem (4px, hover → 8px)
+function MiniTimelineBar({ card }: { card: Card }) {
+  const dueDate = card.due_date ? new Date(card.due_date.split('T')[0] + 'T00:00:00') : null
+  const plannedDate = card.planned_completion_date ? new Date(card.planned_completion_date.split('T')[0] + 'T00:00:00') : null
+  const actualDate = card.actual_completion_date ? new Date(card.actual_completion_date.split('T')[0] + 'T00:00:00') : null
+
+  // Need at least 2 dates to display
+  const dateCount = [dueDate, plannedDate, actualDate].filter(Boolean).length
+  if (dateCount < 2) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const allDates = [dueDate, plannedDate, actualDate, today].filter((d): d is Date => d !== null)
+  const minTime = Math.min(...allDates.map(d => d.getTime()))
+  const maxTime = Math.max(...allDates.map(d => d.getTime()))
+  const range = maxTime - minTime || 1
+  const toPercent = (d: Date) => ((d.getTime() - minTime) / range) * 100
+
+  const segments: { left: number; width: number; color: string }[] = []
+  const startDate = new Date(minTime)
+
+  if (actualDate && dueDate) {
+    if (actualDate <= dueDate) {
+      // On time
+      segments.push({ left: toPercent(startDate), width: toPercent(actualDate) - toPercent(startDate), color: '#60A5FA' })
+      segments.push({ left: toPercent(actualDate), width: toPercent(dueDate) - toPercent(actualDate), color: '#34D399' })
+    } else {
+      // Late
+      segments.push({ left: toPercent(startDate), width: toPercent(dueDate) - toPercent(startDate), color: '#60A5FA' })
+      segments.push({ left: toPercent(dueDate), width: toPercent(actualDate) - toPercent(dueDate), color: '#F87171' })
+    }
+  } else if (plannedDate && dueDate) {
+    const progressEnd = Math.min(toPercent(today), toPercent(plannedDate))
+    segments.push({ left: toPercent(startDate), width: progressEnd - toPercent(startDate), color: '#60A5FA' })
+    if (today < plannedDate) {
+      segments.push({ left: toPercent(today), width: toPercent(plannedDate) - toPercent(today), color: '#E2E8F0' })
+    }
+  } else if (plannedDate && actualDate) {
+    if (actualDate <= plannedDate) {
+      segments.push({ left: toPercent(startDate), width: toPercent(actualDate) - toPercent(startDate), color: '#34D399' })
+    } else {
+      segments.push({ left: toPercent(startDate), width: toPercent(plannedDate) - toPercent(startDate), color: '#60A5FA' })
+      segments.push({ left: toPercent(plannedDate), width: toPercent(actualDate) - toPercent(plannedDate), color: '#F87171' })
+    }
+  }
+
+  // Build tooltip text
+  const tooltipParts: string[] = []
+  if (dueDate) tooltipParts.push(`截止: ${dueDate.toLocaleDateString('zh-TW')}`)
+  if (plannedDate) tooltipParts.push(`預計: ${plannedDate.toLocaleDateString('zh-TW')}`)
+  if (actualDate) tooltipParts.push(`實際: ${actualDate.toLocaleDateString('zh-TW')}`)
+
+  return (
+    <div
+      className="mt-1.5 relative w-full h-1 hover:h-2 bg-slate-100 rounded-full overflow-hidden transition-all cursor-default"
+      title={tooltipParts.join(' | ')}
+    >
+      {segments.map((seg, i) => (
+        <div
+          key={i}
+          className="absolute top-0 h-full"
+          style={{
+            left: `${seg.left}%`,
+            width: `${Math.max(seg.width, 1)}%`,
+            backgroundColor: seg.color,
+            borderRadius: i === 0 ? '9999px 0 0 9999px' : i === segments.length - 1 ? '0 9999px 9999px 0' : '0',
+          }}
+        />
+      ))}
+      {/* Due date dashed marker */}
+      {dueDate && (
+        <div
+          className="absolute top-0 h-full border-l border-dashed border-slate-500"
+          style={{ left: `${toPercent(dueDate)}%` }}
+        />
+      )}
+    </div>
+  )
 }
 
 // Draggable Card Component
@@ -101,6 +183,9 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
               </div>
             </div>
           )}
+
+          {/* Mini Timeline Bar (4px) */}
+          <MiniTimelineBar card={card} />
 
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
             {card.due_date && <span>📅 {new Date(card.due_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')}</span>}
@@ -293,6 +378,197 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
   )
 }
 
+// Schedule Timeline Bar for CardModal (large version)
+function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
+  dueDate: string
+  plannedDate: string
+  actualDate: string
+  createdAt?: string
+}) {
+  const dates: { label: string; value: Date }[] = []
+  const dueDateParsed = dueDate ? new Date(dueDate + 'T00:00:00') : null
+  const plannedParsed = plannedDate ? new Date(plannedDate + 'T00:00:00') : null
+  const actualParsed = actualDate ? new Date(actualDate + 'T00:00:00') : null
+  const createdParsed = createdAt ? new Date(createdAt.split('T')[0] + 'T00:00:00') : null
+
+  if (dueDateParsed) dates.push({ label: '截止', value: dueDateParsed })
+  if (plannedParsed) dates.push({ label: '預計', value: plannedParsed })
+  if (actualParsed) dates.push({ label: '實際', value: actualParsed })
+  if (createdParsed) dates.push({ label: '建立', value: createdParsed })
+
+  // Need at least 2 dates to show timeline
+  if (dates.length < 2) {
+    return (
+      <div className="text-xs text-slate-400 mt-2">需要至少 2 個日期才能顯示時間軸</div>
+    )
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const allTimestamps = dates.map(d => d.value.getTime())
+  allTimestamps.push(today.getTime())
+  const minTime = Math.min(...allTimestamps)
+  const maxTime = Math.max(...allTimestamps)
+  const range = maxTime - minTime || 1
+
+  const toPercent = (d: Date) => ((d.getTime() - minTime) / range) * 100
+
+  // Build segments
+  const segments: { left: number; width: number; color: string }[] = []
+
+  const startTime = createdParsed || new Date(minTime)
+
+  if (actualParsed && dueDateParsed) {
+    // Has actual completion
+    if (actualParsed <= dueDateParsed) {
+      // On time: blue from start to actual, then gray to due
+      segments.push({
+        left: toPercent(startTime),
+        width: toPercent(actualParsed) - toPercent(startTime),
+        color: '#60A5FA', // blue-400
+      })
+      segments.push({
+        left: toPercent(actualParsed),
+        width: toPercent(dueDateParsed) - toPercent(actualParsed),
+        color: '#34D399', // emerald-400
+      })
+    } else {
+      // Late: blue from start to due, red from due to actual
+      segments.push({
+        left: toPercent(startTime),
+        width: toPercent(dueDateParsed) - toPercent(startTime),
+        color: '#60A5FA', // blue-400
+      })
+      segments.push({
+        left: toPercent(dueDateParsed),
+        width: toPercent(actualParsed) - toPercent(dueDateParsed),
+        color: '#F87171', // red-400
+      })
+    }
+  } else if (plannedParsed) {
+    // In progress with planned date
+    const endPoint = plannedParsed
+    segments.push({
+      left: toPercent(startTime),
+      width: Math.min(toPercent(today), toPercent(endPoint)) - toPercent(startTime),
+      color: '#60A5FA', // blue-400
+    })
+    if (today < endPoint) {
+      segments.push({
+        left: toPercent(today),
+        width: toPercent(endPoint) - toPercent(today),
+        color: '#E2E8F0', // slate-200
+      })
+    }
+  } else if (dueDateParsed) {
+    // Only due date + created
+    segments.push({
+      left: toPercent(startTime),
+      width: Math.min(toPercent(today), toPercent(dueDateParsed)) - toPercent(startTime),
+      color: '#60A5FA',
+    })
+    if (today < dueDateParsed) {
+      segments.push({
+        left: toPercent(today),
+        width: toPercent(dueDateParsed) - toPercent(today),
+        color: '#E2E8F0',
+      })
+    }
+  }
+
+  // Date markers for labels
+  const markers = dates
+    .filter(d => d.label !== '建立')
+    .map(d => ({ label: d.label, percent: toPercent(d.value), date: d.value }))
+
+  const formatShort = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+
+  return (
+    <div className="mt-3">
+      {/* Marker labels */}
+      <div className="relative h-4 text-[10px] text-slate-500 mb-1">
+        {markers.map((m, i) => (
+          <span
+            key={i}
+            className="absolute -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `${Math.max(5, Math.min(95, m.percent))}%` }}
+          >
+            {formatShort(m.date)}
+          </span>
+        ))}
+      </div>
+      {/* Bar */}
+      <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+        {segments.map((seg, i) => (
+          <div
+            key={i}
+            className="absolute top-0 h-full"
+            style={{
+              left: `${seg.left}%`,
+              width: `${Math.max(seg.width, 0.5)}%`,
+              backgroundColor: seg.color,
+              borderRadius: i === 0 ? '9999px 0 0 9999px' : i === segments.length - 1 ? '0 9999px 9999px 0' : '0',
+            }}
+          />
+        ))}
+        {/* Due date dashed marker */}
+        {dueDateParsed && (
+          <div
+            className="absolute top-0 h-full border-l-2 border-dashed border-slate-500"
+            style={{ left: `${toPercent(dueDateParsed)}%` }}
+          />
+        )}
+      </div>
+      {/* Legend labels */}
+      <div className="relative h-4 text-[10px] text-slate-400 mt-0.5">
+        {markers.map((m, i) => (
+          <span
+            key={i}
+            className="absolute -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `${Math.max(5, Math.min(95, m.percent))}%` }}
+          >
+            {m.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Schedule summary text
+function getScheduleSummary(dueDate: string, plannedDate: string, actualDate: string): string | null {
+  if (!dueDate) return null
+  const due = new Date(dueDate + 'T00:00:00')
+
+  if (actualDate) {
+    const actual = new Date(actualDate + 'T00:00:00')
+    const diffMs = due.getTime() - actual.getTime()
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+    if (diffDays > 0) return `比截止日提前 ${diffDays} 天完成`
+    if (diffDays < 0) return `比截止日延遲 ${Math.abs(diffDays)} 天完成`
+    return '剛好在截止日完成'
+  }
+
+  if (plannedDate) {
+    const planned = new Date(plannedDate + 'T00:00:00')
+    const diffMs = due.getTime() - planned.getTime()
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+    if (diffDays > 0) return `預計比截止日提前 ${diffDays} 天完成`
+    if (diffDays < 0) return `預計比截止日延遲 ${Math.abs(diffDays)} 天`
+    return '預計在截止日當天完成'
+  }
+
+  // Only due date - show days remaining
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diffMs = due.getTime() - today.getTime()
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays > 0) return `距離截止日還有 ${diffDays} 天`
+  if (diffDays < 0) return `已超過截止日 ${Math.abs(diffDays)} 天`
+  return '今天是截止日'
+}
+
 function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Phase[], onClose: () => void, onUpdate: () => void }) {
   const [isFormReady, setIsFormReady] = useState(false)
   const [originalData, setOriginalData] = useState({
@@ -300,6 +576,8 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
     description: '',
     assignee: '',
     dueDate: '',
+    plannedDate: '',
+    actualDate: '',
     priority: 'medium' as Card['priority'],
     phase_id: null as string | null,
   })
@@ -308,10 +586,16 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
   const [description, setDescription] = useState('')
   const [assignee, setAssignee] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [plannedDate, setPlannedDate] = useState('')
+  const [actualDate, setActualDate] = useState('')
+  const [cardCreatedAt, setCardCreatedAt] = useState<string | undefined>(undefined)
   const [priority, setPriority] = useState<Card['priority']>('medium')
   const [phaseId, setPhaseId] = useState<string | null>(null)
   const [activity, setActivity] = useState<{ id: string; action: string; target: string; old_value: string; new_value: string; created_at: string }[]>([])
   const [cardSubtasks, setCardSubtasks] = useState<{ id: string; title: string; is_completed: boolean }[]>([])
+
+  // Date editing state
+  const [editingDate, setEditingDate] = useState<string | null>(null)
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -335,6 +619,8 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
         description: cardData.description || '',
         assignee: cardData.assignees?.[0]?.name || '',
         dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
+        plannedDate: cardData.planned_completion_date ? cardData.planned_completion_date.split('T')[0] : '',
+        actualDate: cardData.actual_completion_date ? cardData.actual_completion_date.split('T')[0] : '',
         priority: (cardData.priority || 'medium') as Card['priority'],
         phase_id: cardData.phase_id || null,
       }
@@ -342,6 +628,9 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
       setDescription(formData.description)
       setAssignee(formData.assignee)
       setDueDate(formData.dueDate)
+      setPlannedDate(formData.plannedDate)
+      setActualDate(formData.actualDate)
+      setCardCreatedAt(cardData.created_at)
       setPriority(formData.priority)
       setPhaseId(formData.phase_id)
       setOriginalData(formData)
@@ -373,6 +662,8 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
           description,
           assignee,
           due_date: dueDate || null,
+          planned_completion_date: plannedDate || null,
+          actual_completion_date: actualDate || null,
           priority,
           phase_id: phaseId,
         })
@@ -401,10 +692,14 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
     setDescription(originalData.description)
     setAssignee(originalData.assignee)
     setDueDate(originalData.dueDate)
+    setPlannedDate(originalData.plannedDate)
+    setActualDate(originalData.actualDate)
     setPriority(originalData.priority)
     setPhaseId(originalData.phase_id)
     onClose()
   }
+
+  const scheduleSummary = getScheduleSummary(dueDate, plannedDate, actualDate)
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
@@ -429,27 +724,139 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                 <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2" placeholder="輸入描述..." />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">指派</label>
-                  <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">截止日</label>
-                  <div className="relative flex items-center">
-                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2 pr-8" />
+              <div>
+                <label className="block text-sm font-medium mb-1">指派</label>
+                <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
+              </div>
+
+              {/* 日程安排區塊 */}
+              <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">📅 日程安排</h3>
+
+                {/* 截止日 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 w-20">截止日</span>
+                  <div className="flex-1 flex items-center gap-2">
+                    {editingDate === 'due' ? (
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={e => setDueDate(e.target.value)}
+                        onBlur={() => setEditingDate(null)}
+                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm font-medium text-slate-800">
+                        {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditingDate(editingDate === 'due' ? null : 'due')}
+                      className="text-slate-400 hover:text-slate-600 text-xs"
+                      title="編輯"
+                    >✎</button>
                     {dueDate && (
                       <button
                         type="button"
-                        onClick={() => setDueDate('')}
-                        className="absolute right-2 text-slate-400 hover:text-slate-600 text-sm leading-none"
-                        title="清除日期"
-                      >
-                        ✕
-                      </button>
+                        onClick={() => { setDueDate(''); setEditingDate(null) }}
+                        className="text-slate-400 hover:text-red-500 text-xs"
+                        title="清除"
+                      >✕</button>
                     )}
                   </div>
                 </div>
+
+                {/* 預計完成日 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 w-20">預計完成</span>
+                  <div className="flex-1 flex items-center gap-2">
+                    {editingDate === 'planned' ? (
+                      <input
+                        type="date"
+                        value={plannedDate}
+                        onChange={e => setPlannedDate(e.target.value)}
+                        onBlur={() => setEditingDate(null)}
+                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm font-medium text-slate-800">
+                        {plannedDate ? new Date(plannedDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditingDate(editingDate === 'planned' ? null : 'planned')}
+                      className="text-slate-400 hover:text-slate-600 text-xs"
+                      title="編輯"
+                    >✎</button>
+                    {plannedDate && (
+                      <button
+                        type="button"
+                        onClick={() => { setPlannedDate(''); setEditingDate(null) }}
+                        className="text-slate-400 hover:text-red-500 text-xs"
+                        title="清除"
+                      >✕</button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 實際完成日 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 w-20">實際完成</span>
+                  <div className="flex-1 flex items-center gap-2">
+                    {editingDate === 'actual' ? (
+                      <input
+                        type="date"
+                        value={actualDate}
+                        onChange={e => setActualDate(e.target.value)}
+                        onBlur={() => setEditingDate(null)}
+                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm font-medium text-slate-800">
+                        {actualDate ? new Date(actualDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditingDate(editingDate === 'actual' ? null : 'actual')}
+                      className="text-slate-400 hover:text-slate-600 text-xs"
+                      title="編輯"
+                    >✎</button>
+                    {actualDate && (
+                      <button
+                        type="button"
+                        onClick={() => { setActualDate(''); setEditingDate(null) }}
+                        className="text-slate-400 hover:text-red-500 text-xs"
+                        title="清除"
+                      >✕</button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 時間軸條 */}
+                <ScheduleTimelineBar
+                  dueDate={dueDate}
+                  plannedDate={plannedDate}
+                  actualDate={actualDate}
+                  createdAt={cardCreatedAt}
+                />
+
+                {/* 動態摘要 */}
+                {scheduleSummary && (
+                  <div className={`text-xs font-medium mt-1 ${
+                    scheduleSummary.includes('延遲') || scheduleSummary.includes('超過') ? 'text-red-500' :
+                    scheduleSummary.includes('提前') ? 'text-green-600' : 'text-slate-500'
+                  }`}>
+                    {scheduleSummary.includes('延遲') || scheduleSummary.includes('超過') ? '⚠️' :
+                     scheduleSummary.includes('提前') ? '✅' :
+                     scheduleSummary.includes('剛好') ? '✅' : '🕐'} {scheduleSummary}
+                  </div>
+                )}
               </div>
 
               {/* Priority Selector */}
@@ -939,6 +1346,40 @@ export default function BoardPage() {
     // Update local state immediately
     setColumns(newColumns)
 
+    // Auto-fill actual_completion_date when dragging to last column (Done)
+    const isLastColumn = columns[columns.length - 1]?.id === destination.droppableId
+    const wasLastColumn = columns[columns.length - 1]?.id === source.droppableId
+    const todayStr = new Date().toISOString().split('T')[0]
+
+    if (source.droppableId !== destination.droppableId) {
+      if (isLastColumn && !movedCard.actual_completion_date) {
+        // Moving to Done → auto-fill actual_completion_date
+        fetch('/api/cards/' + draggableId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: movedCard.title, actual_completion_date: todayStr })
+        }).catch(() => {})
+
+        // Optimistic update local state
+        setColumns(prev => prev.map(col => ({
+          ...col,
+          cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: todayStr } : c)
+        })))
+      } else if (wasLastColumn && movedCard.actual_completion_date) {
+        // Moving from Done back → clear actual_completion_date
+        fetch('/api/cards/' + draggableId, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: movedCard.title, actual_completion_date: null })
+        }).catch(() => {})
+
+        setColumns(prev => prev.map(col => ({
+          ...col,
+          cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: null } : c)
+        })))
+      }
+    }
+
     // Save to server
     try {
       await fetch('/api/cards/move', {
@@ -988,6 +1429,7 @@ export default function BoardPage() {
               ))}
             </div>
             <Link href="/projects" className="px-4 py-2 border rounded hover:bg-slate-50">返回專案</Link>
+            <UserNav />
           </div>
         </header>
 

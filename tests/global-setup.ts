@@ -1,10 +1,18 @@
 import { Pool } from 'pg'
 import dotenv from 'dotenv'
 import path from 'path'
+import bcrypt from 'bcryptjs'
+
+/** E2E 測試用帳號 */
+export const TEST_USER = {
+  email: 'e2e-test@example.com',
+  password: 'TestPass123!',
+  name: 'E2E Test User',
+}
 
 /**
  * Playwright Global Setup
- * 在所有測試開始前，初始化測試資料庫的 schema
+ * 在所有測試開始前，初始化測試資料庫的 schema + 建立測試用戶
  */
 export default async function globalSetup() {
   // 載入 .env.test
@@ -24,6 +32,8 @@ export default async function globalSetup() {
 
   try {
     // 清空所有表（按照依賴順序刪除）
+    await pool.query('DROP TABLE IF EXISTS notification_queue CASCADE')
+    await pool.query('DROP TABLE IF EXISTS notification_preferences CASCADE')
     await pool.query('DROP TABLE IF EXISTS activity_logs CASCADE')
     await pool.query('DROP TABLE IF EXISTS subtasks CASCADE')
     await pool.query('DROP TABLE IF EXISTS card_tags CASCADE')
@@ -36,15 +46,20 @@ export default async function globalSetup() {
     await pool.query('DROP TABLE IF EXISTS projects CASCADE')
     await pool.query('DROP TABLE IF EXISTS profiles CASCADE')
 
-    // 重新建立所有表
+    // 重新建立所有表（含 auth 欄位）
     await pool.query(`
       CREATE TABLE IF NOT EXISTS profiles (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT,
+        email TEXT UNIQUE,
+        password_hash TEXT,
         avatar_url TEXT,
         line_user_id TEXT,
         discord_user_id TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        role TEXT DEFAULT 'user',
+        is_active BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `)
 
@@ -152,7 +167,16 @@ export default async function globalSetup() {
       )
     `)
 
+    // 建立 E2E 測試用戶（is_active = true，跳過審核）
+    const passwordHash = await bcrypt.hash(TEST_USER.password, 10)
+    await pool.query(
+      `INSERT INTO profiles (name, email, password_hash, role, is_active)
+       VALUES ($1, $2, $3, 'admin', true)`,
+      [TEST_USER.name, TEST_USER.email, passwordHash]
+    )
+
     console.log('✅ [Global Setup] 測試資料庫 schema 初始化完成')
+    console.log(`✅ [Global Setup] 測試用戶已建立: ${TEST_USER.email}`)
   } catch (error) {
     console.error('❌ [Global Setup] 測試資料庫初始化失敗:', error)
     throw error

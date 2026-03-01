@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env.test') });
  * 詳細文件請參考: https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
 
   // 全域 setup：初始化測試資料庫 schema
   globalSetup: './tests/global-setup.ts',
@@ -51,26 +51,23 @@ export default defineConfig({
 
   // 測試專案配置
   projects: [
+    // 認證 setup：登入並儲存 storageState
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
     {
       name: 'chromium',
+      dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
-        // channel: 'chrome', // 改用 Playwright 內建的 Chromium 更穩定
         viewport: { width: 1920, height: 1080 },
-        // 增加導航超時
         navigationTimeout: 30 * 1000,
         actionTimeout: 15 * 1000,
+        // 使用 auth setup 儲存的認證狀態
+        storageState: 'tests/.auth/user.json',
       },
     },
-    // 可選擇性啟用其他瀏覽器
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
   ],
 
   // Web Server 配置（使用測試環境的 port 和 .env.test）
