@@ -127,7 +127,7 @@ export async function PUT(
     }
 
     // Activity log: Progress changed
-    if (oldProgress !== progress) {
+    if (progress !== undefined && oldProgress !== progress) {
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '進度', `${oldProgress}%`, `${progress}%`]

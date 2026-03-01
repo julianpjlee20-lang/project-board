@@ -37,83 +37,42 @@
 
 ---
 
-## 當前階段：LINE Login + LINE 通知 + Discord 修復
-**狀態：代碼完成 ✅（待設定環境變數）**
-**計畫檔：** `~/.claude/plans/fuzzy-plotting-coral.md`
+## Auth：帳密登入 + Discord OAuth
+**狀態：已完成 ✅**
 
-### 前置作業（手動）
-- [ ] 1. LINE Developers Console 建立 LINE Login Channel → 取得 Channel ID + Secret
-- [ ] 2. LINE Developers Console 建立 Messaging API Channel → 取得 Channel Access Token
-- [ ] 3. Login Channel 設定 Callback URL + bot_prompt=aggressive
-- [ ] 4. 設定環境變數到 `.env`
-- [ ] 5. （可選）Discord Developer Portal 設定 Client ID/Secret
-
-### Phase 1：DB Schema 更新
-- [x] 6. profiles 加 line_display_name, line_picture_url (`src/app/api/projects/route.ts`)
-- [x] 7. 新增 notification_preferences 表 (`src/app/api/projects/route.ts`)
-- [x] 8. 新增 notification_queue 表 (`src/app/api/projects/route.ts`)
-
-### Phase 2：LINE Login + Auth 共用層
-- [x] 9. getCurrentUser() helper (`src/lib/auth.ts` 新檔案)
-- [x] 10. LINE OAuth 啟動 (`src/app/api/auth/line/route.ts` 新檔案)
-- [x] 11. LINE OAuth 回調 (`src/app/api/auth/line/callback/route.ts` 新檔案)
-- [x] 12. 取得當前使用者 API (`src/app/api/auth/me/route.ts` 新檔案)
-- [x] 13. 登出 API (`src/app/api/auth/logout/route.ts` 新檔案)
-- [x] 14. Discord redirect URI 改用環境變數 (`src/app/api/auth/discord/`)
-
-### Phase 3：登入頁 UI
-- [x] 15. LINE 為主按鈕 + Discord 備選 + 錯誤訊息 (`src/app/login/page.tsx`)
-
-### Phase 4：LINE 通知後端
-- [x] 16. LINE Messaging API Flex Message 推播 (`src/lib/line-messaging.ts` 新檔案)
-- [x] 17. 統一通知分發器 (`src/lib/notifications.ts` 新檔案)
-- [x] 18. 替換 sendDiscordNotification → sendNotification (`src/app/api/cards/[id]/route.ts`)
-- [x] 19. notificationPreferencesSchema (`src/lib/validations.ts`)
-
-### Phase 5：通知管理 API
-- [x] 20. 通知偏好 CRUD (`src/app/api/notifications/preferences/route.ts` 新檔案)
-- [x] 21. 佇列摘要發送 (`src/app/api/notifications/flush/route.ts` 新檔案)
+- [x] 1. 安裝 bcryptjs 依賴
+- [x] 2. `src/auth.ts` — Credentials + Discord provider（雙登入模式）
+- [x] 3. `src/app/api/auth/register/route.ts` — 註冊 API（Zod 驗證 + bcrypt）
+- [x] 4. `src/lib/validations.ts` — 新增 `registerSchema`
+- [x] 5. `src/app/login/page.tsx` — 帳密表單 + Discord 按鈕
+- [x] 6. Discord OAuth 已測試通過 ✅
+- [x] 7. Build 驗證 ✅
 
 ---
 
-## 當前階段：Auth.js v5 遷移（手寫 OAuth → Auth.js）
-**狀態：開發完成，待驗證**
-**計畫檔：** `~/.claude/plans/mossy-gliding-quokka.md`
+## 暫緩功能（未來 Feature）
 
-### 目標
-- 手寫 OAuth（~300 行）→ Auth.js v5 JWT 模式（~150 行）
-- Session 驗證不再打 DB（JWT 內嵌 profileId）
-- 加 proxy 保護寫入操作（未登入可唯讀瀏覽）— Next.js 16+ 用 `proxy.ts`
-- 架構支援未來擴展 Google / Facebook provider
-- 帳號連結：手動連結模式（設定頁面）
+### LINE Login
+**狀態：暫緩 ⏸️**
+**技術備忘：** `memory/decisions/auth-simplification.md`
 
-### Step 1：安裝 + 環境變數
-- [x] 1. `pnpm add next-auth@beta` + 設定 `AUTH_SECRET` 等環境變數
+- [ ] LINE Developers Console 設定（Channel ID/Secret/Callback URL）
+- [ ] `src/auth.ts` 加回 LINE provider
+- [ ] 登入頁加回 LINE 按鈕
 
-### Step 2：Auth.js 核心設定
-- [x] 2. 新增 `src/auth.ts` — providers（Discord 內建 + LINE 自訂）、JWT/session callbacks、signIn upsert 邏輯
-- [x] 3. 新增 `src/types/next-auth.d.ts` — TypeScript 型別擴展（profileId、provider）
+### LINE 通知系統
+**狀態：代碼已完成，待 LINE Login 啟用後驗證 ⏸️**
 
-### Step 3：Route Handler + Proxy
-- [x] 4. 新增 `src/app/api/auth/[...nextauth]/route.ts` — catch-all handler
-- [x] 5. 新增 `src/proxy.ts` — GET 放行、POST/PUT/PATCH/DELETE 需登入（Next.js 16+ 用 proxy.ts）
+- [x] LINE Messaging API Flex Message 推播 (`src/lib/line-messaging.ts`)
+- [x] 統一通知分發器 (`src/lib/notifications.ts`)
+- [x] 通知偏好 CRUD (`src/app/api/notifications/preferences/route.ts`)
+- [x] 佇列摘要發送 (`src/app/api/notifications/flush/route.ts`)
+- [ ] LINE 通知端對端驗證
 
-### Step 4：替換 getCurrentUser()
-- [x] 6. 修改 `src/lib/auth.ts` — 改用 `auth()` 從 JWT 取得 profileId（不查 DB）
-- [x] 7. 新增 `getFullProfile()` helper — 通知系統需要時才查 DB 取 line_user_id
+---
 
-### Step 5：更新前端
-- [x] 8. 修改 `src/app/login/page.tsx` — 改用 `signIn("line")` / `signIn("discord")`
-
-### Step 6：DB Schema + 清理
-- [x] 9. profiles 表加 `email`、`google_id`、`facebook_id` 欄位（為未來 provider 準備）
-- [x] 10. 清空舊 auth 檔案內容（discord/、line/、logout/ 共 5 檔）+ me/ 改用 auth()
-- [x] 11. 更新 `.env.example`
-
-### 驗證
-- [x] 12. Build 驗證 ✅（`pnpm run build` 成功，TypeScript 編譯無錯誤）
-- [x] 13. Lint 驗證 ✅（ESLint 僅 12 個警告，0 個錯誤）
-- [ ] 14. LINE + Discord OAuth 流程正常（待手動環境變數設定）
-- [ ] 15. 未登入可瀏覽、寫入操作回 401（待 E2E 測試驗證）
-- [ ] 16. 通知系統正常運作（待 E2E 測試驗證）
-- [ ] 17. Playwright E2E 無回歸
+## 待驗證項目
+- [x] Discord OAuth 登入流程 ✅
+- [ ] 帳密登入/註冊流程正常
+- [ ] 未登入可瀏覽、寫入操作回 401
+- [ ] Playwright E2E 無回歸

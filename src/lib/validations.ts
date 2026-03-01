@@ -159,6 +159,17 @@ export const notificationPreferencesSchema = z.object({
 })
 
 // ========================================
+// Auth 驗證
+// ========================================
+
+/** POST /api/auth/register - 註冊帳號 */
+export const registerSchema = z.object({
+  email: z.string().email({ message: '請輸入有效的 Email' }),
+  password: z.string().min(6, { message: '密碼至少 6 個字元' }).max(100),
+  name: z.string().max(100).optional().or(z.literal('')),
+})
+
+// ========================================
 // 通用驗證輔助函數
 // ========================================
 
