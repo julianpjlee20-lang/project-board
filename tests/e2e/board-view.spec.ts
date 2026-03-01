@@ -1,29 +1,34 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('看板視圖', () => {
-  let projectUrl: string
+  let projectId: string
 
-  test.beforeEach(async ({ page }) => {
-    // 建立一個測試專案
-    await page.goto('/projects')
-    const projectName = `Board測試 ${Date.now()}`
-    await page.getByPlaceholder('輸入新專案名稱...').fill(projectName)
-    await page.getByRole('button', { name: '建立' }).click()
-    await expect(page.getByText(projectName)).toBeVisible({ timeout: 10000 })
+  test.beforeAll(async ({ request }) => {
+    // 透過 API 建立共用測試專案
+    const res = await request.post('/api/projects', {
+      data: { name: `Board測試 ${Date.now()}` }
+    })
+    expect(res.ok()).toBeTruthy()
+    const project = await res.json()
+    projectId = project.id
+  })
 
-    // 進入專案
-    await page.getByText(projectName).click()
-    await page.waitForURL(/\/projects\/[\w-]+/)
-    projectUrl = page.url()
+  test.afterAll(async ({ request }) => {
+    // 清理測試專案（CASCADE 會刪除相關欄位、卡片等）
+    if (projectId) {
+      await request.delete(`/api/projects/${projectId}`)
+    }
   })
 
   test('應顯示預設三個欄位 (To Do, In Progress, Done)', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
     await expect(page.getByText('To Do')).toBeVisible()
     await expect(page.getByText('In Progress')).toBeVisible()
     await expect(page.getByText('Done')).toBeVisible()
   })
 
   test('應能新增欄位', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
     const columnName = `新欄位 ${Date.now()}`
     await page.getByPlaceholder('新欄位名稱...').fill(columnName)
     await page.getByPlaceholder('新欄位名稱...').press('Enter')
@@ -32,6 +37,7 @@ test.describe('看板視圖', () => {
   })
 
   test('應能新增卡片到欄位', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
     // 點擊第一個欄位的「+ 新增卡片」
     await page.locator('text=+ 新增卡片').first().click()
 
@@ -44,6 +50,7 @@ test.describe('看板視圖', () => {
   })
 
   test('應能切換四種視圖', async ({ page }) => {
+    await page.goto(`/projects/${projectId}`)
     // Board 視圖（預設）
     await expect(page.getByText('To Do')).toBeVisible()
 

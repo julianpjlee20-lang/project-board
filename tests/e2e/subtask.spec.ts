@@ -1,15 +1,26 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('子任務 API', () => {
-  test('應能建立、更新、刪除子任務', async ({ request }) => {
-    // 建立測試專案
-    const projectRes = await request.post('/api/projects', {
+  let projectId: string
+
+  test.beforeAll(async ({ request }) => {
+    // 透過 API 建立共用測試專案
+    const res = await request.post('/api/projects', {
       data: { name: `子任務測試 ${Date.now()}` }
     })
-    const project = await projectRes.json()
+    const project = await res.json()
+    projectId = project.id
+  })
 
+  test.afterAll(async ({ request }) => {
+    if (projectId) {
+      await request.delete(`/api/projects/${projectId}`)
+    }
+  })
+
+  test('應能建立、更新、刪除子任務', async ({ request }) => {
     // 取得欄位
-    const columnsRes = await request.get(`/api/projects/${project.id}/columns`)
+    const columnsRes = await request.get(`/api/projects/${projectId}/columns`)
     const columns = await columnsRes.json()
 
     // 建立卡片

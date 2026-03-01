@@ -1,16 +1,27 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('卡片移動', () => {
-  test('應能透過 API 移動卡片', async ({ request, page }) => {
-    // 建立測試專案
-    const projectRes = await request.post('/api/projects', {
+  let projectId: string
+
+  test.beforeAll(async ({ request }) => {
+    // 透過 API 建立共用測試專案
+    const res = await request.post('/api/projects', {
       data: { name: `移動測試 ${Date.now()}` }
     })
-    expect(projectRes.ok()).toBeTruthy()
-    const project = await projectRes.json()
+    expect(res.ok()).toBeTruthy()
+    const project = await res.json()
+    projectId = project.id
+  })
 
+  test.afterAll(async ({ request }) => {
+    if (projectId) {
+      await request.delete(`/api/projects/${projectId}`)
+    }
+  })
+
+  test('應能透過 API 移動卡片', async ({ request }) => {
     // 取得欄位
-    const columnsRes = await request.get(`/api/projects/${project.id}/columns`)
+    const columnsRes = await request.get(`/api/projects/${projectId}/columns`)
     expect(columnsRes.ok()).toBeTruthy()
     const columns = await columnsRes.json()
     expect(columns.length).toBeGreaterThanOrEqual(3)
@@ -42,7 +53,7 @@ test.describe('卡片移動', () => {
     expect(moveRes.ok()).toBeTruthy()
 
     // 驗證卡片已移動
-    const updatedColumnsRes = await request.get(`/api/projects/${project.id}/columns`)
+    const updatedColumnsRes = await request.get(`/api/projects/${projectId}/columns`)
     const updatedColumns = await updatedColumnsRes.json()
 
     const updatedInProgress = updatedColumns.find((c: { name: string }) => c.name === 'In Progress')

@@ -1,31 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { updateCardSchema, validateData } from '@/lib/validations'
-
-// Discord webhook URL (from env)
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
-
-// Send Discord notification
-async function sendDiscordNotification(cardTitle: string, action: string, projectName: string) {
-  if (!DISCORD_WEBHOOK_URL) return
-  
-  try {
-    await fetch(DISCORD_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        embeds: [{
-          title: `📋 ${projectName}`,
-          description: `**${action}**: ${cardTitle}`,
-          color: 0x316745,
-          timestamp: new Date().toISOString()
-        }]
-      })
-    })
-  } catch (e) {
-    console.error('Discord notification failed:', e)
-  }
-}
+import { sendNotification } from '@/lib/notifications'
 
 // GET /api/cards/[id]
 export async function GET(
@@ -135,7 +111,11 @@ export async function PUT(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '標題', oldTitle, title]
       )
-      await sendDiscordNotification(title ?? oldTitle ?? '', '更新標題', projectName)
+      await sendNotification({
+        cardTitle: title ?? oldTitle ?? '',
+        action: '更新標題',
+        projectName,
+      })
     }
 
     // Activity log: Description changed
@@ -225,7 +205,11 @@ export async function PUT(
             [projectId, id, '指派', '負責人', oldAssigneeName, assignee]
           )
           
-          await sendDiscordNotification(title ?? oldTitle ?? '', `指派給 ${assignee}`, projectName)
+          await sendNotification({
+            cardTitle: title ?? oldTitle ?? '',
+            action: `指派給 ${assignee}`,
+            projectName,
+          })
         }
       }
     }

@@ -196,6 +196,39 @@ export async function PUT() {
       )
     `)
 
+    // 新增 profiles 欄位（LINE 登入用）
+    await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_display_name TEXT`)
+    await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_picture_url TEXT`)
+
+    // 建立通知偏好表
+    await query(`
+      CREATE TABLE IF NOT EXISTS notification_preferences (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+        notify_assigned BOOLEAN DEFAULT TRUE,
+        notify_due_soon BOOLEAN DEFAULT TRUE,
+        notify_title_changed BOOLEAN DEFAULT FALSE,
+        notify_moved BOOLEAN DEFAULT FALSE,
+        quiet_hours_start INTEGER,
+        quiet_hours_end INTEGER,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(user_id)
+      )
+    `)
+
+    // 建立通知佇列表
+    await query(`
+      CREATE TABLE IF NOT EXISTS notification_queue (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+        project_name TEXT NOT NULL,
+        card_title TEXT NOT NULL,
+        action TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        sent BOOLEAN DEFAULT FALSE
+      )
+    `)
+
     // Add new columns if tables exist (for existing data)
     try {
       await query("ALTER TABLE projects ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'")

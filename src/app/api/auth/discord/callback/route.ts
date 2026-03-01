@@ -3,7 +3,7 @@ import { query } from '@/lib/db'
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET
-const REDIRECT_URI = 'https://project-board.zeabur.app/api/auth/discord/callback'
+const REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || 'http://localhost:3000/api/auth/discord/callback'
 
 // GET /api/auth/discord/callback - Handle OAuth callback
 export async function GET(request: NextRequest) {

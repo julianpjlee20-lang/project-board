@@ -145,6 +145,20 @@ export const createProjectSchema = z.object({
 })
 
 // ========================================
+// Notification Preferences 驗證
+// ========================================
+
+/** PUT /api/notifications/preferences - 更新通知偏好 */
+export const notificationPreferencesSchema = z.object({
+  notify_assigned: z.boolean().optional(),
+  notify_title_changed: z.boolean().optional(),
+  notify_due_soon: z.boolean().optional(),
+  notify_moved: z.boolean().optional(),
+  quiet_hours_start: z.number().int().min(0).max(23).nullable().optional(),
+  quiet_hours_end: z.number().int().min(0).max(23).nullable().optional(),
+})
+
+// ========================================
 // 通用驗證輔助函數
 // ========================================
 
