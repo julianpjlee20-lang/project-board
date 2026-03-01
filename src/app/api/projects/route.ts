@@ -200,6 +200,11 @@ export async function PUT() {
     await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_display_name TEXT`)
     await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_picture_url TEXT`)
 
+    // 新增 profiles 欄位（Auth.js v5 + 未來 provider 擴展用）
+    await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT`)
+    await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS google_id TEXT`)
+    await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS facebook_id TEXT`)
+
     // 建立通知偏好表
     await query(`
       CREATE TABLE IF NOT EXISTS notification_preferences (
