@@ -1,11 +1,11 @@
 {
   "$schema": "https://zeabur.com/zeabur.json",
   "build": {
-    "command": "npm run build",
+    "command": "pnpm run build",
     "output": ".next"
   },
   "framework": "nextjs",
-  "installCommand": "npm install",
-  "startCommand": "npm run start",
+  "installCommand": "pnpm install",
+  "startCommand": "pnpm run start",
   "outputDirectory": ".next"
 }
