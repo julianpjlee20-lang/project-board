@@ -2,9 +2,17 @@
 
 import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 
 const ERROR_MESSAGES: Record<string, string> = {
+  OAuthSignin: 'OAuth 登入請求失敗，請重試',
+  OAuthCallback: 'OAuth 回調處理失敗',
+  OAuthAccountNotLinked: '此帳號已與其他登入方式綁定',
+  OAuthCallbackError: 'OAuth 回調發生錯誤',
+  Callback: '登入回調處理失敗',
+  AccessDenied: '存取被拒絕',
+  Configuration: '伺服器設定錯誤，請聯繫管理員',
   invalid_state: '登入驗證失敗，請重試',
   token_failed: 'Token 取得失敗',
   verify_failed: '身份驗證失敗',
@@ -22,12 +30,12 @@ function LoginContent() {
 
   const handleLineLogin = () => {
     setLoading(true)
-    window.location.href = '/api/auth/line'
+    signIn('line', { callbackUrl: '/projects' })
   }
 
   const handleDiscordLogin = () => {
     setLoading(true)
-    window.location.href = '/api/auth/discord'
+    signIn('discord', { callbackUrl: '/projects' })
   }
 
   return (

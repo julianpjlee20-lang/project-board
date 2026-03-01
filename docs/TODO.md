@@ -76,42 +76,44 @@
 
 ---
 
-## 下一階段：Auth.js v5 遷移（手寫 OAuth → Auth.js）
-**狀態：規劃完成，待實作**
+## 當前階段：Auth.js v5 遷移（手寫 OAuth → Auth.js）
+**狀態：開發完成，待驗證**
 **計畫檔：** `~/.claude/plans/mossy-gliding-quokka.md`
 
 ### 目標
 - 手寫 OAuth（~300 行）→ Auth.js v5 JWT 模式（~150 行）
 - Session 驗證不再打 DB（JWT 內嵌 profileId）
-- 加 middleware 保護寫入操作（未登入可唯讀瀏覽）
+- 加 proxy 保護寫入操作（未登入可唯讀瀏覽）— Next.js 16+ 用 `proxy.ts`
 - 架構支援未來擴展 Google / Facebook provider
 - 帳號連結：手動連結模式（設定頁面）
 
 ### Step 1：安裝 + 環境變數
-- [ ] 1. `pnpm add next-auth@beta` + 設定 `AUTH_SECRET` 等環境變數
+- [x] 1. `pnpm add next-auth@beta` + 設定 `AUTH_SECRET` 等環境變數
 
 ### Step 2：Auth.js 核心設定
-- [ ] 2. 新增 `src/auth.ts` — providers（Discord 內建 + LINE 自訂）、JWT/session callbacks、signIn upsert 邏輯
-- [ ] 3. 新增 `src/types/next-auth.d.ts` — TypeScript 型別擴展（profileId、provider）
+- [x] 2. 新增 `src/auth.ts` — providers（Discord 內建 + LINE 自訂）、JWT/session callbacks、signIn upsert 邏輯
+- [x] 3. 新增 `src/types/next-auth.d.ts` — TypeScript 型別擴展（profileId、provider）
 
-### Step 3：Route Handler + Middleware
-- [ ] 4. 新增 `src/app/api/auth/[...nextauth]/route.ts` — catch-all handler
-- [ ] 5. 新增 `src/middleware.ts` — GET 放行、POST/PUT/PATCH/DELETE 需登入
+### Step 3：Route Handler + Proxy
+- [x] 4. 新增 `src/app/api/auth/[...nextauth]/route.ts` — catch-all handler
+- [x] 5. 新增 `src/proxy.ts` — GET 放行、POST/PUT/PATCH/DELETE 需登入（Next.js 16+ 用 proxy.ts）
 
 ### Step 4：替換 getCurrentUser()
-- [ ] 6. 修改 `src/lib/auth.ts` — 改用 `auth()` 從 JWT 取得 profileId（不查 DB）
-- [ ] 7. 新增 `getFullProfile()` helper — 通知系統需要時才查 DB 取 line_user_id
+- [x] 6. 修改 `src/lib/auth.ts` — 改用 `auth()` 從 JWT 取得 profileId（不查 DB）
+- [x] 7. 新增 `getFullProfile()` helper — 通知系統需要時才查 DB 取 line_user_id
 
 ### Step 5：更新前端
-- [ ] 8. 修改 `src/app/login/page.tsx` — 改用 `signIn("line")` / `signIn("discord")`
+- [x] 8. 修改 `src/app/login/page.tsx` — 改用 `signIn("line")` / `signIn("discord")`
 
 ### Step 6：DB Schema + 清理
-- [ ] 9. profiles 表加 `email`、`google_id`、`facebook_id` 欄位（為未來 provider 準備）
-- [ ] 10. 刪除舊 auth 檔案（discord/、line/、logout/、me/ 共 5 檔）
-- [ ] 11. 更新 `.env.example`、`CLAUDE.md`
+- [x] 9. profiles 表加 `email`、`google_id`、`facebook_id` 欄位（為未來 provider 準備）
+- [x] 10. 清空舊 auth 檔案內容（discord/、line/、logout/ 共 5 檔）+ me/ 改用 auth()
+- [x] 11. 更新 `.env.example`
 
 ### 驗證
-- [ ] 12. LINE + Discord OAuth 流程正常
-- [ ] 13. 未登入可瀏覽、寫入操作回 401
-- [ ] 14. 通知系統正常運作
-- [ ] 15. `pnpm run build` + Playwright E2E 無回歸
+- [x] 12. Build 驗證 ✅（`pnpm run build` 成功，TypeScript 編譯無錯誤）
+- [x] 13. Lint 驗證 ✅（ESLint 僅 12 個警告，0 個錯誤）
+- [ ] 14. LINE + Discord OAuth 流程正常（待手動環境變數設定）
+- [ ] 15. 未登入可瀏覽、寫入操作回 401（待 E2E 測試驗證）
+- [ ] 16. 通知系統正常運作（待 E2E 測試驗證）
+- [ ] 17. Playwright E2E 無回歸
