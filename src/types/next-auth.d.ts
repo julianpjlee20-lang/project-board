@@ -5,6 +5,7 @@ declare module "next-auth" {
     user: {
       profileId: string
       provider: string
+      role: string
     } & DefaultSession["user"]
   }
 }
@@ -14,5 +15,6 @@ declare module "next-auth/jwt" {
     profileId?: string
     provider?: string
     providerAccountId?: string
+    role?: string
   }
 }

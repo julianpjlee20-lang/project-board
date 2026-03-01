@@ -34,14 +34,14 @@ export async function POST(request: NextRequest) {
     // 密碼雜湊
     const passwordHash = await bcrypt.hash(password, 12)
 
-    // 建立帳號
+    // 建立帳號（預設 role='user'、is_active=false，需管理員審核）
     const rows = await query(
-      "INSERT INTO profiles (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id",
+      "INSERT INTO profiles (name, email, password_hash, role, is_active) VALUES ($1, $2, $3, 'user', false) RETURNING id",
       [name || null, email, passwordHash]
     )
 
     return NextResponse.json(
-      { message: "註冊成功", profileId: rows[0].id },
+      { message: "註冊成功，請等待管理員審核後再登入", profileId: rows[0].id },
       { status: 201 }
     )
   } catch (error) {

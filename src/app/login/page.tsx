@@ -3,10 +3,10 @@
 import { useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import Link from 'next/link'
 
 const ERROR_MESSAGES: Record<string, string> = {
   CredentialsSignin: 'Email 或密碼錯誤',
+  AccountInactive: '帳號尚未啟用，請聯繫管理員',
   OAuthSignin: 'OAuth 登入請求失敗，請重試',
   OAuthCallback: 'OAuth 回調處理失敗',
   OAuthAccountNotLinked: '此帳號已與其他登入方式綁定',
@@ -71,19 +71,9 @@ function LoginContent() {
         return
       }
 
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        setSuccess('註冊成功！請登入')
-        setIsRegister(false)
-        setLoading(false)
-      } else {
-        router.push('/projects')
-      }
+      setSuccess('帳號已建立，請等待管理員審核後再登入')
+      setIsRegister(false)
+      setLoading(false)
     } catch {
       setError('註冊失敗，請稍後再試')
       setLoading(false)
@@ -188,11 +178,6 @@ function LoginContent() {
         用 Discord 登入
       </button>
 
-      <div className="mt-6">
-        <Link href="/projects" className="text-sm text-slate-400 hover:underline">
-          略過登入 →
-        </Link>
-      </div>
     </div>
   )
 }

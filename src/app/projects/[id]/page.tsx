@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import Link from 'next/link'
 import { ListView, CalendarView, ProgressView } from './views'
 import type { Card, Column, Project, ViewType, Phase } from './types'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 // Priority color mapping
 const PRIORITY_COLORS: Record<Card['priority'], string> = {
@@ -124,10 +126,18 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
   const [subtasks, setSubtasks] = useState(initialSubtasks || [])
   const [newTitle, setNewTitle] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setSubtasks(initialSubtasks || [])
   }, [initialSubtasks])
+
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    }
+  }, [])
 
   const completedCount = subtasks.filter(s => s.is_completed).length
   const totalCount = subtasks.length
@@ -239,10 +249,25 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
             </span>
             {hoveredId === subtask.id && (
               <button
-                onClick={() => deleteSubtask(subtask.id)}
-                className="text-slate-400 hover:text-red-500 text-xs px-1"
+                onClick={() => {
+                  if (pendingDeleteId === subtask.id) {
+                    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+                    setPendingDeleteId(null)
+                    deleteSubtask(subtask.id)
+                  } else {
+                    setPendingDeleteId(subtask.id)
+                    deleteTimerRef.current = setTimeout(() => {
+                      setPendingDeleteId(null)
+                    }, 1500)
+                  }
+                }}
+                className={`text-xs px-1 transition-colors ${
+                  pendingDeleteId === subtask.id
+                    ? 'text-red-600 font-medium'
+                    : 'text-slate-400 hover:text-red-500'
+                }`}
               >
-                ✕
+                {pendingDeleteId === subtask.id ? '確認？' : '✕'}
               </button>
             )}
           </div>
@@ -603,6 +628,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#6366F1')
+  const [pendingDeletePhase, setPendingDeletePhase] = useState<Phase | null>(null)
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault()
@@ -617,7 +643,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
   const presetColors = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444', '#06B6D4']
 
   return (
-    <div className="flex items-center gap-2 px-6 py-2 bg-white border-b overflow-x-auto">
+    <div className="flex flex-wrap items-center gap-2 px-6 py-2 bg-white border-b max-h-28 overflow-y-auto">
       {/* "All" button */}
       <button
         onClick={() => onSelect(null)}
@@ -656,9 +682,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
           <button
             onClick={(e) => {
               e.stopPropagation()
-              if (confirm(`確定要刪除階段「${phase.name}」嗎？`)) {
-                onDeletePhase(phase.id)
-              }
+              setPendingDeletePhase(phase)
             }}
             className="hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-500 hover:bg-red-200 text-xs ml-1"
           >
@@ -699,6 +723,37 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
           + 新增階段
         </button>
       )}
+
+      <Dialog open={pendingDeletePhase !== null} onOpenChange={(open) => { if (!open) setPendingDeletePhase(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>刪除階段</DialogTitle>
+            <DialogDescription>
+              確定要刪除階段「{pendingDeletePhase?.name}」嗎？此操作無法復原。
+            </DialogDescription>
+          </DialogHeader>
+          {pendingDeletePhase && pendingDeletePhase.total_cards > 0 && (
+            <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+              <p className="font-medium">⚠ 此階段包含 {pendingDeletePhase.total_cards} 個任務</p>
+              <p className="mt-1 text-amber-700">刪除後這些任務將失去階段標記，但任務本身不會被刪除。</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDeletePhase(null)}>取消</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (pendingDeletePhase) {
+                  onDeletePhase(pendingDeletePhase.id)
+                  setPendingDeletePhase(null)
+                }
+              }}
+            >
+              確認刪除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

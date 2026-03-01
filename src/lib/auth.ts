@@ -1,11 +1,13 @@
 import { auth } from "@/auth"
 import { query } from "./db"
+import { NextResponse } from "next/server"
 
 export interface CurrentUser {
   id: string
   name: string | null
   avatar_url: string | null
   provider: string | null
+  role: string
 }
 
 /**
@@ -20,7 +22,41 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: session.user.name ?? null,
     avatar_url: session.user.image ?? null,
     provider: session.user.provider ?? null,
+    role: session.user.role ?? 'user',
   }
+}
+
+/**
+ * 認證錯誤類別
+ */
+export class AuthError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+/**
+ * 要求登入，未登入則拋出 AuthError
+ */
+export async function requireAuth(): Promise<CurrentUser> {
+  const user = await getCurrentUser()
+  if (!user) {
+    throw new AuthError('未登入', 401)
+  }
+  return user
+}
+
+/**
+ * 要求管理員權限，非管理員則拋出 AuthError
+ */
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await requireAuth()
+  if (user.role !== 'admin') {
+    throw new AuthError('權限不足', 403)
+  }
+  return user
 }
 
 /**

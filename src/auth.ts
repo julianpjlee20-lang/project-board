@@ -30,6 +30,23 @@ export async function ensureProfilesTable() {
       END IF;
     END $$
   `)
+
+  // 角色與審核欄位
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`)
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT FALSE`)
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`)
+
+  // 遷移：讓現有帳號不受影響（已存在的帳號自動啟用）
+  await query(`UPDATE profiles SET is_active = true WHERE is_active IS NULL`)
+
+  // ADMIN_EMAIL 機制：自動設定管理員
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (adminEmail) {
+    await query(
+      `UPDATE profiles SET role = 'admin', is_active = true WHERE email = $1`,
+      [adminEmail]
+    )
+  }
 }
 
 export const authConfig: NextAuthConfig = {
@@ -47,7 +64,7 @@ export const authConfig: NextAuthConfig = {
         await ensureProfilesTable()
 
         const rows = await query(
-          "SELECT id, name, email, password_hash, avatar_url FROM profiles WHERE email = $1",
+          "SELECT id, name, email, password_hash, avatar_url, role, is_active FROM profiles WHERE email = $1",
           [email]
         )
         if (rows.length === 0) return null
@@ -58,11 +75,15 @@ export const authConfig: NextAuthConfig = {
         const valid = await bcrypt.compare(password, user.password_hash)
         if (!valid) return null
 
+        // 帳號未啟用（待審核）
+        if (user.is_active === false) return null
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.avatar_url,
+          role: user.role || 'user',
         }
       },
     }),
@@ -90,7 +111,7 @@ export const authConfig: NextAuthConfig = {
 
           if (existing.length === 0) {
             await query(
-              "INSERT INTO profiles (name, avatar_url, discord_user_id) VALUES ($1, $2, $3)",
+              "INSERT INTO profiles (name, avatar_url, discord_user_id, role, is_active) VALUES ($1, $2, $3, 'user', false)",
               [user.name, user.image, providerAccountId]
             )
           } else {
@@ -114,15 +135,17 @@ export const authConfig: NextAuthConfig = {
         // Credentials：user.id 就是 profileId
         token.profileId = user.id
         token.provider = "credentials"
+        token.role = (user as any).role || 'user'
       } else if (account?.provider === "discord") {
-        // Discord：從 DB 查 profileId
+        // Discord：從 DB 查 profileId 和 role
         const rows = await query(
-          "SELECT id FROM profiles WHERE discord_user_id = $1",
+          "SELECT id, role FROM profiles WHERE discord_user_id = $1",
           [account.providerAccountId]
         )
         if (rows.length > 0) {
           token.profileId = rows[0].id
           token.provider = "discord"
+          token.role = rows[0].role || 'user'
         }
       }
       return token
@@ -133,6 +156,7 @@ export const authConfig: NextAuthConfig = {
         session.user.profileId = token.profileId as string
         session.user.provider = token.provider as string
       }
+      session.user.role = (token.role as string) || 'user'
       return session
     },
   },
