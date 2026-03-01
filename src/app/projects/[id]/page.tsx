@@ -6,6 +6,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import Link from 'next/link'
 import UserNav from '@/components/UserNav'
 import { ListView, CalendarView, ProgressView } from './views'
+import { GanttView } from './gantt'
 import type { Card, Column, Project, ViewType, Phase } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -39,7 +40,8 @@ function MiniTimelineBar({ card }: { card: Card }) {
   const allDates = [dueDate, plannedDate, actualDate, today].filter((d): d is Date => d !== null)
   const minTime = Math.min(...allDates.map(d => d.getTime()))
   const maxTime = Math.max(...allDates.map(d => d.getTime()))
-  const range = maxTime - minTime || 1
+  const range = maxTime - minTime
+  if (range === 0) return null
   const toPercent = (d: Date) => ((d.getTime() - minTime) / range) * 100
 
   const segments: { left: number; width: number; color: string }[] = []
@@ -188,7 +190,14 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
           <MiniTimelineBar card={card} />
 
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-            {card.due_date && <span>📅 {new Date(card.due_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')}</span>}
+            {(card.start_date || card.due_date) && (
+              <span>📅 {card.start_date && card.due_date
+                ? `${new Date(card.start_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')} ~ ${new Date(card.due_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')}`
+                : card.start_date
+                  ? new Date(card.start_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')
+                  : new Date(card.due_date!.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')
+              }</span>
+            )}
             {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
             {totalSubtasks > 0 && (
               <span className={completedSubtasks === totalSubtasks ? 'text-green-600' : ''}>
@@ -575,6 +584,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
     title: '',
     description: '',
     assignee: '',
+    startDate: '',
     dueDate: '',
     plannedDate: '',
     actualDate: '',
@@ -585,6 +595,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assignee, setAssignee] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [plannedDate, setPlannedDate] = useState('')
   const [actualDate, setActualDate] = useState('')
@@ -618,6 +629,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
         title: cardData.title,
         description: cardData.description || '',
         assignee: cardData.assignees?.[0]?.name || '',
+        startDate: cardData.start_date ? cardData.start_date.split('T')[0] : '',
         dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
         plannedDate: cardData.planned_completion_date ? cardData.planned_completion_date.split('T')[0] : '',
         actualDate: cardData.actual_completion_date ? cardData.actual_completion_date.split('T')[0] : '',
@@ -627,6 +639,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
       setTitle(formData.title)
       setDescription(formData.description)
       setAssignee(formData.assignee)
+      setStartDate(formData.startDate)
       setDueDate(formData.dueDate)
       setPlannedDate(formData.plannedDate)
       setActualDate(formData.actualDate)
@@ -661,6 +674,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
           title,
           description,
           assignee,
+          start_date: startDate || null,
           due_date: dueDate || null,
           planned_completion_date: plannedDate || null,
           actual_completion_date: actualDate || null,
@@ -691,6 +705,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
     setTitle(originalData.title)
     setDescription(originalData.description)
     setAssignee(originalData.assignee)
+    setStartDate(originalData.startDate)
     setDueDate(originalData.dueDate)
     setPlannedDate(originalData.plannedDate)
     setActualDate(originalData.actualDate)
@@ -732,6 +747,41 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
               {/* 日程安排區塊 */}
               <div className="bg-slate-50 rounded-lg p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">📅 日程安排</h3>
+
+                {/* 開始日 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 w-20">開始日</span>
+                  <div className="flex-1 flex items-center gap-2">
+                    {editingDate === 'start' ? (
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={e => setStartDate(e.target.value)}
+                        onBlur={() => setEditingDate(null)}
+                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        autoFocus
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm font-medium text-slate-800">
+                        {startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditingDate(editingDate === 'start' ? null : 'start')}
+                      className="text-slate-400 hover:text-slate-600 text-xs"
+                      title="編輯"
+                    >✎</button>
+                    {startDate && (
+                      <button
+                        type="button"
+                        onClick={() => { setStartDate(''); setEditingDate(null) }}
+                        className="text-slate-400 hover:text-red-500 text-xs"
+                        title="清除"
+                      >✕</button>
+                    )}
+                  </div>
+                </div>
 
                 {/* 截止日 */}
                 <div className="flex items-center justify-between">
@@ -1184,6 +1234,7 @@ export default function BoardPage() {
     { id: 'board' as ViewType, label: 'Board', icon: '📋' },
     { id: 'list' as ViewType, label: 'List', icon: '📝' },
     { id: 'calendar' as ViewType, label: 'Calendar', icon: '📅' },
+    { id: 'gantt' as ViewType, label: '甘特圖', icon: '📐' },
     { id: 'progress' as ViewType, label: 'Progress', icon: '📊' },
   ]
 
@@ -1354,29 +1405,45 @@ export default function BoardPage() {
     if (source.droppableId !== destination.droppableId) {
       if (isLastColumn && !movedCard.actual_completion_date) {
         // Moving to Done → auto-fill actual_completion_date
-        fetch('/api/cards/' + draggableId, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: movedCard.title, actual_completion_date: todayStr })
-        }).catch(() => {})
-
-        // Optimistic update local state
         setColumns(prev => prev.map(col => ({
           ...col,
           cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: todayStr } : c)
         })))
+        try {
+          const res = await fetch('/api/cards/' + draggableId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: movedCard.title, actual_completion_date: todayStr })
+          })
+          if (!res.ok) throw new Error('Failed')
+        } catch {
+          // Rollback on failure
+          setColumns(prev => prev.map(col => ({
+            ...col,
+            cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: null } : c)
+          })))
+        }
       } else if (wasLastColumn && movedCard.actual_completion_date) {
         // Moving from Done back → clear actual_completion_date
-        fetch('/api/cards/' + draggableId, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: movedCard.title, actual_completion_date: null })
-        }).catch(() => {})
-
+        const oldDate = movedCard.actual_completion_date
         setColumns(prev => prev.map(col => ({
           ...col,
           cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: null } : c)
         })))
+        try {
+          const res = await fetch('/api/cards/' + draggableId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: movedCard.title, actual_completion_date: null })
+          })
+          if (!res.ok) throw new Error('Failed')
+        } catch {
+          // Rollback on failure
+          setColumns(prev => prev.map(col => ({
+            ...col,
+            cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: oldDate } : c)
+          })))
+        }
       }
     }
 
@@ -1458,8 +1525,15 @@ export default function BoardPage() {
             </div>
           )}
 
-          {currentView === 'list' && <ListView columns={filteredColumns} onCardClick={setSelectedCard} />}
+          {currentView === 'list' && <ListView columns={filteredColumns} phases={phases} onCardClick={setSelectedCard} />}
           {currentView === 'calendar' && <CalendarView columns={filteredColumns} onCardClick={setSelectedCard} />}
+          {currentView === 'gantt' && (
+            <GanttView
+              columns={filteredColumns}
+              phases={phases}
+              onCardClick={setSelectedCard}
+            />
+          )}
           {currentView === 'progress' && <ProgressView columns={filteredColumns} />}
         </div>
 

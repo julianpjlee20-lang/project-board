@@ -245,6 +245,7 @@ export async function PUT() {
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium'")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS planned_completion_date DATE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS actual_completion_date DATE")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE")
     } catch (_e) {
       // Ignore if columns already exist
     }

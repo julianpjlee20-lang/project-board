@@ -62,6 +62,19 @@ export const updateCardSchema = z.object({
   ]),
   description: z.union([z.string().max(5000), z.literal(''), z.undefined()]),
   assignee: z.union([z.string().max(100), z.literal(''), z.undefined()]),
+  start_date: z.union([
+    z.string()
+      .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, { message: '無效的日期格式，需為 YYYY-MM-DD' })
+      .refine((val) => {
+        const dateStr = val.split('T')[0]
+        const [y, m, d] = dateStr.split('-').map(Number)
+        const date = new Date(y, m - 1, d)
+        return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
+      }, { message: '無效的日期，請輸入真實存在的日期' }),
+    z.literal(''),
+    z.null(),
+    z.undefined()
+  ]),
   due_date: z.union([
     z.string()
       .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, { message: '無效的日期格式' })
@@ -104,6 +117,19 @@ export const updateCardSchema = z.object({
     z.null(),
     z.undefined()
   ]),
+}).refine((data) => {
+  // 跨欄位驗證：start_date 必須 <= due_date（若兩者皆有有效值）
+  const startDate = data.start_date
+  const dueDate = data.due_date
+  if (startDate && startDate !== '' && dueDate && dueDate !== '') {
+    const start = new Date(startDate.split('T')[0])
+    const due = new Date(dueDate.split('T')[0])
+    return start <= due
+  }
+  return true
+}, {
+  message: '開始日期不可晚於截止日期',
+  path: ['start_date'],
 })
 
 // ========================================
