@@ -22,6 +22,7 @@
 | `docs/TODO.md` | 當前任務 checkbox 清單 | 是 |
 | `PROJECT_PROGRESS.md` | 已完成工作的詳細操作日誌 | 否 |
 | `TESTING.md` | 測試指南 | 是 |
+| `e2e-test-report.md` | E2E 測試報告（已測旅程、發現問題、截圖索引） | 否 |
 
 ## 關鍵路徑
 | 用途 | 路徑 |
@@ -39,7 +40,13 @@ pnpm run dev        # 啟動 dev server（--webpack）
 pnpm run build      # 建置
 pnpm test           # Cypress E2E 測試
 pnpm run lint       # ESLint
+npx playwright test # Playwright E2E 回歸測試（tests/e2e/）
 ```
+
+## E2E 測試
+- 執行 `/e2e-test` 前，**先讀 `e2e-test-report.md`** 了解已完成的測試旅程，避免重複
+- Playwright 回歸測試：`tests/e2e/`（7 檔案 / 20 測試案例）
+- 截圖存放：`e2e-screenshots/`
 
 ## 開發規範
 - API 輸入一律使用 Zod 驗證
