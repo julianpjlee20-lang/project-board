@@ -14,6 +14,10 @@ async function ensureProfilesTable() {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
   `)
+  // 補上既有表可能缺少的欄位
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS discord_user_id TEXT`)
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_user_id TEXT`)
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT`)
 }
 
 const LineProvider = {
