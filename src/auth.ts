@@ -35,6 +35,7 @@ export async function ensureProfilesTable() {
   await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`)
   await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT FALSE`)
   await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`)
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT FALSE`)
 
   // 遷移：讓現有帳號不受影響（已存在的帳號自動啟用）
   await query(`UPDATE profiles SET is_active = true WHERE is_active IS NULL`)
@@ -64,7 +65,7 @@ export const authConfig: NextAuthConfig = {
         await ensureProfilesTable()
 
         const rows = await query(
-          "SELECT id, name, email, password_hash, avatar_url, role, is_active FROM profiles WHERE email = $1",
+          "SELECT id, name, email, password_hash, avatar_url, role, is_active, force_password_change FROM profiles WHERE email = $1",
           [email]
         )
         if (rows.length === 0) return null
@@ -84,6 +85,7 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           image: user.avatar_url,
           role: user.role || 'user',
+          forcePasswordChange: user.force_password_change || false,
         }
       },
     }),
@@ -136,6 +138,7 @@ export const authConfig: NextAuthConfig = {
         token.profileId = user.id
         token.provider = "credentials"
         token.role = (user as any).role || 'user'
+        token.forcePasswordChange = (user as any).forcePasswordChange || false
       } else if (account?.provider === "discord") {
         // Discord：從 DB 查 profileId 和 role
         const rows = await query(
@@ -157,6 +160,7 @@ export const authConfig: NextAuthConfig = {
         session.user.provider = token.provider as string
       }
       session.user.role = (token.role as string) || 'user'
+      session.user.forcePasswordChange = (token.forcePasswordChange as boolean) || false
       return session
     },
   },

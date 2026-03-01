@@ -11,8 +11,8 @@ setup('authenticate', async ({ page }) => {
   await page.getByPlaceholder('Email').fill(TEST_USER.email)
   await page.getByPlaceholder('密碼（至少 6 字元）').fill(TEST_USER.password)
 
-  // 提交登入
-  await page.getByRole('button', { name: '登入' }).click()
+  // 提交登入（使用 type=submit 以區分多個登入相關按鈕）
+  await page.getByRole('button', { name: '登入', exact: true }).first().click()
 
   // 等待導航到 /projects（登入成功）
   await page.waitForURL('**/projects', { timeout: 15000 })

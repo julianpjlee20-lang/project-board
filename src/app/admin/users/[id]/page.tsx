@@ -144,6 +144,13 @@ export default function AdminUserDetailPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
+  // Reset password state
+  const [resetNewPassword, setResetNewPassword] = useState('')
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('')
+  const [resetShowPassword, setResetShowPassword] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+  const [resetLoading, setResetLoading] = useState(false)
+
   // Track original values for dirty check
   const [originalValues, setOriginalValues] = useState({
     name: '',
@@ -281,6 +288,61 @@ export default function AdminUserDetailPage() {
       setToast({ type: 'error', message: err instanceof Error ? err.message : '儲存失敗' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Reset password handlers
+  function handleGenerateRandomPassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'
+    const arr = new Uint8Array(12)
+    crypto.getRandomValues(arr)
+    const password = Array.from(arr, b => chars[b % chars.length]).join('')
+    setResetNewPassword(password)
+    setResetConfirmPassword(password)
+    setResetShowPassword(true)
+    setResetError(null)
+  }
+
+  async function handleResetPassword() {
+    if (!resetNewPassword) {
+      setResetError('請輸入新密碼')
+      return
+    }
+
+    if (resetNewPassword.length < 6) {
+      setResetError('密碼長度至少 6 個字元')
+      return
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError('兩次密碼輸入不一致')
+      return
+    }
+
+    setResetLoading(true)
+    setResetError(null)
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ new_password: resetNewPassword }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '重設密碼失敗')
+      }
+
+      setToast({ type: 'success', message: '密碼已重設成功' })
+      setResetNewPassword('')
+      setResetConfirmPassword('')
+      setResetShowPassword(false)
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : '重設密碼失敗')
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -460,6 +522,101 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Reset Password Section */}
+      {(user.login_method === 'credentials' || user.login_method === 'both') && (
+        <div className="bg-white rounded-lg border p-6 mt-6">
+          <h2 className="text-lg font-semibold mb-1" style={{ color: '#0B1A14' }}>
+            重設密碼
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            為此使用者設定新密碼，使用者下次登入時需使用新密碼
+          </p>
+
+          <div className="space-y-4">
+            {/* New Password */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                新密碼
+              </label>
+              <div className="relative">
+                <input
+                  type={resetShowPassword ? 'text' : 'password'}
+                  value={resetNewPassword}
+                  onChange={(e) => {
+                    setResetNewPassword(e.target.value)
+                    setResetError(null)
+                  }}
+                  placeholder="輸入新密碼"
+                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setResetShowPassword(!resetShowPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={resetShowPassword ? '隱藏密碼' : '顯示密碼'}
+                >
+                  {resetShowPassword ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                確認密碼
+              </label>
+              <input
+                type={resetShowPassword ? 'text' : 'password'}
+                value={resetConfirmPassword}
+                onChange={(e) => {
+                  setResetConfirmPassword(e.target.value)
+                  setResetError(null)
+                }}
+                placeholder="再次輸入新密碼"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+              />
+            </div>
+
+            {/* Generate Random Password */}
+            <button
+              type="button"
+              onClick={handleGenerateRandomPassword}
+              className="text-sm text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors"
+            >
+              產生隨機密碼
+            </button>
+
+            {/* Error */}
+            {resetError && (
+              <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm border border-red-200">
+                {resetError}
+              </div>
+            )}
+
+            {/* Submit */}
+            <div className="flex items-center justify-end pt-2">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetLoading || !resetNewPassword}
+                className="px-6 py-2.5 text-sm rounded-lg font-medium border border-amber-200 text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-50"
+              >
+                {resetLoading ? '處理中...' : '確認重設密碼'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
