@@ -3,6 +3,19 @@ import Discord from "next-auth/providers/discord"
 import type { NextAuthConfig } from "next-auth"
 import { query } from "@/lib/db"
 
+async function ensureProfilesTable() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS profiles (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT,
+      avatar_url TEXT,
+      line_user_id TEXT,
+      discord_user_id TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `)
+}
+
 const LineProvider = {
   id: "line",
   name: "LINE",
@@ -41,25 +54,31 @@ export const authConfig: NextAuthConfig = {
       const provider = account.provider
       const providerAccountId = account.providerAccountId
 
-      const column =
-        provider === "line" ? "line_user_id" : "discord_user_id"
-      const existing = await query(
-        `SELECT id FROM profiles WHERE ${column} = $1`,
-        [providerAccountId]
-      )
+      try {
+        await ensureProfilesTable()
+        const column =
+          provider === "line" ? "line_user_id" : "discord_user_id"
+        const existing = await query(
+          `SELECT id FROM profiles WHERE ${column} = $1`,
+          [providerAccountId]
+        )
 
-      if (existing.length === 0) {
-        await query(
-          `INSERT INTO profiles (name, avatar_url, ${column}) VALUES ($1, $2, $3)`,
-          [user.name, user.image, providerAccountId]
-        )
-      } else {
-        await query(
-          `UPDATE profiles SET name = COALESCE($1, name), avatar_url = COALESCE($2, avatar_url) WHERE ${column} = $3`,
-          [user.name, user.image, providerAccountId]
-        )
+        if (existing.length === 0) {
+          await query(
+            `INSERT INTO profiles (name, avatar_url, ${column}) VALUES ($1, $2, $3)`,
+            [user.name, user.image, providerAccountId]
+          )
+        } else {
+          await query(
+            `UPDATE profiles SET name = COALESCE($1, name), avatar_url = COALESCE($2, avatar_url) WHERE ${column} = $3`,
+            [user.name, user.image, providerAccountId]
+          )
+        }
+        return true
+      } catch (error) {
+        console.error("[Auth] signIn callback failed:", error)
+        return false
       }
-      return true
     },
 
     async jwt({ token, account }) {
