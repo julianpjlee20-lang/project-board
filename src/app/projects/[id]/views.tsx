@@ -581,9 +581,12 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
 
 // Progress View Component
 export function ProgressView({ columns }: { columns: Column[] }) {
-  const totalCards = columns.reduce((sum, col) => sum + col.cards.length, 0)
-  const completedCards = columns.find(c => c.name.toLowerCase().includes('done'))?.cards.length || 0
-  const overallProgress = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0
+  const allCards = columns.flatMap(col => col.cards)
+  const totalCards = allCards.length
+  const overallProgress = totalCards > 0
+    ? Math.round(allCards.reduce((sum, card) => sum + (card.progress || 0), 0) / totalCards)
+    : 0
+  const completedCards = allCards.filter(c => (c.progress || 0) === 100).length
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -608,9 +611,9 @@ export function ProgressView({ columns }: { columns: Column[] }) {
       <div className="space-y-4">
         {columns.map(col => {
           const colTotal = col.cards.length
-          const colDone = col.name.toLowerCase().includes('done') ? colTotal : 
-            col.cards.filter(c => (c.progress || 0) === 100).length
-          const colProgress = colTotal > 0 ? Math.round((colDone / colTotal) * 100) : 0
+          const colAvgProgress = colTotal > 0
+            ? Math.round(col.cards.reduce((sum, c) => sum + (c.progress || 0), 0) / colTotal)
+            : 0
           
           return (
             <div key={col.id}>
@@ -624,7 +627,7 @@ export function ProgressView({ columns }: { columns: Column[] }) {
               <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                 <div 
                   className="h-full rounded-full"
-                  style={{ width: `${colProgress}%`, backgroundColor: col.color }}
+                  style={{ width: `${colAvgProgress}%`, backgroundColor: col.color }}
                 />
               </div>
             </div>
