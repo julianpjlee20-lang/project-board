@@ -608,6 +608,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
 
   // Date editing state
   const [editingDate, setEditingDate] = useState<string | null>(null)
+  const [completionExpanded, setCompletionExpanded] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -644,6 +645,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
       setDueDate(formData.dueDate)
       setPlannedDate(formData.plannedDate)
       setActualDate(formData.actualDate)
+      setCompletionExpanded(!!(formData.plannedDate || formData.actualDate))
       setCardCreatedAt(cardData.created_at)
       setPriority(formData.priority)
       setPhaseId(formData.phase_id)
@@ -749,140 +751,167 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
               <div className="bg-slate-50 rounded-lg p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">📅 日程安排</h3>
 
-                {/* 開始日 */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 w-20">開始日</span>
-                  <div className="flex-1 flex items-center gap-2">
-                    {editingDate === 'start' ? (
-                      <DateInput
-                        value={startDate}
-                        onChange={setStartDate}
-                        onBlur={() => setEditingDate(null)}
-                        className="flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="flex-1 text-sm font-medium text-slate-800">
-                        {startDate ? new Date(startDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setEditingDate(editingDate === 'start' ? null : 'start')}
-                      className="text-slate-400 hover:text-slate-600 text-xs"
-                      title="編輯"
-                    >✎</button>
-                    {startDate && (
-                      <button
-                        type="button"
-                        onClick={() => { setStartDate(''); setEditingDate(null) }}
-                        className="text-slate-400 hover:text-red-500 text-xs"
-                        title="清除"
-                      >✕</button>
-                    )}
+                {/* Group 1: 期間 */}
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-slate-400 tracking-wide mb-2">期間</div>
+
+                  {/* 開始日 */}
+                  <div className="flex items-center justify-between group min-h-[28px]">
+                    <span className="text-sm text-slate-500 w-20 shrink-0">開始日</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      {editingDate === 'start' ? (
+                        <DateInput value={startDate} onChange={setStartDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                      ) : startDate ? (
+                        <span
+                          className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => setEditingDate('start')}
+                          title="點擊編輯"
+                        >
+                          {new Date(startDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDate('start')}
+                          className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                        >
+                          + 設定開始日
+                        </button>
+                      )}
+                      {startDate && editingDate !== 'start' && (
+                        <button
+                          type="button"
+                          onClick={() => { setStartDate(''); setEditingDate(null) }}
+                          className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                          title="清除"
+                        >✕</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 截止日 */}
+                  <div className="flex items-center justify-between group min-h-[28px]">
+                    <span className="text-sm text-slate-500 w-20 shrink-0">截止日</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      {editingDate === 'due' ? (
+                        <DateInput value={dueDate} onChange={setDueDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                      ) : dueDate ? (
+                        <span
+                          className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => setEditingDate('due')}
+                          title="點擊編輯"
+                        >
+                          {new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDate('due')}
+                          className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                        >
+                          + 設定截止日
+                        </button>
+                      )}
+                      {dueDate && editingDate !== 'due' && (
+                        <button
+                          type="button"
+                          onClick={() => { setDueDate(''); setEditingDate(null) }}
+                          className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                          title="清除"
+                        >✕</button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* 截止日 */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 w-20">截止日</span>
-                  <div className="flex-1 flex items-center gap-2">
-                    {editingDate === 'due' ? (
-                      <DateInput
-                        value={dueDate}
-                        onChange={setDueDate}
-                        onBlur={() => setEditingDate(null)}
-                        className="flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="flex-1 text-sm font-medium text-slate-800">
-                        {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setEditingDate(editingDate === 'due' ? null : 'due')}
-                      className="text-slate-400 hover:text-slate-600 text-xs"
-                      title="編輯"
-                    >✎</button>
-                    {dueDate && (
-                      <button
-                        type="button"
-                        onClick={() => { setDueDate(''); setEditingDate(null) }}
-                        className="text-slate-400 hover:text-red-500 text-xs"
-                        title="清除"
-                      >✕</button>
-                    )}
-                  </div>
-                </div>
+                {/* Divider */}
+                <div className="border-t border-slate-200" />
 
-                {/* 預計完成日 */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 w-20">預計完成</span>
-                  <div className="flex-1 flex items-center gap-2">
-                    {editingDate === 'planned' ? (
-                      <DateInput
-                        value={plannedDate}
-                        onChange={setPlannedDate}
-                        onBlur={() => setEditingDate(null)}
-                        className="flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="flex-1 text-sm font-medium text-slate-800">
-                        {plannedDate ? new Date(plannedDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
-                      </span>
+                {/* Group 2: 完成追蹤 (collapsible) */}
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setCompletionExpanded(prev => !prev)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-slate-400 tracking-wide hover:text-slate-600 transition-colors w-full text-left"
+                  >
+                    <span className="text-[10px]">{completionExpanded ? '▾' : '▸'}</span>
+                    完成追蹤
+                    {(plannedDate || actualDate) && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setEditingDate(editingDate === 'planned' ? null : 'planned')}
-                      className="text-slate-400 hover:text-slate-600 text-xs"
-                      title="編輯"
-                    >✎</button>
-                    {plannedDate && (
-                      <button
-                        type="button"
-                        onClick={() => { setPlannedDate(''); setEditingDate(null) }}
-                        className="text-slate-400 hover:text-red-500 text-xs"
-                        title="清除"
-                      >✕</button>
-                    )}
-                  </div>
-                </div>
+                  </button>
 
-                {/* 實際完成日 */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 w-20">實際完成</span>
-                  <div className="flex-1 flex items-center gap-2">
-                    {editingDate === 'actual' ? (
-                      <DateInput
-                        value={actualDate}
-                        onChange={setActualDate}
-                        onBlur={() => setEditingDate(null)}
-                        className="flex-1"
-                        autoFocus
-                      />
-                    ) : (
-                      <span className="flex-1 text-sm font-medium text-slate-800">
-                        {actualDate ? new Date(actualDate + 'T00:00:00').toLocaleDateString('zh-TW') : '—'}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setEditingDate(editingDate === 'actual' ? null : 'actual')}
-                      className="text-slate-400 hover:text-slate-600 text-xs"
-                      title="編輯"
-                    >✎</button>
-                    {actualDate && (
-                      <button
-                        type="button"
-                        onClick={() => { setActualDate(''); setEditingDate(null) }}
-                        className="text-slate-400 hover:text-red-500 text-xs"
-                        title="清除"
-                      >✕</button>
-                    )}
-                  </div>
+                  {completionExpanded && (
+                    <div className="space-y-1 mt-1">
+                      {/* 預計完成 */}
+                      <div className="flex items-center justify-between group min-h-[28px]">
+                        <span className="text-sm text-slate-500 w-20 shrink-0">預計完成</span>
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                          {editingDate === 'planned' ? (
+                            <DateInput value={plannedDate} onChange={setPlannedDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                          ) : plannedDate ? (
+                            <span
+                              className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                              onClick={() => setEditingDate('planned')}
+                              title="點擊編輯"
+                            >
+                              {new Date(plannedDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingDate('planned')}
+                              className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                            >
+                              + 設定日期
+                            </button>
+                          )}
+                          {plannedDate && editingDate !== 'planned' && (
+                            <button
+                              type="button"
+                              onClick={() => { setPlannedDate(''); setEditingDate(null) }}
+                              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                              title="清除"
+                            >✕</button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 實際完成 */}
+                      <div className="flex items-center justify-between group min-h-[28px]">
+                        <span className="text-sm text-slate-500 w-20 shrink-0">實際完成</span>
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                          {editingDate === 'actual' ? (
+                            <DateInput value={actualDate} onChange={setActualDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                          ) : actualDate ? (
+                            <span
+                              className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                              onClick={() => setEditingDate('actual')}
+                              title="點擊編輯"
+                            >
+                              {new Date(actualDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingDate('actual')}
+                              className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                            >
+                              + 設定日期
+                            </button>
+                          )}
+                          {actualDate && editingDate !== 'actual' && (
+                            <button
+                              type="button"
+                              onClick={() => { setActualDate(''); setEditingDate(null) }}
+                              className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                              title="清除"
+                            >✕</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 時間軸條 */}
