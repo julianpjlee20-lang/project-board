@@ -25,24 +25,31 @@ export function DateInput({ value, onChange, onBlur, autoFocus, className }: Dat
   // Track whether the blur timeout is pending so we can cancel it
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Sync from external value prop
+  // Track whether the change originated from internal typing (to skip useEffect sync)
+  const isInternalChange = useRef(false)
+
+  // Sync from external value prop (skip when the change came from our own emitChange)
   useEffect(() => {
+    if (isInternalChange.current) {
+      isInternalChange.current = false
+      return
+    }
     const p = value ? value.split('-') : ['', '', '']
     setYear(p[0] || '')
     setMonth(p[1] || '')
     setDay(p[2] || '')
   }, [value])
 
-  // Emit the combined value whenever any part changes
+  // Emit the combined value only when all parts are complete or all empty
   const emitChange = useCallback((y: string, m: string, d: string) => {
     if (!y && !m && !d) {
+      isInternalChange.current = true
       onChange('')
-    } else {
-      const yy = y.padStart(4, '0')
-      const mm = m.padStart(2, '0')
-      const dd = d.padStart(2, '0')
-      onChange(`${yy}-${mm}-${dd}`)
+    } else if (y.length === 4 && m.length === 2 && d.length === 2) {
+      isInternalChange.current = true
+      onChange(`${y}-${m}-${d}`)
     }
+    // Incomplete input → don't emit, keep internal state only
   }, [onChange])
 
   // Handle the composite onBlur: only fire when focus leaves ALL three inputs
@@ -149,7 +156,7 @@ export function DateInput({ value, onChange, onBlur, autoFocus, className }: Dat
         onBlur={handleFieldBlur}
         onFocus={handleFieldFocus}
         autoFocus={autoFocus}
-        className={`${inputBase} w-[3.2ch]`}
+        className={`${inputBase} w-[4.5ch]`}
         aria-label="Year"
       />
       <span className="text-slate-400 mx-px select-none">-</span>
