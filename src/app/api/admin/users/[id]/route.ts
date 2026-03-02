@@ -23,7 +23,7 @@ export async function GET(
       `SELECT id, name, email, avatar_url, role, is_active,
               password_hash IS NOT NULL AS has_password,
               discord_user_id IS NOT NULL AS has_discord,
-              discord_user_id, created_at, updated_at
+              discord_user_id, created_at, updated_at, force_password_change
        FROM profiles
        WHERE id = $1`,
       [id]
@@ -62,6 +62,7 @@ export async function GET(
       discord_user_id: profile.discord_user_id,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
+      force_password_change: profile.force_password_change || false,
       stats: {
         project_count: Number(projectCountRows[0].count),
         assigned_card_count: Number(cardCountRows[0].count),
