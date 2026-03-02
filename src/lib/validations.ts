@@ -122,8 +122,8 @@ export const updateCardSchema = z.object({
   const startDate = data.start_date
   const dueDate = data.due_date
   if (startDate && startDate !== '' && dueDate && dueDate !== '') {
-    const start = new Date(startDate.split('T')[0])
-    const due = new Date(dueDate.split('T')[0])
+    const start = new Date(startDate.split('T')[0] + 'T00:00:00')
+    const due = new Date(dueDate.split('T')[0] + 'T00:00:00')
     return start <= due
   }
   return true
@@ -188,7 +188,7 @@ export const createProjectSchema = z.object({
 }).refine((data) => {
   // 驗證結束日期不早於開始日期
   if (data.start_date && data.end_date) {
-    return new Date(data.end_date) >= new Date(data.start_date)
+    return new Date(data.end_date + 'T00:00:00') >= new Date(data.start_date + 'T00:00:00')
   }
   return true
 }, {

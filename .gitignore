@@ -39,9 +39,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-#.env*
-!.env
+# env files
+.env*
+!.env.example
 
 # vercel
 .vercel
@@ -49,13 +49,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# 環境變數檔案
-.env
-.env.local
-.env.production
-.env.development
-.env.test
 
 # 專案文件（根據需求決定是否提交）
 PROJECT_PROGRESS.md

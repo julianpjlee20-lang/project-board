@@ -57,15 +57,15 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let step = 'init'
   try {
     const { id } = await params
     const body = await request.json()
 
     // Zod 驗證
-    console.log('[PUT /api/cards] Request body:', JSON.stringify(body, null, 2))
+    step = 'validation'
     const validation = validateData(updateCardSchema, body)
     if (!validation.success) {
-      console.error('[PUT /api/cards] Validation failed:', validation.errors)
       return NextResponse.json({
         error: '輸入驗證失敗',
         details: validation.errors
@@ -76,20 +76,13 @@ export async function PUT(
     let { start_date, due_date, planned_completion_date, actual_completion_date } = validation.data
 
     // Fix: Convert empty string to null for date fields
-    if (start_date === '') {
-      start_date = null
-    }
-    if (due_date === '') {
-      due_date = null
-    }
-    if (planned_completion_date === '') {
-      planned_completion_date = null
-    }
-    if (actual_completion_date === '') {
-      actual_completion_date = null
-    }
+    if (start_date === '') start_date = null
+    if (due_date === '') due_date = null
+    if (planned_completion_date === '') planned_completion_date = null
+    if (actual_completion_date === '') actual_completion_date = null
 
     // Get old card data for activity log
+    step = 'fetch-old-card'
     const oldCard = await query('SELECT * FROM cards WHERE id = $1', [id])
     const oldTitle = oldCard[0]?.title
     const oldDescription = oldCard[0]?.description
@@ -112,12 +105,14 @@ export async function PUT(
     const projectName = project?.[0]?.name || 'Project'
 
     // Update card
+    step = 'update-card'
     await query(
       `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, start_date = CASE WHEN $9::boolean THEN $10::timestamptz ELSE start_date END, planned_completion_date = CASE WHEN $11::boolean THEN $12::date ELSE planned_completion_date END, actual_completion_date = CASE WHEN $13::boolean THEN $14::date ELSE actual_completion_date END, updated_at = NOW() WHERE id = $8`,
       [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id, start_date !== undefined, start_date ?? null, planned_completion_date !== undefined, planned_completion_date ?? null, actual_completion_date !== undefined, actual_completion_date ?? null]
     )
 
-    // Activity log: Title changed
+    // Activity logs
+    step = 'activity-logs'
     if (oldTitle !== title) {
       await query(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -216,6 +211,7 @@ export async function PUT(
     }
 
     // Handle assignee
+    step = 'handle-assignee'
     if (assignee !== undefined) {
       const oldAssignee = await query(
         'SELECT p.name FROM profiles p JOIN card_assignees ca ON p.id = ca.user_id WHERE ca.card_id = $1',
@@ -265,7 +261,8 @@ export async function PUT(
     if (errStack) console.error(errStack)
     return NextResponse.json({
       error: 'Failed to update card',
-      detail: errMsg
+      detail: errMsg,
+      step
     }, { status: 500 })
   }
 }
