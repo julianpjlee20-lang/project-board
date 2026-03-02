@@ -670,10 +670,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
 
     setIsSaving(true)
     try {
-      const res = await fetch('/api/cards/' + card.id, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const payload = {
           title,
           description,
           assignee,
@@ -683,7 +680,12 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
           actual_completion_date: actualDate || null,
           priority,
           phase_id: phaseId,
-        })
+      }
+      console.log('[saveCard] payload:', JSON.stringify(payload))
+      const res = await fetch('/api/cards/' + card.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       })
 
       const data = await res.json()
@@ -693,7 +695,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
         onClose()
         onUpdate()
       } else {
-        alert('儲存失敗: ' + (data.error || '未知錯誤'))
+        alert('儲存失敗: ' + (data.error || '未知錯誤') + (data.detail ? '\n' + data.detail : ''))
         setIsSaving(false)
       }
     } catch (e) {
