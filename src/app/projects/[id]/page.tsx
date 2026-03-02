@@ -10,6 +10,7 @@ import { GanttView } from './gantt'
 import type { Card, Column, Project, ViewType, Phase } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { DateInput } from '@/components/ui/DateInput'
 
 // Priority color mapping
 const PRIORITY_COLORS: Record<Card['priority'], string> = {
@@ -753,12 +754,11 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                   <span className="text-sm text-slate-600 w-20">開始日</span>
                   <div className="flex-1 flex items-center gap-2">
                     {editingDate === 'start' ? (
-                      <input
-                        type="date"
+                      <DateInput
                         value={startDate}
-                        onChange={e => setStartDate(e.target.value)}
+                        onChange={setStartDate}
                         onBlur={() => setEditingDate(null)}
-                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        className="flex-1"
                         autoFocus
                       />
                     ) : (
@@ -788,12 +788,11 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                   <span className="text-sm text-slate-600 w-20">截止日</span>
                   <div className="flex-1 flex items-center gap-2">
                     {editingDate === 'due' ? (
-                      <input
-                        type="date"
+                      <DateInput
                         value={dueDate}
-                        onChange={e => setDueDate(e.target.value)}
+                        onChange={setDueDate}
                         onBlur={() => setEditingDate(null)}
-                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        className="flex-1"
                         autoFocus
                       />
                     ) : (
@@ -823,12 +822,11 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                   <span className="text-sm text-slate-600 w-20">預計完成</span>
                   <div className="flex-1 flex items-center gap-2">
                     {editingDate === 'planned' ? (
-                      <input
-                        type="date"
+                      <DateInput
                         value={plannedDate}
-                        onChange={e => setPlannedDate(e.target.value)}
+                        onChange={setPlannedDate}
                         onBlur={() => setEditingDate(null)}
-                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        className="flex-1"
                         autoFocus
                       />
                     ) : (
@@ -858,12 +856,11 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                   <span className="text-sm text-slate-600 w-20">實際完成</span>
                   <div className="flex-1 flex items-center gap-2">
                     {editingDate === 'actual' ? (
-                      <input
-                        type="date"
+                      <DateInput
                         value={actualDate}
-                        onChange={e => setActualDate(e.target.value)}
+                        onChange={setActualDate}
                         onBlur={() => setEditingDate(null)}
-                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        className="flex-1"
                         autoFocus
                       />
                     ) : (

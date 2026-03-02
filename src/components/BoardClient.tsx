@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface CardData {
   id: string
@@ -64,7 +65,7 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">截止日</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
+              <DateInput value={dueDate} onChange={setDueDate} className="w-full" />
             </div>
           </div>
 
