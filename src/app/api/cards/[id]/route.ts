@@ -259,8 +259,14 @@ export async function PUT(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Failed to update card' }, { status: 500 })
+    const errMsg = error instanceof Error ? error.message : String(error)
+    const errStack = error instanceof Error ? error.stack : undefined
+    console.error('[PUT /api/cards] Error:', errMsg)
+    if (errStack) console.error(errStack)
+    return NextResponse.json({
+      error: 'Failed to update card',
+      detail: errMsg
+    }, { status: 500 })
   }
 }
 
