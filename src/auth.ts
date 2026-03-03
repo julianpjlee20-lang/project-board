@@ -132,7 +132,10 @@ export const authConfig: NextAuthConfig = {
       clientSecret: process.env.AUTH_DISCORD_SECRET,
     }),
     // LINE OAuth（條件式載入，AUTH_LINE_ID 不存在時跳過）
-    ...(process.env.AUTH_LINE_ID ? [Line] : []),
+    ...(process.env.AUTH_LINE_ID ? [Line({
+      clientId: process.env.AUTH_LINE_ID,
+      clientSecret: process.env.AUTH_LINE_SECRET,
+    })] : []),
   ],
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
