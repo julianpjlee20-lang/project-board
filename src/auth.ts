@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Discord from "next-auth/providers/discord"
+import Line from "next-auth/providers/line"
 import type { NextAuthConfig } from "next-auth"
 import { query } from "@/lib/db"
 import bcrypt from "bcryptjs"
@@ -130,27 +131,8 @@ export const authConfig: NextAuthConfig = {
       clientId: process.env.AUTH_DISCORD_ID,
       clientSecret: process.env.AUTH_DISCORD_SECRET,
     }),
-    // LINE OAuth — 自訂 OAuth provider（條件式載入，AUTH_LINE_ID 不存在時跳過）
-    ...(process.env.AUTH_LINE_ID ? [{
-      id: "line",
-      name: "LINE",
-      type: "oauth" as const,
-      authorization: {
-        url: "https://access.line.me/oauth2/v2.1/authorize",
-        params: { scope: "profile openid", bot_prompt: "normal" },
-      },
-      token: "https://api.line.me/oauth2/v2.1/token",
-      userinfo: "https://api.line.me/v2/profile",
-      clientId: process.env.AUTH_LINE_ID,
-      clientSecret: process.env.AUTH_LINE_SECRET,
-      profile(profile: Record<string, string>) {
-        return {
-          id: profile.userId,
-          name: profile.displayName,
-          image: profile.pictureUrl,
-        }
-      },
-    }] : []),
+    // LINE OAuth（條件式載入，AUTH_LINE_ID 不存在時跳過）
+    ...(process.env.AUTH_LINE_ID ? [Line] : []),
   ],
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
