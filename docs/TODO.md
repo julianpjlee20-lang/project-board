@@ -149,52 +149,27 @@
 
 ## 待開發功能
 
-### LINE Login + 每日摘要通知 + Admin 通知管理
-**狀態：階段 1-3 已完成 ✅ / 階段 4-5 待開發 📋**
-**完整計畫檔：** `~/.claude/plans/jolly-bouncing-quiche.md`
-**技術備忘：** `memory/decisions/auth-simplification.md`
+### 應用內通知中心 + Admin 通知管理
+**狀態：已完成 ✅**
 
-#### 階段 0：LINE Developers Console 前置設定
-- [ ] 建立 LINE Login Channel（Web app）→ 取得 Channel ID / Secret
-- [ ] 設定 Callback URL（dev + prod）
-- [ ] 申請 OpenID Connect Email address permission
-- [ ] 確認 Messaging API Channel Access Token
-- [ ] `.env` 填入 `AUTH_LINE_ID`、`AUTH_LINE_SECRET`、`CRON_SECRET`
-
-#### 階段 1：DB Migration ✅
-- [x] `ensureProfilesTable()` 新增 `line_display_name`、`line_picture_url` 欄位
-- [x] 建立 `notification_settings` 表（boss_user_ids + 摘要區塊開關 + 推播時間）
-
-#### 階段 2：LINE OAuth Login ✅
-- [x] `src/auth.ts` 加入 LINE provider（自訂 OIDC）+ signIn/jwt callback
-- [x] `src/app/login/page.tsx` 加入 LINE 登入按鈕
-
-#### 階段 3：設定頁 LINE 手動綁定 ✅
-- [x] 新增 `/api/auth/line-bind` + `/api/auth/line-bind/callback` — 獨立 OAuth 綁定流程
-- [x] 新增 `DELETE /api/users/me/line` — 解除綁定
-- [x] `GET /api/users/me` 回傳 `line_connected`、`line_display_name`
-- [x] `src/app/settings/page.tsx` LinkedAccountsCard 新增 LINE 綁定/解除 UI
-
-#### 階段 4：每日摘要推播
-- [ ] 新增 `POST /api/notifications/daily-digest`（CRON_SECRET 驗證）
-- [ ] `src/lib/line-messaging.ts` 新增 `sendLineDailyDigest()` Flex Message
-- [ ] 摘要內容：即將到期 / 逾期警告 / 昨日變更 / 專案進度（依設定啟用）
-- [ ] 老闆收全部摘要，一般人只收被指派給自己的卡片
-- [ ] `src/proxy.ts` 將 daily-digest 路由加入 publicExact
-
-#### 階段 5：Admin CMS 通知管理
-- [ ] 新增 `GET/PUT /api/admin/notifications/settings` + Zod 驗證
-- [ ] 新增 `/admin/notifications` 頁面（老闆設定 + 摘要內容 Toggle + 手動觸發測試）
-- [ ] `src/app/admin/layout.tsx` Sidebar 加入通知管理連結
-
-#### 排程
-- [ ] Zeabur Cron Job 設定（UTC 01:00 = 台灣 09:00）
-
-#### 已完成的基礎程式碼
-- [x] LINE Messaging API Flex Message 推播 (`src/lib/line-messaging.ts`)
+- [x] 通知中心頁面 `/notifications` — 逾期 / 即將到期 / 近期變更 / 專案進度（即時查詢）
+- [x] `GET /api/notifications/center` — 通知中心 API
+- [x] Admin 通知管理 `/admin/notifications` — 老闆設定 + 摘要內容 Toggle + 手動觸發測試
+- [x] `GET/PUT /api/admin/notifications/settings` + Zod 驗證
+- [x] DB: `notification_settings` 表 + `profiles` 新增 `line_display_name`、`line_picture_url` 欄位
 - [x] 統一通知分發器 (`src/lib/notifications.ts`)
 - [x] 通知偏好 CRUD (`src/app/api/notifications/preferences/route.ts`)
-- [x] 佇列摘要發送 (`src/app/api/notifications/flush/route.ts`)
+
+### LINE Login + LINE 推播通知（暫緩）
+**狀態：暫不需要 ⏸️ — 目前用應用內通知中心即可**
+**技術備忘：** `memory/decisions/auth-simplification.md`
+**程式碼已完成，待日後需要時啟用：**
+
+- 階段 0：LINE Developers Console 前置設定（未開始）
+- 階段 2：LINE OAuth Login（程式碼已寫好）
+- 階段 3：設定頁 LINE 手動綁定（程式碼已寫好）
+- 階段 4：LINE 每日摘要推播 API（程式碼已寫好）
+- ~~排程：Zeabur Cron Job~~ — 不需要（改用應用內通知）
 
 ---
 

@@ -250,34 +250,51 @@ function ProjectGridSkeleton() {
 
 // ─── Summary Cards ────────────────────────────────────────────────────────────
 
-function SummaryCards({ counts }: { counts: NotificationData['counts'] }) {
-  const cards = [
+function SummaryCards({
+  counts,
+  onTabChange,
+}: {
+  counts: NotificationData['counts']
+  onTabChange?: (tab: TabKey) => void
+}) {
+  const cards: {
+    label: string
+    count: number
+    borderColor: string
+    textColor: string
+    tabKey: TabKey
+  }[] = [
     {
       label: '個逾期任務',
       count: counts.overdue,
       borderColor: COLORS.danger,
       textColor: COLORS.danger,
+      tabKey: 'overdue',
     },
     {
       label: '個即將到期',
       count: counts.due_soon,
       borderColor: COLORS.accent,
       textColor: COLORS.warning,
+      tabKey: 'due_soon',
     },
     {
       label: '筆近期變更',
       count: counts.recent_changes,
       borderColor: COLORS.green,
       textColor: COLORS.green,
+      tabKey: 'recent_changes',
     },
   ]
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {cards.map((card) => (
-        <div
+        <button
           key={card.label}
-          className="rounded-xl border shadow-sm p-5 border-l-4 transition-shadow hover:shadow-md"
+          type="button"
+          onClick={() => onTabChange?.(card.tabKey)}
+          className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
           style={{
             backgroundColor: COLORS.white,
             borderLeftColor: card.borderColor,
@@ -286,16 +303,29 @@ function SummaryCards({ counts }: { counts: NotificationData['counts'] }) {
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
             {card.label.replace(/^\S+\s/, '')}
           </p>
-          <p
-            className="text-3xl font-bold"
-            style={{ color: card.textColor }}
-          >
-            {card.count}
-          </p>
-          <p className="text-sm text-slate-600 mt-0.5">
-            {card.count}{card.label}
-          </p>
-        </div>
+          <div className="flex items-end justify-between">
+            <div>
+              <p
+                className="text-3xl font-bold"
+                style={{ color: card.textColor }}
+              >
+                {card.count}
+              </p>
+              <p className="text-sm text-slate-600 mt-0.5">
+                {card.count}{card.label}
+              </p>
+            </div>
+            <svg
+              className="w-4 h-4 text-slate-400 mb-1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </button>
       ))}
     </div>
   )
@@ -706,7 +736,7 @@ export default function NotificationsPage() {
         {loading ? (
           <SummaryCardsSkeleton />
         ) : data ? (
-          <SummaryCards counts={counts} />
+          <SummaryCards counts={counts} onTabChange={setActiveTab} />
         ) : null}
 
         {/* Tab Bar */}

@@ -664,7 +664,7 @@ function PhaseGroup({
           <div key={card.id} className="flex border-b border-slate-50" style={{ minWidth: totalWidth }}>
             {/* Left sidebar: card title */}
             <div
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 bg-white border-r border-slate-100 overflow-hidden"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 bg-white border-r border-slate-100 overflow-hidden sticky left-0 z-10"
               style={{ width: 220, height: ROW_HEIGHT }}
             >
               <span

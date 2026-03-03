@@ -8,7 +8,7 @@ const publicPrefixes = [
   "/api/auth/", // Auth.js 路由
 ]
 
-const publicExact = ["/api/health"]
+const publicExact = ["/api/health", "/api/notifications/daily-digest"]
 
 // ─── 需要 admin 角色的路由 ───
 const adminPrefixes = ["/admin", "/api/admin"]
