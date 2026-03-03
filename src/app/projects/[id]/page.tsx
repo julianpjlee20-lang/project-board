@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import Link from 'next/link'
@@ -113,6 +113,8 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
   const phase = card.phase_id ? phases.find(p => p.id === card.phase_id) : null
   const completedSubtasks = card.subtasks?.filter(s => s.is_completed).length || 0
   const totalSubtasks = card.subtasks?.length || 0
+  const assigneeName = card.assignees?.[0]?.name || ''
+  const assigneeInitial = assigneeName ? assigneeName.charAt(0) : ''
 
   return (
     <Draggable draggableId={card.id} index={index}>
@@ -125,7 +127,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
             e.stopPropagation()
             onClick()
           }}
-          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 ${
+          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 cursor-pointer ${
             snapshot.isDragging ? 'shadow-lg rotate-2' : ''
           }`}
           style={{
@@ -134,78 +136,48 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
             borderLeftColor: priorityColor,
           }}
         >
-          {/* Top row: Phase badge + Priority indicator */}
-          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-            {phase && (
+          {/* Phase badge */}
+          {phase && (
+            <div className="mb-1.5">
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
                 style={{ backgroundColor: phase.color }}
               >
                 {phase.name}
               </span>
-            )}
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-              style={{ backgroundColor: priorityColor + '20', color: priorityColor }}
-            >
-              {PRIORITY_LABELS[card.priority] || '中'}
-            </span>
-          </div>
-
-          {/* Tags */}
-          {card.tags && card.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {card.tags.slice(0, 3).map(tag => (
-                <span
-                  key={tag.id}
-                  className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ backgroundColor: tag.color + '30', color: tag.color }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-              {card.tags.length > 3 && (
-                <span className="text-xs text-slate-400">+{card.tags.length - 3}</span>
-              )}
             </div>
           )}
 
-          <p className="font-medium text-sm">{card.title}</p>
+          {/* Card number + Title */}
+          <div className="flex items-start gap-1.5">
+            {card.card_number != null && (
+              <span className="text-[10px] font-mono text-slate-400 mt-[2px] flex-shrink-0">#{card.card_number}</span>
+            )}
+            <p className="font-medium text-sm leading-snug">{card.title}</p>
+          </div>
 
-          {/* Progress bar */}
-          {(card.progress || 0) > 0 && (
-            <div className="mt-2">
-              <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${card.progress}%`,
-                    backgroundColor: card.progress === 100 ? '#10B981' : '#3B82F6'
-                  }}
-                />
+          {/* Bottom row: assignee avatar (left) + subtask count (right) */}
+          {(assigneeInitial || totalSubtasks > 0) && (
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center">
+                {assigneeInitial && (
+                  <span
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold"
+                    title={assigneeName}
+                  >
+                    {assigneeInitial}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center">
+                {totalSubtasks > 0 && (
+                  <span className={`text-xs ${completedSubtasks === totalSubtasks ? 'text-green-600' : 'text-slate-500'}`}>
+                    ✓ {completedSubtasks}/{totalSubtasks}
+                  </span>
+                )}
               </div>
             </div>
           )}
-
-          {/* Mini Timeline Bar (4px) */}
-          <MiniTimelineBar card={card} />
-
-          <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-            {(card.start_date || card.due_date) && (
-              <span>📅 {card.start_date && card.due_date
-                ? `${new Date(card.start_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')} ~ ${new Date(card.due_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')}`
-                : card.start_date
-                  ? new Date(card.start_date.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')
-                  : new Date(card.due_date!.split('T')[0] + 'T00:00:00').toLocaleDateString('zh-TW')
-              }</span>
-            )}
-            {card.assignees?.[0]?.name && <span>👤 {card.assignees[0].name}</span>}
-            {totalSubtasks > 0 && (
-              <span className={completedSubtasks === totalSubtasks ? 'text-green-600' : ''}>
-                ✓ {completedSubtasks}/{totalSubtasks}
-              </span>
-            )}
-          </div>
         </div>
       )}
     </Draggable>
@@ -770,7 +742,12 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold">卡片詳情</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">卡片詳情</h2>
+            {card?.card_number != null && (
+              <span className="text-sm font-mono text-slate-400">#{card.card_number}</span>
+            )}
+          </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
         </div>
 
@@ -1050,6 +1027,462 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// SlideInPane - Right-side slide-in panel for Board view
+function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: Phase[], onClose: () => void, onUpdate: () => void }) {
+  const [isVisible, setIsVisible] = useState(false)
+  const [isFormReady, setIsFormReady] = useState(false)
+  const [originalData, setOriginalData] = useState({
+    title: '',
+    description: '',
+    assignee: '',
+    startDate: '',
+    dueDate: '',
+    plannedDate: '',
+    actualDate: '',
+    priority: 'medium' as Card['priority'],
+    phase_id: null as string | null,
+  })
+
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [assignee, setAssignee] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [plannedDate, setPlannedDate] = useState('')
+  const [actualDate, setActualDate] = useState('')
+  const [cardCreatedAt, setCardCreatedAt] = useState<string | undefined>(undefined)
+  const [priority, setPriority] = useState<Card['priority']>('medium')
+  const [phaseId, setPhaseId] = useState<string | null>(null)
+  const [activity, setActivity] = useState<{ id: string; action: string; target: string; old_value: string; new_value: string; created_at: string }[]>([])
+  const [cardSubtasks, setCardSubtasks] = useState<{ id: string; title: string; is_completed: boolean }[]>([])
+
+  const [editingDate, setEditingDate] = useState<string | null>(null)
+  const [scheduleExpanded, setScheduleExpanded] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Slide-in animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 10)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Close with slide-out animation
+  const handleClose = useCallback(() => {
+    setIsVisible(false)
+    setTimeout(() => onClose(), 300)
+  }, [onClose])
+
+  // Esc key listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleClose])
+
+  // Fetch card data and activity on mount
+  useEffect(() => {
+    let cancelled = false
+
+    Promise.all([
+      fetch('/api/cards/' + card.id).then(res => {
+        if (!res.ok) throw new Error('無法載入卡片資料')
+        return res.json()
+      }),
+      fetch('/api/cards/' + card.id + '/activity').then(res => {
+        if (!res.ok) throw new Error('無法載入活動紀錄')
+        return res.json()
+      }).catch(() => [])
+    ]).then(([cardData, activityData]) => {
+      if (cancelled) return
+      const formData = {
+        title: cardData.title,
+        description: cardData.description || '',
+        assignee: cardData.assignees?.[0]?.name || '',
+        startDate: cardData.start_date ? cardData.start_date.split('T')[0] : '',
+        dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
+        plannedDate: cardData.planned_completion_date ? cardData.planned_completion_date.split('T')[0] : '',
+        actualDate: cardData.actual_completion_date ? cardData.actual_completion_date.split('T')[0] : '',
+        priority: (cardData.priority || 'medium') as Card['priority'],
+        phase_id: cardData.phase_id || null,
+      }
+      setTitle(formData.title)
+      setDescription(formData.description)
+      setAssignee(formData.assignee)
+      setStartDate(formData.startDate)
+      setDueDate(formData.dueDate)
+      setPlannedDate(formData.plannedDate)
+      setActualDate(formData.actualDate)
+      setCardCreatedAt(cardData.created_at)
+      setPriority(formData.priority)
+      setPhaseId(formData.phase_id)
+      setOriginalData(formData)
+      setActivity(activityData)
+      setCardSubtasks(cardData.subtasks || [])
+      setIsFormReady(true)
+    }).catch(err => {
+      console.error('載入卡片錯誤:', err)
+      if (!cancelled) {
+        alert('無法載入卡片資料，請重新整理頁面')
+        handleClose()
+      }
+    })
+
+    return () => { cancelled = true }
+  }, [card.id])
+
+  const saveCard = async () => {
+    if (isSaving) return
+
+    setIsSaving(true)
+    try {
+      const payload = {
+        title,
+        description,
+        assignee,
+        start_date: startDate || null,
+        due_date: dueDate || null,
+        planned_completion_date: plannedDate || null,
+        actual_completion_date: actualDate || null,
+        priority,
+        phase_id: phaseId,
+      }
+      console.log('[saveCard] payload:', JSON.stringify(payload))
+      const res = await fetch('/api/cards/' + card.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        handleClose()
+        onUpdate()
+      } else {
+        console.error('[saveCard] API error:', JSON.stringify(data))
+        alert('儲存失敗: ' + (data.error || '未知錯誤') + (data.detail ? '\n詳情: ' + data.detail : '') + (data.step ? '\n步驟: ' + data.step : ''))
+        setIsSaving(false)
+      }
+    } catch (e) {
+      console.error('Save error:', e)
+      alert('儲存失敗')
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    setTitle(originalData.title)
+    setDescription(originalData.description)
+    setAssignee(originalData.assignee)
+    setStartDate(originalData.startDate)
+    setDueDate(originalData.dueDate)
+    setPlannedDate(originalData.plannedDate)
+    setActualDate(originalData.actualDate)
+    setPriority(originalData.priority)
+    setPhaseId(originalData.phase_id)
+    handleClose()
+  }
+
+  const scheduleSummary = getScheduleSummary(dueDate, plannedDate, actualDate)
+  const collapsedDisplay = getScheduleCollapsedDisplay(startDate, dueDate, actualDate)
+
+  return (
+    <div
+      className={`fixed top-0 right-0 h-full w-[420px] max-lg:w-full max-lg:inset-0 z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out ${
+        isVisible ? 'translate-x-0' : 'translate-x-full max-lg:translate-x-full'
+      }`}
+    >
+      {/* Header */}
+      <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">卡片詳情</h2>
+          {card?.card_number != null && (
+            <span className="text-sm font-mono text-slate-400">#{card.card_number}</span>
+          )}
+        </div>
+        <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 p-1">✕</button>
+      </div>
+
+      {/* Content */}
+      {!isFormReady ? (
+        <div className="flex-1 flex items-center justify-center text-slate-400">載入中...</div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">標題</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border rounded px-3 py-2" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">描述</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2" placeholder="輸入描述..." />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">指派</label>
+              <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
+            </div>
+
+            {/* 日程安排區塊 */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">📅 日程安排</h3>
+                <button
+                  type="button"
+                  onClick={() => setScheduleExpanded(prev => !prev)}
+                  className="text-xs text-slate-400 hover:text-blue-500 transition-colors px-1"
+                >
+                  {scheduleExpanded ? '▾ 收合' : '✏️ 編輯'}
+                </button>
+              </div>
+
+              {!scheduleExpanded && (
+                <div className="mt-2">
+                  {collapsedDisplay ? (
+                    <button
+                      type="button"
+                      onClick={() => setScheduleExpanded(true)}
+                      className={`text-sm font-medium ${collapsedDisplay.color} hover:opacity-80 transition-opacity text-left`}
+                    >
+                      {collapsedDisplay.icon} {collapsedDisplay.text}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setScheduleExpanded(true)}
+                      className="text-sm text-slate-400 hover:text-blue-500 transition-colors"
+                    >
+                      + 設定日期
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {scheduleExpanded && (
+                <div className="mt-3 space-y-1">
+                  {/* 開始日 */}
+                  <div className="flex items-center justify-between group min-h-[28px]">
+                    <span className="text-sm text-slate-500 w-20 shrink-0">開始日</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      {editingDate === 'start' ? (
+                        <DateInput value={startDate} onChange={setStartDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                      ) : startDate ? (
+                        <span
+                          className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => setEditingDate('start')}
+                          title="點擊編輯"
+                        >
+                          {new Date(startDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDate('start')}
+                          className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                        >
+                          + 設定開始日
+                        </button>
+                      )}
+                      {startDate && editingDate !== 'start' && (
+                        <button
+                          type="button"
+                          onClick={() => { setStartDate(''); setEditingDate(null) }}
+                          className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                          title="清除"
+                        >✕</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 截止日 */}
+                  <div className="flex items-center justify-between group min-h-[28px]">
+                    <span className="text-sm text-slate-500 w-20 shrink-0">截止日</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      {editingDate === 'due' ? (
+                        <DateInput value={dueDate} onChange={setDueDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                      ) : dueDate ? (
+                        <span
+                          className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => setEditingDate('due')}
+                          title="點擊編輯"
+                        >
+                          {new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDate('due')}
+                          className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                        >
+                          + 設定截止日
+                        </button>
+                      )}
+                      {dueDate && editingDate !== 'due' && (
+                        <button
+                          type="button"
+                          onClick={() => { setDueDate(''); setEditingDate(null) }}
+                          className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                          title="清除"
+                        >✕</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 完成追蹤 */}
+                  <div className="text-xs font-medium text-slate-400 tracking-wide pt-2 pb-1 border-t border-slate-200 mt-2">完成追蹤</div>
+
+                  {/* 實際完成 */}
+                  <div className="flex items-center justify-between group min-h-[28px]">
+                    <span className="text-sm text-slate-500 w-20 shrink-0">實際完成</span>
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      {editingDate === 'actual' ? (
+                        <DateInput value={actualDate} onChange={setActualDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
+                      ) : actualDate ? (
+                        <span
+                          className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => setEditingDate('actual')}
+                          title="點擊編輯"
+                        >
+                          {new Date(actualDate + 'T00:00:00').toLocaleDateString('zh-TW')}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDate('actual')}
+                          className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                        >
+                          + 設定日期
+                        </button>
+                      )}
+                      {actualDate && editingDate !== 'actual' && (
+                        <button
+                          type="button"
+                          onClick={() => { setActualDate(''); setEditingDate(null) }}
+                          className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 text-xs transition-opacity"
+                          title="清除"
+                        >✕</button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 時間軸條 */}
+                  <ScheduleTimelineBar
+                    dueDate={dueDate}
+                    plannedDate={plannedDate}
+                    actualDate={actualDate}
+                    createdAt={cardCreatedAt}
+                  />
+
+                  {/* 動態摘要 */}
+                  {scheduleSummary && (
+                    <div className={`text-xs font-medium mt-1 ${
+                      scheduleSummary.includes('延遲') || scheduleSummary.includes('超過') ? 'text-red-500' :
+                      scheduleSummary.includes('提前') ? 'text-green-600' : 'text-slate-500'
+                    }`}>
+                      {scheduleSummary.includes('延遲') || scheduleSummary.includes('超過') ? '⚠️' :
+                       scheduleSummary.includes('提前') ? '✅' :
+                       scheduleSummary.includes('剛好') ? '✅' : '🕐'} {scheduleSummary}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Priority Selector */}
+            <div>
+              <label className="block text-sm font-medium mb-1">優先度</label>
+              <div className="flex gap-2">
+                {(['high', 'medium', 'low'] as const).map(level => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setPriority(level)}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border-2 transition-all ${
+                      priority === level
+                        ? 'border-current shadow-sm'
+                        : 'border-transparent bg-slate-50 hover:bg-slate-100'
+                    }`}
+                    style={{
+                      color: priority === level ? PRIORITY_COLORS[level] : '#64748b',
+                      backgroundColor: priority === level ? PRIORITY_COLORS[level] + '15' : undefined,
+                      borderColor: priority === level ? PRIORITY_COLORS[level] : 'transparent',
+                    }}
+                  >
+                    <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: PRIORITY_COLORS[level] }} />
+                    {PRIORITY_LABELS[level]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Phase Selector */}
+            <div>
+              <label className="block text-sm font-medium mb-1">階段</label>
+              <select
+                value={phaseId || ''}
+                onChange={e => setPhaseId(e.target.value || null)}
+                className="w-full border rounded px-3 py-2 text-sm"
+              >
+                <option value="">無階段</option>
+                {phases.map(phase => (
+                  <option key={phase.id} value={phase.id}>
+                    {phase.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subtask Checklist */}
+            <SubtaskChecklist
+              cardId={card.id}
+              subtasks={cardSubtasks}
+              onSubtasksChange={setCardSubtasks}
+            />
+
+            {/* Activity Log */}
+            <div>
+              <label className="block text-sm font-medium mb-1">活動紀錄</label>
+              <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded">
+                {activity.length === 0 ? (
+                  <p className="text-sm text-slate-400">尚無活動紀錄</p>
+                ) : (
+                  activity.map((log) => (
+                    <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2 py-1">
+                      <span className="font-medium text-blue-600">[{log.action}]</span>
+                      <span className="text-slate-700"> {log.target}</span>
+                      {log.old_value && log.new_value && log.old_value !== log.new_value ? (
+                        <span className="text-orange-600"> {log.old_value} → {log.new_value}</span>
+                      ) : (
+                        <span className="text-green-600"> {log.new_value}</span>
+                      )}
+                      <span className="text-slate-400 block mt-0.5">
+                        {new Date(log.created_at).toLocaleString('zh-TW')}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 border-t flex justify-end gap-2 flex-shrink-0">
+            <button onClick={handleCancel} className="px-4 py-2 border rounded hover:bg-gray-50">
+              取消
+            </button>
+            <button onClick={saveCard} disabled={isSaving} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+              {isSaving ? '儲存中...' : '儲存'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -1562,7 +1995,9 @@ export default function BoardPage() {
           onDeletePhase={deletePhase}
         />
 
-        <div className="flex-1 overflow-auto p-6 bg-slate-50">
+        <div className={`flex-1 overflow-auto p-6 bg-slate-50 transition-all duration-300 ${
+          selectedCard && currentView === 'board' ? 'lg:mr-[420px]' : ''
+        }`}>
           {currentView === 'board' && (
             <div className="flex gap-4 h-full">
               {filteredColumns.map((column) => (
@@ -1590,7 +2025,15 @@ export default function BoardPage() {
           {currentView === 'progress' && <ProgressView columns={filteredColumns} />}
         </div>
 
-        {selectedCard && (
+        {selectedCard && currentView === 'board' && (
+          <SlideInPane
+            card={selectedCard}
+            phases={phases}
+            onClose={() => setSelectedCard(null)}
+            onUpdate={fetchBoard}
+          />
+        )}
+        {selectedCard && currentView !== 'board' && (
           <CardModal
             card={selectedCard}
             phases={phases}

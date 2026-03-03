@@ -6,6 +6,7 @@ export type GanttScale = 'week' | 'month'
 
 export interface Card {
   id: string
+  card_number: number | null
   title: string
   description: string | null
   start_date: string | null

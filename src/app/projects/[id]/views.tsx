@@ -174,7 +174,10 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: card.columnColor }} />
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: card.columnColor }} />
+                  {card.card_number != null && (
+                    <span className="text-xs font-mono text-slate-400 flex-shrink-0">#{card.card_number}</span>
+                  )}
                   <span className="font-medium">{card.title}</span>
                 </div>
               </td>
@@ -427,7 +430,7 @@ function MonthView({ year, month, cards, onCardClick }: {
                   )}
                 </span>
                 <span className="truncate" style={{ color: card.columnColor }}>
-                  {card.title}
+                  {card.card_number != null ? `#${card.card_number} ` : ''}{card.title}
                 </span>
               </div>
             ))}

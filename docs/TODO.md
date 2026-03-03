@@ -147,24 +147,54 @@
 
 ---
 
-## 暫緩功能（未來 Feature）
+## 待開發功能
 
-### LINE Login
-**狀態：暫緩 ⏸️**
+### LINE Login + 每日摘要通知 + Admin 通知管理
+**狀態：待開發 📋**
+**完整計畫檔：** `~/.claude/plans/jolly-bouncing-quiche.md`
 **技術備忘：** `memory/decisions/auth-simplification.md`
 
-- [ ] LINE Developers Console 設定（Channel ID/Secret/Callback URL）
-- [ ] `src/auth.ts` 加回 LINE provider
-- [ ] 登入頁加回 LINE 按鈕
+#### 階段 0：LINE Developers Console 前置設定
+- [ ] 建立 LINE Login Channel（Web app）→ 取得 Channel ID / Secret
+- [ ] 設定 Callback URL（dev + prod）
+- [ ] 申請 OpenID Connect Email address permission
+- [ ] 確認 Messaging API Channel Access Token
+- [ ] `.env` 填入 `AUTH_LINE_ID`、`AUTH_LINE_SECRET`、`CRON_SECRET`
 
-### LINE 通知系統
-**狀態：代碼已完成，待 LINE Login 啟用後驗證 ⏸️**
+#### 階段 1：DB Migration
+- [ ] `ensureProfilesTable()` 新增 `line_display_name`、`line_picture_url` 欄位
+- [ ] 建立 `notification_settings` 表（boss_user_ids + 摘要區塊開關 + 推播時間）
 
+#### 階段 2：LINE OAuth Login
+- [ ] `src/auth.ts` 加入 LINE provider（Auth.js 內建）+ signIn/jwt callback
+- [ ] `src/app/login/page.tsx` 加入 LINE 登入按鈕
+
+#### 階段 3：設定頁 LINE 手動綁定
+- [ ] 新增 `/api/auth/line-bind` + `/api/auth/line-bind/callback` — 獨立 OAuth 綁定流程
+- [ ] 新增 `DELETE /api/users/me/line` — 解除綁定
+- [ ] `GET /api/users/me` 回傳 `line_connected`、`line_display_name`
+- [ ] `src/app/settings/page.tsx` LinkedAccountsCard 新增 LINE 綁定/解除 UI
+
+#### 階段 4：每日摘要推播
+- [ ] 新增 `POST /api/notifications/daily-digest`（CRON_SECRET 驗證）
+- [ ] `src/lib/line-messaging.ts` 新增 `sendLineDailyDigest()` Flex Message
+- [ ] 摘要內容：即將到期 / 逾期警告 / 昨日變更 / 專案進度（依設定啟用）
+- [ ] 老闆收全部摘要，一般人只收被指派給自己的卡片
+- [ ] `src/proxy.ts` 將 daily-digest 路由加入 publicExact
+
+#### 階段 5：Admin CMS 通知管理
+- [ ] 新增 `GET/PUT /api/admin/notifications/settings` + Zod 驗證
+- [ ] 新增 `/admin/notifications` 頁面（老闆設定 + 摘要內容 Toggle + 手動觸發測試）
+- [ ] `src/app/admin/layout.tsx` Sidebar 加入通知管理連結
+
+#### 排程
+- [ ] Zeabur Cron Job 設定（UTC 01:00 = 台灣 09:00）
+
+#### 已完成的基礎程式碼
 - [x] LINE Messaging API Flex Message 推播 (`src/lib/line-messaging.ts`)
 - [x] 統一通知分發器 (`src/lib/notifications.ts`)
 - [x] 通知偏好 CRUD (`src/app/api/notifications/preferences/route.ts`)
 - [x] 佇列摘要發送 (`src/app/api/notifications/flush/route.ts`)
-- [ ] LINE 通知端對端驗證
 
 ---
 

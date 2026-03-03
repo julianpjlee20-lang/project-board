@@ -246,8 +246,29 @@ export async function PUT() {
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS planned_completion_date DATE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS actual_completion_date DATE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS card_number INTEGER")
     } catch (_e) {
       // Ignore if columns already exist
+    }
+
+    // 為現有卡片補上編號（按 created_at 排序，每專案獨立序列）
+    try {
+      await query(`
+        UPDATE cards c SET card_number = sub.rn
+        FROM (
+          SELECT c2.id,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY col.project_id
+                   ORDER BY c2.created_at ASC, c2.id ASC
+                 ) AS rn
+          FROM cards c2
+          JOIN columns col ON c2.column_id = col.id
+          WHERE c2.card_number IS NULL
+        ) sub
+        WHERE c.id = sub.id
+      `)
+    } catch (_e) {
+      // Ignore if no cards to migrate
     }
 
     return NextResponse.json({ success: true, message: 'Database upgraded successfully' })

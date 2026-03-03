@@ -531,7 +531,7 @@ function GanttBar({
               filter: 'brightness(0.6)',
             }}
           >
-            {card.title}
+            {card.card_number != null ? `#${card.card_number} ` : ''}{card.title}
           </span>
         )}
 
@@ -547,6 +547,7 @@ function GanttBar({
             }}
           >
             <div className="text-sm font-semibold text-slate-800 mb-2 truncate max-w-[240px]">
+              {card.card_number != null && <span className="font-mono text-slate-400 mr-1">#{card.card_number}</span>}
               {card.title}
             </div>
             <div className="text-xs space-y-1.5">
@@ -673,8 +674,9 @@ function PhaseGroup({
               <span
                 className="text-xs text-slate-600 truncate cursor-pointer hover:text-slate-900 transition-colors"
                 onClick={() => onCardClick(card)}
-                title={card.title}
+                title={card.card_number != null ? `#${card.card_number} ${card.title}` : card.title}
               >
+                {card.card_number != null && <span className="font-mono text-slate-400">#{card.card_number} </span>}
                 {card.title}
               </span>
             </div>
@@ -832,7 +834,10 @@ function UnscheduledPanel({
                 style={{ borderLeftWidth: 3, borderLeftColor: priorityColor }}
                 onClick={() => onCardClick(card)}
               >
-                <span className="text-sm text-slate-700 flex-1 truncate">{card.title}</span>
+                <span className="text-sm text-slate-700 flex-1 truncate">
+                  {card.card_number != null && <span className="font-mono text-slate-400 mr-1">#{card.card_number}</span>}
+                  {card.title}
+                </span>
                 {phase && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded-full text-white flex-shrink-0"

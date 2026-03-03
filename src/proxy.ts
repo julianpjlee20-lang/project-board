@@ -17,6 +17,7 @@ const adminPrefixes = ["/admin", "/api/admin"]
 const protectedPrefixes = [
   "/projects",
   "/settings",
+  "/notifications",
   "/api/projects",
   "/api/cards",
   "/api/columns",
