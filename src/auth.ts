@@ -48,6 +48,43 @@ export async function ensureProfilesTable() {
       [adminEmail]
     )
   }
+
+  // 密碼重設 token 表
+  await query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL,
+      expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+      used_at    TIMESTAMP WITH TIME ZONE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `)
+  await query(`CREATE INDEX IF NOT EXISTS idx_prt_token_hash ON password_reset_tokens(token_hash)`)
+
+  // LINE Login 補充欄位
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_display_name TEXT`)
+  await query(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS line_picture_url TEXT`)
+
+  // 全域通知設定（單行配置表）
+  await query(`
+    CREATE TABLE IF NOT EXISTS notification_settings (
+      id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
+      boss_user_ids UUID[] DEFAULT '{}',
+      daily_digest_enabled BOOLEAN DEFAULT true,
+      digest_include_upcoming BOOLEAN DEFAULT true,
+      digest_include_overdue BOOLEAN DEFAULT true,
+      digest_include_yesterday_changes BOOLEAN DEFAULT false,
+      digest_include_project_stats BOOLEAN DEFAULT false,
+      digest_send_hour INTEGER DEFAULT 9,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `)
+  await query(`
+    INSERT INTO notification_settings (id)
+    VALUES ('00000000-0000-0000-0000-000000000001')
+    ON CONFLICT (id) DO NOTHING
+  `)
 }
 
 export const authConfig: NextAuthConfig = {
@@ -93,6 +130,28 @@ export const authConfig: NextAuthConfig = {
       clientId: process.env.AUTH_DISCORD_ID,
       clientSecret: process.env.AUTH_DISCORD_SECRET,
     }),
+    // LINE OAuth — 自訂 OIDC provider（條件式載入，AUTH_LINE_ID 不存在時跳過）
+    ...(process.env.AUTH_LINE_ID ? [{
+      id: "line",
+      name: "LINE",
+      type: "oidc" as const,
+      issuer: "https://access.line.me",
+      authorization: {
+        url: "https://access.line.me/oauth2/v2.1/authorize",
+        params: { scope: "profile openid", bot_prompt: "normal" },
+      },
+      token: "https://api.line.me/oauth2/v2.1/token",
+      userinfo: "https://api.line.me/v2/profile",
+      clientId: process.env.AUTH_LINE_ID,
+      clientSecret: process.env.AUTH_LINE_SECRET,
+      profile(profile: Record<string, string>) {
+        return {
+          id: profile.userId || profile.sub,
+          name: profile.displayName || profile.name,
+          image: profile.pictureUrl || profile.picture,
+        }
+      },
+    }] : []),
   ],
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
@@ -129,6 +188,40 @@ export const authConfig: NextAuthConfig = {
         }
       }
 
+      // LINE OAuth：upsert profile
+      if (account?.provider === "line") {
+        try {
+          await ensureProfilesTable()
+          const providerAccountId = account.providerAccountId
+          const existing = await query(
+            "SELECT id FROM profiles WHERE line_user_id = $1",
+            [providerAccountId]
+          )
+
+          if (existing.length === 0) {
+            await query(
+              `INSERT INTO profiles (name, avatar_url, line_user_id, line_display_name, line_picture_url, role, is_active)
+               VALUES ($1, $2, $3, $4, $5, 'user', false)`,
+              [user.name, user.image, providerAccountId, user.name, user.image]
+            )
+          } else {
+            await query(
+              `UPDATE profiles
+               SET name = COALESCE($1, name),
+                   avatar_url = COALESCE($2, avatar_url),
+                   line_display_name = COALESCE($3, line_display_name),
+                   line_picture_url = COALESCE($4, line_picture_url)
+               WHERE line_user_id = $5`,
+              [user.name, user.image, user.name, user.image, providerAccountId]
+            )
+          }
+          return true
+        } catch (error) {
+          console.error("[Auth] LINE signIn failed:", error)
+          return false
+        }
+      }
+
       return true
     },
 
@@ -148,6 +241,17 @@ export const authConfig: NextAuthConfig = {
         if (rows.length > 0) {
           token.profileId = rows[0].id
           token.provider = "discord"
+          token.role = rows[0].role || 'user'
+        }
+      } else if (account?.provider === "line") {
+        // LINE：從 DB 查 profileId 和 role
+        const rows = await query(
+          "SELECT id, role FROM profiles WHERE line_user_id = $1",
+          [account.providerAccountId]
+        )
+        if (rows.length > 0) {
+          token.profileId = rows[0].id
+          token.provider = "line"
           token.role = rows[0].role || 'user'
         }
       }

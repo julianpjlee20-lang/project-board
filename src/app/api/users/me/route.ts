@@ -15,7 +15,7 @@ export async function GET() {
     const user = await requireAuth()
 
     const rows = await query(
-      `SELECT id, name, email, avatar_url, role, discord_user_id, created_at
+      `SELECT id, name, email, avatar_url, role, discord_user_id, line_user_id, line_display_name, created_at
        FROM profiles
        WHERE id = $1`,
       [user.id]
@@ -38,6 +38,8 @@ export async function GET() {
       role: profile.role,
       provider: user.provider ?? 'credentials',
       discord_connected: !!profile.discord_user_id,
+      line_connected: !!profile.line_user_id,
+      line_display_name: profile.line_display_name || null,
       created_at: profile.created_at,
     })
   } catch (error) {
@@ -98,7 +100,7 @@ export async function PUT(request: NextRequest) {
       `UPDATE profiles
        SET ${setClauses.join(', ')}
        WHERE id = $${paramIndex}
-       RETURNING id, name, email, avatar_url, role, discord_user_id, created_at`,
+       RETURNING id, name, email, avatar_url, role, discord_user_id, line_user_id, line_display_name, created_at`,
       values
     )
 
@@ -119,6 +121,8 @@ export async function PUT(request: NextRequest) {
       role: profile.role,
       provider: user.provider ?? 'credentials',
       discord_connected: !!profile.discord_user_id,
+      line_connected: !!profile.line_user_id,
+      line_display_name: profile.line_display_name || null,
       created_at: profile.created_at,
     })
   } catch (error) {

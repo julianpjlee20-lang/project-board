@@ -150,7 +150,7 @@
 ## 待開發功能
 
 ### LINE Login + 每日摘要通知 + Admin 通知管理
-**狀態：待開發 📋**
+**狀態：階段 1-3 已完成 ✅ / 階段 4-5 待開發 📋**
 **完整計畫檔：** `~/.claude/plans/jolly-bouncing-quiche.md`
 **技術備忘：** `memory/decisions/auth-simplification.md`
 
@@ -161,19 +161,19 @@
 - [ ] 確認 Messaging API Channel Access Token
 - [ ] `.env` 填入 `AUTH_LINE_ID`、`AUTH_LINE_SECRET`、`CRON_SECRET`
 
-#### 階段 1：DB Migration
-- [ ] `ensureProfilesTable()` 新增 `line_display_name`、`line_picture_url` 欄位
-- [ ] 建立 `notification_settings` 表（boss_user_ids + 摘要區塊開關 + 推播時間）
+#### 階段 1：DB Migration ✅
+- [x] `ensureProfilesTable()` 新增 `line_display_name`、`line_picture_url` 欄位
+- [x] 建立 `notification_settings` 表（boss_user_ids + 摘要區塊開關 + 推播時間）
 
-#### 階段 2：LINE OAuth Login
-- [ ] `src/auth.ts` 加入 LINE provider（Auth.js 內建）+ signIn/jwt callback
-- [ ] `src/app/login/page.tsx` 加入 LINE 登入按鈕
+#### 階段 2：LINE OAuth Login ✅
+- [x] `src/auth.ts` 加入 LINE provider（自訂 OIDC）+ signIn/jwt callback
+- [x] `src/app/login/page.tsx` 加入 LINE 登入按鈕
 
-#### 階段 3：設定頁 LINE 手動綁定
-- [ ] 新增 `/api/auth/line-bind` + `/api/auth/line-bind/callback` — 獨立 OAuth 綁定流程
-- [ ] 新增 `DELETE /api/users/me/line` — 解除綁定
-- [ ] `GET /api/users/me` 回傳 `line_connected`、`line_display_name`
-- [ ] `src/app/settings/page.tsx` LinkedAccountsCard 新增 LINE 綁定/解除 UI
+#### 階段 3：設定頁 LINE 手動綁定 ✅
+- [x] 新增 `/api/auth/line-bind` + `/api/auth/line-bind/callback` — 獨立 OAuth 綁定流程
+- [x] 新增 `DELETE /api/users/me/line` — 解除綁定
+- [x] `GET /api/users/me` 回傳 `line_connected`、`line_display_name`
+- [x] `src/app/settings/page.tsx` LinkedAccountsCard 新增 LINE 綁定/解除 UI
 
 #### 階段 4：每日摘要推播
 - [ ] 新增 `POST /api/notifications/daily-digest`（CRON_SECRET 驗證）

@@ -241,6 +241,21 @@ export const changePasswordSchema = z.object({
   path: ['confirm_password'],
 })
 
+/** POST /api/auth/forgot-password - 忘記密碼 */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email({ message: '請輸入有效的 Email' }),
+})
+
+/** POST /api/auth/reset-password - 重設密碼 */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, { message: 'Token 不可為空' }),
+  new_password: z.string().min(6, { message: '新密碼至少 6 個字元' }).max(100),
+  confirm_password: z.string().min(1, { message: '請確認新密碼' }),
+}).refine((data) => data.new_password === data.confirm_password, {
+  message: '兩次密碼不一致',
+  path: ['confirm_password'],
+})
+
 // ========================================
 // Admin CMS 驗證
 // ========================================
@@ -255,6 +270,17 @@ export const adminUpdateUserSchema = z.object({
 /** POST /api/admin/users/[id]/reset-password - 管理員重設密碼 */
 export const adminResetPasswordSchema = z.object({
   new_password: z.string().min(6, { message: '密碼至少 6 個字元' }).max(100),
+})
+
+/** PUT /api/admin/notifications/settings - 更新通知設定 */
+export const notificationSettingsSchema = z.object({
+  boss_user_ids: z.array(z.string().uuid()).optional(),
+  daily_digest_enabled: z.boolean().optional(),
+  digest_include_upcoming: z.boolean().optional(),
+  digest_include_overdue: z.boolean().optional(),
+  digest_include_yesterday_changes: z.boolean().optional(),
+  digest_include_project_stats: z.boolean().optional(),
+  digest_send_hour: z.number().int().min(0).max(23).optional(),
 })
 
 // ========================================

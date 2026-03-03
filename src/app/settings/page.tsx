@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { updateProfileSchema, changePasswordSchema, validateData } from '@/lib/validations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -12,8 +13,10 @@ interface UserProfile {
   email: string
   avatar_url: string | null
   role: string
-  provider: 'credentials' | 'discord'
+  provider: 'credentials' | 'discord' | 'line'
   discord_connected: boolean
+  line_connected: boolean
+  line_display_name: string | null
   created_at: string
 }
 
@@ -196,7 +199,7 @@ function AccountInfoCard({ profile }: { profile: UserProfile }) {
         <div className="px-4 py-3 rounded-lg bg-slate-50">
           <p className="text-xs text-slate-500 mb-1">登入方式</p>
           <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
-            {profile.provider === 'discord' ? 'Discord' : '帳號密碼'}
+            {profile.provider === 'discord' ? 'Discord' : profile.provider === 'line' ? 'LINE' : '帳號密碼'}
           </p>
         </div>
         <div className="px-4 py-3 rounded-lg bg-slate-50">
@@ -401,7 +404,7 @@ function ProfileCard({
 
 // ─── Section: Change Password Card ─────────────────────────────────────────
 
-function PasswordCard({ provider }: { provider: 'credentials' | 'discord' }) {
+function PasswordCard({ provider }: { provider: 'credentials' | 'discord' | 'line' }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -466,12 +469,21 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' }) {
       </h2>
 
       {provider !== 'credentials' ? (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50 text-sm text-slate-500">
-          <svg className="w-5 h-5 flex-shrink-0" fill="#5865F2" viewBox="0 0 24 24">
-            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-          </svg>
-          <span>你使用 Discord 登入，密碼由 Discord 管理</span>
-        </div>
+        provider === 'line' ? (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50 text-sm text-slate-500">
+            <svg className="w-5 h-5 flex-shrink-0" fill="#06C755" viewBox="0 0 24 24">
+              <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+            </svg>
+            <span>你使用 LINE 登入，密碼由 LINE 管理</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50 text-sm text-slate-500">
+            <svg className="w-5 h-5 flex-shrink-0" fill="#5865F2" viewBox="0 0 24 24">
+              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+            </svg>
+            <span>你使用 Discord 登入，密碼由 Discord 管理</span>
+          </div>
+        )
       ) : (
         <form onSubmit={handleSave} className="space-y-4">
           <div>
@@ -568,7 +580,47 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' }) {
 
 // ─── Section: Linked Accounts Card ──────────────────────────────────────────
 
-function LinkedAccountsCard({ profile }: { profile: UserProfile }) {
+function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRefresh: () => void }) {
+  const searchParams = useSearchParams()
+  const [unbinding, setUnbinding] = useState(false)
+  const [lineMessage, setLineMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Handle LINE bind callback URL params
+  useEffect(() => {
+    const lineStatus = searchParams.get('line')
+    if (lineStatus === 'bound') {
+      setLineMessage({ type: 'success', text: 'LINE 帳號已成功綁定' })
+      onRefresh()
+    } else if (lineStatus === 'error') {
+      const reason = searchParams.get('reason')
+      if (reason === 'already_linked') {
+        setLineMessage({ type: 'error', text: '此 LINE 帳號已被其他使用者綁定' })
+      } else {
+        setLineMessage({ type: 'error', text: 'LINE 綁定失敗，請稍後再試' })
+      }
+    }
+  }, [searchParams, onRefresh])
+
+  const handleUnbindLine = async () => {
+    if (!confirm('確定要解除 LINE 綁定嗎？解除後將無法收到 LINE 通知。')) return
+    setUnbinding(true)
+    setLineMessage(null)
+    try {
+      const res = await fetch('/api/users/me/line', { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        setLineMessage({ type: 'error', text: data.error || '解除綁定失敗' })
+      } else {
+        setLineMessage({ type: 'success', text: 'LINE 綁定已解除' })
+        onRefresh()
+      }
+    } catch {
+      setLineMessage({ type: 'error', text: '連線失敗' })
+    } finally {
+      setUnbinding(false)
+    }
+  }
+
   return (
     <section className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
       <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
@@ -638,6 +690,52 @@ function LinkedAccountsCard({ profile }: { profile: UserProfile }) {
             </span>
           )}
         </div>
+
+        {/* LINE */}
+        <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-slate-50">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 flex-shrink-0" fill="#06C755" viewBox="0 0 24 24">
+              <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+            </svg>
+            <div>
+              <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+                LINE
+              </p>
+              {profile.line_connected && profile.line_display_name && (
+                <p className="text-xs text-slate-500">{profile.line_display_name}</p>
+              )}
+            </div>
+          </div>
+          {profile.line_connected ? (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span
+                className="text-xs px-2 py-1 rounded-full font-medium"
+                style={{ backgroundColor: '#dcfce7', color: '#166534' }}
+              >
+                已連結
+              </span>
+              <button
+                onClick={handleUnbindLine}
+                disabled={unbinding}
+                className="text-xs px-2 py-1 rounded-full font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+              >
+                {unbinding ? '解除中...' : '解除綁定'}
+              </button>
+            </div>
+          ) : (
+            <a
+              href="/api/auth/line-bind"
+              className="text-xs px-3 py-1.5 rounded-full font-medium text-white hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: '#06C755' }}
+            >
+              連結 LINE
+            </a>
+          )}
+        </div>
+
+        {/* LINE message */}
+        {lineMessage && <AlertBanner type={lineMessage.type} message={lineMessage.text} />}
       </div>
     </section>
   )
@@ -948,7 +1046,9 @@ export default function SettingsPage() {
             <PasswordCard provider={profile.provider} />
 
             {/* 4. Linked accounts */}
-            <LinkedAccountsCard profile={profile} />
+            <Suspense fallback={<SkeletonCard />}>
+              <LinkedAccountsCard profile={profile} onRefresh={fetchProfile} />
+            </Suspense>
 
             {/* 5. Notification preferences */}
             <NotificationCard />
