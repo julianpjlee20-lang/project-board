@@ -26,6 +26,8 @@ const PRIORITY_LABELS: Record<Card['priority'], string> = {
 }
 
 // Mini Timeline Bar for CardItem (4px, hover → 8px)
+// Kept for potential reuse in Gantt/other views — currently unused in Board CardItem
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MiniTimelineBar({ card }: { card: Card }) {
   const dueDate = card.due_date ? new Date(card.due_date.split('T')[0] + 'T00:00:00') : null
   const plannedDate = card.planned_completion_date ? new Date(card.planned_completion_date.split('T')[0] + 'T00:00:00') : null
@@ -1134,7 +1136,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
     })
 
     return () => { cancelled = true }
-  }, [card.id])
+  }, [card.id, handleClose])
 
   const saveCard = async () => {
     if (isSaving) return
