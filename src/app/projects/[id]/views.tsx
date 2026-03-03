@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Card, Column, Phase, CalendarMode } from './types'
 
 const PRIORITY_CONFIG = {
@@ -922,13 +922,174 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
 // ──────────────────────────────────────────────
 // Progress View Component
 // ──────────────────────────────────────────────
+type ProgressStatType = 'all' | 'in-progress' | 'completed'
+
+interface ProgressCardWithColumn extends Card {
+  columnName: string
+  columnColor: string
+}
+
+const PROGRESS_STAT_CONFIG: Record<ProgressStatType, { title: string; emptyText: string }> = {
+  'all':         { title: '所有任務',     emptyText: '尚無任何任務' },
+  'in-progress': { title: '進行中的任務', emptyText: '沒有進行中的任務' },
+  'completed':   { title: '已完成的任務', emptyText: '尚無已完成的任務' },
+}
+
+const PRIORITY_LABEL: Record<Card['priority'], { bg: string; text: string; label: string }> = {
+  low:    { bg: 'bg-slate-100', text: 'text-slate-600', label: '低' },
+  medium: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: '中' },
+  high:   { bg: 'bg-red-100', text: 'text-red-700', label: '高' },
+}
+
+function ProgressStatsModal({
+  type,
+  cards,
+  onClose,
+}: {
+  type: ProgressStatType
+  cards: ProgressCardWithColumn[]
+  onClose: () => void
+}) {
+  const config = PROGRESS_STAT_CONFIG[type]
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 animate-[fadeIn_150ms_ease-out]" />
+
+      {/* Modal */}
+      <div
+        className="relative bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[70vh] flex flex-col animate-[scaleIn_150ms_ease-out] mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+          <div>
+            <h4 className="text-lg font-semibold text-slate-900">{config.title}</h4>
+            <p className="text-sm text-slate-500 mt-0.5">{cards.length} 張卡片</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            aria-label="關閉"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Card list */}
+        <div className="overflow-y-auto flex-1 px-5 py-3">
+          {cards.length === 0 ? (
+            <div className="text-center text-slate-400 py-8">{config.emptyText}</div>
+          ) : (
+            <div className="space-y-2">
+              {cards.map((card) => {
+                const progress = card.progress || 0
+                const priorityStyle = PRIORITY_LABEL[card.priority || 'medium']
+                const progressColor = progress === 100 ? '#10B981' : '#3B82F6'
+
+                return (
+                  <div
+                    key={card.id}
+                    className="border border-slate-200 rounded-lg p-3 hover:border-slate-300 transition-colors"
+                  >
+                    {/* Title row */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {card.card_number != null && (
+                        <span className="text-xs font-mono text-slate-400 flex-shrink-0">
+                          #{card.card_number}
+                        </span>
+                      )}
+                      <span className="font-medium text-sm text-slate-900 truncate">
+                        {card.title}
+                      </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 flex-shrink-0 w-8 text-right">
+                        {progress}%
+                      </span>
+                    </div>
+
+                    {/* Tags row: column + priority */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white"
+                        style={{ backgroundColor: card.columnColor }}
+                      >
+                        {card.columnName}
+                      </span>
+                      <span
+                        className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full ${priorityStyle.bg} ${priorityStyle.text}`}
+                      >
+                        {priorityStyle.label}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Keyframe animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 export function ProgressView({ columns }: { columns: Column[] }) {
-  const allCards = columns.flatMap(col => col.cards)
-  const totalCards = allCards.length
+  const [modalType, setModalType] = useState<ProgressStatType | null>(null)
+
+  const allCardsWithColumn: ProgressCardWithColumn[] = columns.flatMap(col =>
+    col.cards.map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
+  )
+  const totalCards = allCardsWithColumn.length
   const overallProgress = totalCards > 0
-    ? Math.round(allCards.reduce((sum, card) => sum + (card.progress || 0), 0) / totalCards)
+    ? Math.round(allCardsWithColumn.reduce((sum, card) => sum + (card.progress || 0), 0) / totalCards)
     : 0
-  const completedCards = allCards.filter(c => (c.progress || 0) === 100).length
+  const completedCards = allCardsWithColumn.filter(c => (c.progress || 0) === 100).length
+
+  function getFilteredCards(type: ProgressStatType): ProgressCardWithColumn[] {
+    switch (type) {
+      case 'all':
+        return allCardsWithColumn
+      case 'in-progress':
+        return allCardsWithColumn.filter(c => (c.progress || 0) < 100)
+      case 'completed':
+        return allCardsWithColumn.filter(c => (c.progress || 0) === 100)
+    }
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -978,19 +1139,40 @@ export function ProgressView({ columns }: { columns: Column[] }) {
       </div>
 
       <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t">
-        <div className="text-center">
+        <button
+          type="button"
+          onClick={() => setModalType('all')}
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-slate-50 hover:scale-105 active:scale-100"
+        >
           <div className="text-2xl font-bold text-slate-900">{totalCards}</div>
           <div className="text-sm text-slate-500">總任務</div>
-        </div>
-        <div className="text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalType('in-progress')}
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-blue-50 hover:scale-105 active:scale-100"
+        >
           <div className="text-2xl font-bold text-blue-600">{totalCards - completedCards}</div>
           <div className="text-sm text-slate-500">進行中</div>
-        </div>
-        <div className="text-center">
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalType('completed')}
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-green-50 hover:scale-105 active:scale-100"
+        >
           <div className="text-2xl font-bold text-green-600">{completedCards}</div>
           <div className="text-sm text-slate-500">已完成</div>
-        </div>
+        </button>
       </div>
+
+      {/* Stats Modal */}
+      {modalType !== null && (
+        <ProgressStatsModal
+          type={modalType}
+          cards={getFilteredCards(modalType)}
+          onClose={() => setModalType(null)}
+        />
+      )}
     </div>
   )
 }

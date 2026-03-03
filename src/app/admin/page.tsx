@@ -66,9 +66,9 @@ function NewUserIcon({ className, style }: IconProps) {
   )
 }
 
-function ArrowRightIcon({ className }: { className?: string }) {
+function ArrowRightIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+    <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
     </svg>
   )
@@ -82,27 +82,51 @@ interface StatCardProps {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
   color: string
   bgColor: string
+  href?: string
 }
 
-function StatCard({ title, value, icon: Icon, color, bgColor }: StatCardProps) {
-  return (
-    <div className="bg-white rounded-xl border p-5 transition-shadow hover:shadow-md" style={{ borderColor: '#E5E5E5' }}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium" style={{ color: '#6B7280' }}>
-            {title}
-          </p>
-          <p className="text-3xl font-bold mt-1" style={{ color: '#0B1A14' }}>
-            {value.toLocaleString()}
-          </p>
-        </div>
+function StatCard({ title, value, icon: Icon, color, bgColor, href }: StatCardProps) {
+  const content = (
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-sm font-medium" style={{ color: '#6B7280' }}>
+          {title}
+        </p>
+        <p className="text-3xl font-bold mt-1" style={{ color: '#0B1A14' }}>
+          {value.toLocaleString()}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
         <div
-          className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="w-11 h-11 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: bgColor }}
         >
           <Icon className="w-6 h-6" style={{ color }} />
         </div>
+        {href && (
+          <ArrowRightIcon className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color }} />
+        )}
       </div>
+    </div>
+  )
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group block bg-white rounded-xl border p-5 transition-all hover:shadow-md cursor-pointer"
+        style={{ borderColor: '#E5E5E5' }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = color }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E5E5E5' }}
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-xl border p-5 transition-shadow hover:shadow-md" style={{ borderColor: '#E5E5E5' }}>
+      {content}
     </div>
   )
 }
@@ -158,6 +182,7 @@ export default function AdminDashboardPage() {
           icon: UsersIcon,
           color: '#4EA7FC',
           bgColor: '#EEF6FF',
+          href: '/admin/users',
         },
         {
           key: 'active_users',
@@ -166,6 +191,7 @@ export default function AdminDashboardPage() {
           icon: ActiveUserIcon,
           color: '#10B981',
           bgColor: '#ECFDF5',
+          href: '/admin/users?status=active',
         },
         {
           key: 'disabled_users',
@@ -174,6 +200,7 @@ export default function AdminDashboardPage() {
           icon: PendingUserIcon,
           color: '#F59E0B',
           bgColor: '#FFFBEB',
+          href: '/admin/users?status=inactive',
         },
         {
           key: 'total_projects',
@@ -182,6 +209,7 @@ export default function AdminDashboardPage() {
           icon: ProjectIcon,
           color: '#8B5CF6',
           bgColor: '#F5F3FF',
+          href: '/admin/projects',
         },
         {
           key: 'total_cards',
@@ -190,6 +218,7 @@ export default function AdminDashboardPage() {
           icon: CardsIcon,
           color: '#EC4899',
           bgColor: '#FDF2F8',
+          href: '/admin/projects',
         },
         {
           key: 'users_this_month',
@@ -198,6 +227,7 @@ export default function AdminDashboardPage() {
           icon: NewUserIcon,
           color: '#06B6D4',
           bgColor: '#ECFEFF',
+          href: '/admin/users',
         },
       ]
     : []
@@ -237,6 +267,7 @@ export default function AdminDashboardPage() {
                   icon={card.icon}
                   color={card.color}
                   bgColor={card.bgColor}
+                  href={card.href}
                 />
               ))}
         </div>

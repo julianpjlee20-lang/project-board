@@ -191,14 +191,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h2 className="text-lg font-bold" style={{ color: '#0B1A14' }}>
             管理後台
           </h2>
-          {/* Mobile close button */}
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-1 rounded-lg hover:bg-slate-100 transition-colors"
-            aria-label="關閉選單"
-          >
-            <CloseIcon className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <Link
+              href="/projects"
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              title="返回看板"
+              style={{ color: '#6B7280' }}
+            >
+              <BackIcon className="w-4.5 h-4.5" />
+            </Link>
+            {/* Mobile close button */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              aria-label="關閉選單"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -288,14 +298,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: '#F9F8F5' }}>
-      {/* Mobile hamburger button */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 left-4 z-40 md:hidden p-2 rounded-lg bg-white shadow-md hover:bg-slate-50 transition-colors"
-        aria-label="開啟選單"
-      >
-        <MenuIcon className="w-5 h-5" />
-      </button>
+      {/* Mobile top bar */}
+      <div className="fixed top-4 left-4 right-4 z-40 md:hidden flex items-center justify-between">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 rounded-lg bg-white shadow-md hover:bg-slate-50 transition-colors"
+          aria-label="開啟選單"
+        >
+          <MenuIcon className="w-5 h-5" />
+        </button>
+        <Link
+          href="/projects"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white shadow-md text-sm font-medium hover:bg-slate-50 transition-colors"
+          style={{ color: '#374151' }}
+        >
+          <BackIcon className="w-4 h-4" />
+          返回看板
+        </Link>
+      </div>
 
       {/* Mobile overlay */}
       {sidebarOpen && (
