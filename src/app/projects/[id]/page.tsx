@@ -11,6 +11,7 @@ import type { Card, Column, Project, ViewType, Phase } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { DateInput } from '@/components/ui/DateInput'
+import { AssigneeCombobox } from '@/components/ui/AssigneeCombobox'
 
 // Priority color mapping
 const PRIORITY_COLORS: Record<Card['priority'], string> = {
@@ -602,7 +603,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
   const [originalData, setOriginalData] = useState({
     title: '',
     description: '',
-    assignee: '',
+    assigneeId: '',
     startDate: '',
     dueDate: '',
     plannedDate: '',
@@ -613,7 +614,8 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [assignee, setAssignee] = useState('')
+  const [assigneeId, setAssigneeId] = useState('')
+  const [activeUsers, setActiveUsers] = useState<{id: string; name: string; avatar_url: string | null}[]>([])
   const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [plannedDate, setPlannedDate] = useState('')
@@ -629,6 +631,13 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
   const [scheduleExpanded, setScheduleExpanded] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
+
+  // Fetch active users for assignee dropdown
+  useEffect(() => {
+    fetch('/api/users/active').then(r => r.json()).then(data => {
+      if (data.users) setActiveUsers(data.users)
+    }).catch(console.error)
+  }, [])
 
   // Fetch card data and activity on mount - populate form only after fetch completes
   useEffect(() => {
@@ -648,7 +657,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
       const formData = {
         title: cardData.title,
         description: cardData.description || '',
-        assignee: cardData.assignees?.[0]?.name || '',
+        assigneeId: cardData.assignees?.[0]?.id || '',
         startDate: cardData.start_date ? cardData.start_date.split('T')[0] : '',
         dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
         plannedDate: cardData.planned_completion_date ? cardData.planned_completion_date.split('T')[0] : '',
@@ -658,7 +667,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
       }
       setTitle(formData.title)
       setDescription(formData.description)
-      setAssignee(formData.assignee)
+      setAssigneeId(formData.assigneeId)
       setStartDate(formData.startDate)
       setDueDate(formData.dueDate)
       setPlannedDate(formData.plannedDate)
@@ -690,7 +699,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
       const payload = {
           title,
           description,
-          assignee,
+          assignee_id: assigneeId || null,
           start_date: startDate || null,
           due_date: dueDate || null,
           planned_completion_date: plannedDate || null,
@@ -727,7 +736,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
   const handleCancel = () => {
     setTitle(originalData.title)
     setDescription(originalData.description)
-    setAssignee(originalData.assignee)
+    setAssigneeId(originalData.assigneeId)
     setStartDate(originalData.startDate)
     setDueDate(originalData.dueDate)
     setPlannedDate(originalData.plannedDate)
@@ -779,7 +788,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
 
               <div>
                 <label className="block text-sm font-medium mb-1">指派</label>
-                <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
+                <AssigneeCombobox users={activeUsers} value={assigneeId} onChange={setAssigneeId} />
               </div>
 
               {/* 日程安排區塊 */}
@@ -1052,7 +1061,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
   const [originalData, setOriginalData] = useState({
     title: '',
     description: '',
-    assignee: '',
+    assigneeId: '',
     startDate: '',
     dueDate: '',
     plannedDate: '',
@@ -1063,7 +1072,8 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [assignee, setAssignee] = useState('')
+  const [assigneeId, setAssigneeId] = useState('')
+  const [activeUsers, setActiveUsers] = useState<{id: string; name: string; avatar_url: string | null}[]>([])
   const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [plannedDate, setPlannedDate] = useState('')
@@ -1077,6 +1087,13 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
   const [editingDate, setEditingDate] = useState<string | null>(null)
   const [scheduleExpanded, setScheduleExpanded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Fetch active users for assignee dropdown
+  useEffect(() => {
+    fetch('/api/users/active').then(r => r.json()).then(data => {
+      if (data.users) setActiveUsers(data.users)
+    }).catch(console.error)
+  }, [])
 
   // Slide-in animation on mount
   useEffect(() => {
@@ -1117,7 +1134,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
       const formData = {
         title: cardData.title,
         description: cardData.description || '',
-        assignee: cardData.assignees?.[0]?.name || '',
+        assigneeId: cardData.assignees?.[0]?.id || '',
         startDate: cardData.start_date ? cardData.start_date.split('T')[0] : '',
         dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
         plannedDate: cardData.planned_completion_date ? cardData.planned_completion_date.split('T')[0] : '',
@@ -1127,7 +1144,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
       }
       setTitle(formData.title)
       setDescription(formData.description)
-      setAssignee(formData.assignee)
+      setAssigneeId(formData.assigneeId)
       setStartDate(formData.startDate)
       setDueDate(formData.dueDate)
       setPlannedDate(formData.plannedDate)
@@ -1158,7 +1175,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
       const payload = {
         title,
         description,
-        assignee,
+        assignee_id: assigneeId || null,
         start_date: startDate || null,
         due_date: dueDate || null,
         planned_completion_date: plannedDate || null,
@@ -1193,7 +1210,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
   const handleCancel = () => {
     setTitle(originalData.title)
     setDescription(originalData.description)
-    setAssignee(originalData.assignee)
+    setAssigneeId(originalData.assigneeId)
     setStartDate(originalData.startDate)
     setDueDate(originalData.dueDate)
     setPlannedDate(originalData.plannedDate)
@@ -1241,7 +1258,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
 
             <div>
               <label className="block text-sm font-medium mb-1">指派</label>
-              <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
+              <AssigneeCombobox users={activeUsers} value={assigneeId} onChange={setAssigneeId} />
             </div>
 
             {/* 日程安排區塊 */}

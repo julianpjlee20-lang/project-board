@@ -72,7 +72,7 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    const { title, description, assignee, progress, priority, phase_id } = validation.data
+    const { title, description, assignee_id, progress, priority, phase_id } = validation.data
     let { start_date, due_date, planned_completion_date, actual_completion_date } = validation.data
 
     // Fix: Convert empty string to null for date fields
@@ -210,9 +210,9 @@ export async function PUT(
       )
     }
 
-    // Handle assignee
+    // Handle assignee (by user ID)
     step = 'handle-assignee'
-    if (assignee !== undefined) {
+    if (assignee_id !== undefined) {
       const oldAssignee = await query(
         'SELECT p.name FROM profiles p JOIN card_assignees ca ON p.id = ca.user_id WHERE ca.card_id = $1',
         [id]
@@ -220,34 +220,37 @@ export async function PUT(
       const oldAssigneeName = oldAssignee[0]?.name || '(未指派)'
 
       await query('DELETE FROM card_assignees WHERE card_id = $1', [id])
-      
-      if (assignee && assignee.trim()) {
-        let profiles = await query('SELECT id FROM profiles WHERE name = $1', [assignee])
-        
-        if (profiles.length === 0) {
-          const newProfile = await query(
-            'INSERT INTO profiles (id, name) VALUES (gen_random_uuid(), $1) RETURNING id',
-            [assignee]
-          )
-          profiles = newProfile
-        }
-        
-        if (profiles[0]) {
+
+      if (assignee_id && assignee_id !== '') {
+        // 查詢指派對象的名稱
+        const targetUser = await query('SELECT id, name FROM profiles WHERE id = $1', [assignee_id])
+
+        if (targetUser.length > 0) {
+          const newAssigneeName = targetUser[0].name || '(未命名)'
+
           await query(
             'INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)',
-            [id, profiles[0].id]
+            [id, targetUser[0].id]
           )
-          
+
           await query(
             'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-            [projectId, id, '指派', '負責人', oldAssigneeName, assignee]
+            [projectId, id, '指派', '負責人', oldAssigneeName, newAssigneeName]
           )
-          
+
           await sendNotification({
             cardTitle: title ?? oldTitle ?? '',
-            action: `指派給 ${assignee}`,
+            action: `指派給 ${newAssigneeName}`,
             projectName,
           })
+        }
+      } else {
+        // assignee_id 為空字串或 null，代表取消指派
+        if (oldAssigneeName !== '(未指派)') {
+          await query(
+            'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+            [projectId, id, '取消指派', '負責人', oldAssigneeName, '(未指派)']
+          )
         }
       }
     }

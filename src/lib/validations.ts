@@ -61,7 +61,7 @@ export const updateCardSchema = z.object({
     z.undefined()
   ]),
   description: z.union([z.string().max(5000), z.literal(''), z.undefined()]),
-  assignee: z.union([z.string().max(100), z.literal(''), z.undefined()]),
+  assignee_id: z.union([z.string().uuid(), z.literal(''), z.null(), z.undefined()]),
   start_date: z.union([
     z.string()
       .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/, { message: '無效的日期格式，需為 YYYY-MM-DD' })
