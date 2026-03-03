@@ -130,12 +130,11 @@ export const authConfig: NextAuthConfig = {
       clientId: process.env.AUTH_DISCORD_ID,
       clientSecret: process.env.AUTH_DISCORD_SECRET,
     }),
-    // LINE OAuth — 自訂 OIDC provider（條件式載入，AUTH_LINE_ID 不存在時跳過）
+    // LINE OAuth — 自訂 OAuth provider（條件式載入，AUTH_LINE_ID 不存在時跳過）
     ...(process.env.AUTH_LINE_ID ? [{
       id: "line",
       name: "LINE",
-      type: "oidc" as const,
-      issuer: "https://access.line.me",
+      type: "oauth" as const,
       authorization: {
         url: "https://access.line.me/oauth2/v2.1/authorize",
         params: { scope: "profile openid", bot_prompt: "normal" },
@@ -146,9 +145,9 @@ export const authConfig: NextAuthConfig = {
       clientSecret: process.env.AUTH_LINE_SECRET,
       profile(profile: Record<string, string>) {
         return {
-          id: profile.userId || profile.sub,
-          name: profile.displayName || profile.name,
-          image: profile.pictureUrl || profile.picture,
+          id: profile.userId,
+          name: profile.displayName,
+          image: profile.pictureUrl,
         }
       },
     }] : []),
