@@ -28,6 +28,15 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
     console.log('CardModal rendered for card:', card.id, card.title)
   }, [card])
 
+  // ESC 鍵關閉 Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   const handleSave = async () => {
     await fetch('/api/cards/' + card.id, {
       method: 'PUT',

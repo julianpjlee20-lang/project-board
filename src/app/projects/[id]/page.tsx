@@ -737,6 +737,15 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
     onClose()
   }
 
+  // ESC 鍵關閉 Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCancel()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleCancel])
+
   const scheduleSummary = getScheduleSummary(dueDate, plannedDate, actualDate)
   const collapsedDisplay = getScheduleCollapsedDisplay(startDate, dueDate, actualDate)
 
@@ -993,9 +1002,12 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
               />
 
               {/* Activity Log */}
-              <div>
-                <label className="block text-sm font-medium mb-1">活動紀錄</label>
-                <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded">
+              <details className="group">
+                <summary className="text-sm font-medium cursor-pointer select-none list-none flex items-center gap-1">
+                  <svg className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  活動紀錄{activity.length > 0 && <span className="text-xs text-slate-400 ml-1">({activity.length})</span>}
+                </summary>
+                <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded mt-1">
                   {activity.length === 0 ? (
                     <p className="text-sm text-slate-400">尚無活動紀錄</p>
                   ) : (
@@ -1015,7 +1027,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                     ))
                   )}
                 </div>
-              </div>
+              </details>
             </div>
 
             <div className="p-4 border-t flex justify-end gap-2">
@@ -1449,9 +1461,12 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
             />
 
             {/* Activity Log */}
-            <div>
-              <label className="block text-sm font-medium mb-1">活動紀錄</label>
-              <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded">
+            <details className="group">
+              <summary className="text-sm font-medium cursor-pointer select-none list-none flex items-center gap-1">
+                <svg className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                活動紀錄{activity.length > 0 && <span className="text-xs text-slate-400 ml-1">({activity.length})</span>}
+              </summary>
+              <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-50 p-2 rounded mt-1">
                 {activity.length === 0 ? (
                   <p className="text-sm text-slate-400">尚無活動紀錄</p>
                 ) : (
@@ -1471,7 +1486,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
                   ))
                 )}
               </div>
-            </div>
+            </details>
           </div>
 
           {/* Footer */}

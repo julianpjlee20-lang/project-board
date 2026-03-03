@@ -21,6 +21,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [showForgotHint, setShowForgotHint] = useState(false)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -145,18 +146,36 @@ function LoginContent() {
         </button>
       </form>
 
-      <div className="mt-4">
+      <div className="mt-4 flex items-center justify-center gap-3">
         <button
           onClick={() => {
             setIsRegister(!isRegister)
             setError(null)
             setSuccess(null)
+            setShowForgotHint(false)
           }}
           className="text-sm text-slate-500 hover:text-slate-700 hover:underline"
         >
           {isRegister ? '已有帳號？登入' : '沒有帳號？註冊'}
         </button>
+        {!isRegister && (
+          <>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => setShowForgotHint(!showForgotHint)}
+              className="text-sm text-slate-500 hover:text-slate-700 hover:underline"
+            >
+              忘記密碼？
+            </button>
+          </>
+        )}
       </div>
+
+      {showForgotHint && !isRegister && (
+        <div className="mt-3 px-4 py-3 rounded-lg bg-amber-50 text-amber-700 text-sm">
+          請聯繫管理員重設密碼
+        </div>
+      )}
 
       {/* 分隔線 */}
       <div className="flex items-center gap-4 my-6">

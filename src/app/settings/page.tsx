@@ -460,7 +460,7 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' }) {
   }
 
   return (
-    <section className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
+    <section id="password" className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
       <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
         更改密碼
       </h2>
