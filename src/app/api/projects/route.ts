@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createProjectSchema, validateData } from '@/lib/validations'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // GET /api/projects
 export async function GET() {
@@ -19,6 +21,9 @@ export async function GET() {
 // POST /api/projects
 export async function POST(request: Request) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const body = await request.json()
 
     // Zod 驗證
@@ -59,6 +64,9 @@ export async function POST(request: Request) {
       end_date: end_date || null
     })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('POST /api/projects error:', error)
     return NextResponse.json({
       error: 'Failed to create project',
@@ -243,6 +251,34 @@ export async function PUT() {
         dismiss_type TEXT NOT NULL CHECK (dismiss_type IN ('overdue', 'due_soon')),
         dismissed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         UNIQUE(user_id, card_id, dismiss_type)
+      )
+    `)
+
+    // 建立 API Key 管理表（只存 SHA-256 hash，不存明文）
+    await query(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        key_hash TEXT NOT NULL UNIQUE,
+        key_prefix TEXT NOT NULL,
+        permissions TEXT NOT NULL DEFAULT 'full' CHECK (permissions IN ('full', 'read_only')),
+        is_active BOOLEAN DEFAULT TRUE,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        last_used_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `)
+
+    // 建立 API Key 審計日誌表
+    await query(`
+      CREATE TABLE IF NOT EXISTS api_key_audit_log (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        action TEXT NOT NULL,
+        key_id UUID REFERENCES api_keys(id) ON DELETE SET NULL,
+        ip_address TEXT,
+        user_agent TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `)
 

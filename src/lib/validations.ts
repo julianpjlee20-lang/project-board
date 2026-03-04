@@ -150,6 +150,12 @@ export const updatePhaseSchema = z.object({
   position: positionSchema,
 })
 
+/** DELETE /api/projects/[id]/phases - 刪除階段（URL 參數） */
+export const deletePhaseSchema = z.object({
+  id: uuidSchema,
+  targetPhaseId: uuidSchema.optional(),
+})
+
 // ========================================
 // Columns API 驗證
 // ========================================

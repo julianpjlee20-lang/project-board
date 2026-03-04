@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createColumnSchema, updateColumnSchema, deleteColumnSchema, validateData } from '@/lib/validations'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // GET /api/columns
 export async function GET() {
@@ -16,6 +18,9 @@ export async function GET() {
 // POST /api/columns
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const body = await request.json()
 
     // Zod 驗證
@@ -43,6 +48,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to create column' }, { status: 500 })
   }
@@ -51,6 +59,9 @@ export async function POST(request: NextRequest) {
 // PUT /api/columns - update column
 export async function PUT(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const body = await request.json()
 
     // Zod 驗證
@@ -71,6 +82,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to update column' }, { status: 500 })
   }
@@ -79,6 +93,9 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/columns
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -95,6 +112,9 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to delete column' }, { status: 500 })
   }

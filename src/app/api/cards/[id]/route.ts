@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { updateCardSchema, validateData } from '@/lib/validations'
 import { sendNotification } from '@/lib/notifications'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // GET /api/cards/[id]
 export async function GET(
@@ -59,6 +61,9 @@ export async function PUT(
 ) {
   let step = 'init'
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id } = await params
     const body = await request.json()
 
@@ -258,6 +263,9 @@ export async function PUT(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     const errMsg = error instanceof Error ? error.message : String(error)
     const errStack = error instanceof Error ? error.stack : undefined
     console.error('[PUT /api/cards] Error:', errMsg)
@@ -276,6 +284,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id } = await params
 
     // Delete card (CASCADE will delete related assignees, comments, subtasks, etc.)
@@ -283,6 +294,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to delete card' }, { status: 500 })
   }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // GET /api/projects/[id]/tags
 export async function GET(
@@ -27,6 +29,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id: projectId } = await params
     const body = await request.json()
     const { name, color } = body
@@ -38,6 +43,9 @@ export async function POST(
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to create tag' }, { status: 500 })
   }
@@ -49,6 +57,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id: projectId } = await params
     const { searchParams } = new URL(request.url)
     const tag_id = searchParams.get('tag_id')
@@ -61,6 +72,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to delete tag' }, { status: 500 })
   }

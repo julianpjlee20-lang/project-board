@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // GET /api/cards/[id]/subtasks
 export async function GET(
@@ -27,6 +29,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id: cardId } = await params
     const body = await request.json()
     const { title } = body
@@ -45,6 +50,9 @@ export async function POST(
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to create subtask' }, { status: 500 })
   }
@@ -56,6 +64,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id: cardId } = await params
     const body = await request.json()
     const { subtask_id, title, is_completed } = body
@@ -67,6 +78,9 @@ export async function PUT(
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to update subtask' }, { status: 500 })
   }
@@ -78,6 +92,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id: cardId } = await params
     const { searchParams } = new URL(request.url)
     const subtask_id = searchParams.get('subtask_id')
@@ -90,6 +107,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to delete subtask' }, { status: 500 })
   }

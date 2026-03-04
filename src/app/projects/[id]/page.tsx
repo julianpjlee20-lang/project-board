@@ -1623,12 +1623,13 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
   selectedPhase: string | null
   onSelect: (phaseId: string | null) => void
   onAddPhase: (name: string, color: string) => void
-  onDeletePhase: (id: string) => void
+  onDeletePhase: (id: string, targetPhaseId?: string | null) => void
 }) {
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState('#6366F1')
   const [pendingDeletePhase, setPendingDeletePhase] = useState<Phase | null>(null)
+  const [targetPhaseId, setTargetPhaseId] = useState<string>('')
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault()
@@ -1724,7 +1725,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
         </button>
       )}
 
-      <Dialog open={pendingDeletePhase !== null} onOpenChange={(open) => { if (!open) setPendingDeletePhase(null) }}>
+      <Dialog open={pendingDeletePhase !== null} onOpenChange={(open) => { if (!open) { setPendingDeletePhase(null); setTargetPhaseId('') } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>刪除階段</DialogTitle>
@@ -1735,17 +1736,28 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
           {pendingDeletePhase && pendingDeletePhase.total_cards > 0 && (
             <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
               <p className="font-medium">⚠ 此階段包含 {pendingDeletePhase.total_cards} 個任務</p>
-              <p className="mt-1 text-amber-700">刪除後這些任務將失去階段標記，但任務本身不會被刪除。</p>
+              <p className="mt-1 text-amber-700">請選擇要將任務移至哪個階段：</p>
+              <select
+                value={targetPhaseId}
+                onChange={(e) => setTargetPhaseId(e.target.value)}
+                className="mt-2 w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">不指定階段（移除標記）</option>
+                {phases.filter(p => p.id !== pendingDeletePhase.id).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingDeletePhase(null)}>取消</Button>
+            <Button variant="outline" onClick={() => { setPendingDeletePhase(null); setTargetPhaseId('') }}>取消</Button>
             <Button
               variant="destructive"
               onClick={() => {
                 if (pendingDeletePhase) {
-                  onDeletePhase(pendingDeletePhase.id)
+                  onDeletePhase(pendingDeletePhase.id, targetPhaseId || null)
                   setPendingDeletePhase(null)
+                  setTargetPhaseId('')
                 }
               }}
             >
@@ -1834,9 +1846,13 @@ export default function BoardPage() {
     }
   }
 
-  async function deletePhase(id: string) {
+  async function deletePhase(id: string, targetPhaseId?: string | null) {
     try {
-      const res = await fetch(`/api/projects/${projectId}/phases?id=${id}`, {
+      let url = `/api/projects/${projectId}/phases?id=${id}`
+      if (targetPhaseId) {
+        url += `&targetPhaseId=${targetPhaseId}`
+      }
+      const res = await fetch(url, {
         method: 'DELETE'
       })
       if (!res.ok) {

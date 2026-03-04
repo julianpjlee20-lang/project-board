@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createCardSchema, validateData } from '@/lib/validations'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // POST /api/cards
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const body = await request.json()
 
     // Zod 驗證
@@ -54,6 +59,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to create card' }, { status: 500 })
   }

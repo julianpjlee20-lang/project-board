@@ -7,12 +7,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 import { dismissNotificationSchema, validateData } from '@/lib/validations'
 
 // POST /api/notifications/dismiss
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
+    checkWritePermission(user)
 
     const body = await request.json()
 
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await requireAuth()
+    checkWritePermission(user)
 
     const body = await request.json()
 

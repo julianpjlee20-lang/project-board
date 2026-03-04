@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 // POST /api/cards/reorder
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const body = await request.json()
     const { column_id, cards } = body
 
@@ -17,6 +22,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to reorder cards' }, { status: 500 })
   }

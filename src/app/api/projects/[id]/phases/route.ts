@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { createPhaseSchema, updatePhaseSchema, validateData } from '@/lib/validations'
+import { createPhaseSchema, updatePhaseSchema, deletePhaseSchema, validateData } from '@/lib/validations'
+import { requireAuth, AuthError } from '@/lib/auth'
+import { checkWritePermission } from '@/lib/api-key-guard'
 
 interface PhaseRow {
   id: string
@@ -54,6 +56,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { id: projectId } = await params
     const body = await request.json()
 
@@ -81,6 +86,9 @@ export async function POST(
 
     return NextResponse.json(result[0])
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('POST /api/projects/[id]/phases error:', error)
     return NextResponse.json({ error: 'Failed to create phase' }, { status: 500 })
   }
@@ -92,6 +100,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     await params
     const body = await request.json()
 
@@ -122,6 +133,9 @@ export async function PUT(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('PUT /api/projects/[id]/phases error:', error)
     return NextResponse.json({ error: 'Failed to update phase' }, { status: 500 })
   }
@@ -130,17 +144,39 @@ export async function PUT(
 // DELETE /api/projects/[id]/phases
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    const targetPhaseId = searchParams.get('targetPhaseId')
 
-    if (!id) {
-      return NextResponse.json({ error: '缺少 phase id' }, { status: 400 })
+    const validation = validateData(deletePhaseSchema, {
+      id: id ?? undefined,
+      targetPhaseId: targetPhaseId ?? undefined,
+    })
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
     }
 
-    await query('DELETE FROM phases WHERE id = $1', [id])
+    // 若指定目標階段，先將卡片遷移過去
+    if (validation.data.targetPhaseId) {
+      await query(
+        'UPDATE cards SET phase_id = $1 WHERE phase_id = $2',
+        [validation.data.targetPhaseId, validation.data.id]
+      )
+    }
+
+    await query('DELETE FROM phases WHERE id = $1', [validation.data.id])
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('DELETE /api/projects/[id]/phases error:', error)
     return NextResponse.json({ error: 'Failed to delete phase' }, { status: 500 })
   }
