@@ -19,7 +19,16 @@ export interface Card {
   created_at?: string
   assignees: { id: string; name: string }[]
   tags: { id: string; name: string; color: string }[]
-  subtasks: { id: string; title: string; is_completed: boolean }[]
+  subtasks: Subtask[]
+}
+
+export interface Subtask {
+  id: string
+  title: string
+  is_completed: boolean
+  due_date: string | null
+  assignee_id: string | null
+  assignee_name: string | null
 }
 
 export interface Phase {

@@ -23,8 +23,8 @@ export async function GET(
         SELECT c.*,
           COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
           COALESCE(
-            (SELECT json_agg(json_build_object('id', s.id, 'title', s.title, 'is_completed', s.is_completed, 'position', s.position) ORDER BY s.position)
-             FROM subtasks s WHERE s.card_id = c.id),
+            (SELECT json_agg(json_build_object('id', s.id, 'title', s.title, 'is_completed', s.is_completed, 'position', s.position, 'due_date', s.due_date, 'assignee_id', s.assignee_id, 'assignee_name', sp.name) ORDER BY s.position)
+             FROM subtasks s LEFT JOIN profiles sp ON s.assignee_id = sp.id WHERE s.card_id = c.id),
             '[]'
           ) as subtasks,
           COALESCE(

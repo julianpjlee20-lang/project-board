@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
+import { validateData, createSubtaskSchema, updateSubtaskSchema } from '@/lib/validations'
 
 // GET /api/cards/[id]/subtasks
 export async function GET(
@@ -10,9 +11,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    
+
     const subtasks = await query(
-      'SELECT * FROM subtasks WHERE card_id = $1 ORDER BY position',
+      `SELECT s.*, p.name as assignee_name
+       FROM subtasks s
+       LEFT JOIN profiles p ON s.assignee_id = p.id
+       WHERE s.card_id = $1
+       ORDER BY s.position`,
       [id]
     )
 
@@ -34,7 +39,17 @@ export async function POST(
 
     const { id: cardId } = await params
     const body = await request.json()
-    const { title } = body
+
+    // Zod 驗證
+    const validation = validateData(createSubtaskSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { title, due_date, assignee_id } = validation.data
 
     // Get max position
     const posResult = await query(
@@ -44,11 +59,21 @@ export async function POST(
     const position = posResult[0]?.pos || 0
 
     const result = await query(
-      'INSERT INTO subtasks (card_id, title, position) VALUES ($1, $2, $3) RETURNING *',
-      [cardId, title, position]
+      `INSERT INTO subtasks (card_id, title, position, due_date, assignee_id)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [cardId, title, position, due_date ?? null, assignee_id ?? null]
     )
 
-    return NextResponse.json(result[0])
+    // 查詢 assignee_name
+    const subtask = result[0]
+    if (subtask.assignee_id) {
+      const profile = await query('SELECT name FROM profiles WHERE id = $1', [subtask.assignee_id])
+      subtask.assignee_name = profile[0]?.name || null
+    } else {
+      subtask.assignee_name = null
+    }
+
+    return NextResponse.json(subtask)
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
@@ -69,14 +94,72 @@ export async function PUT(
 
     const { id: cardId } = await params
     const body = await request.json()
-    const { subtask_id, title, is_completed } = body
+
+    // Zod 驗證
+    const validation = validateData(updateSubtaskSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { subtask_id, title, is_completed, due_date, assignee_id } = validation.data
+
+    // 構建動態 SET 子句：只更新有提供的欄位
+    const setClauses: string[] = []
+    const values: (string | number | boolean | null | undefined)[] = []
+    let paramIndex = 1
+
+    if (title !== undefined) {
+      setClauses.push(`title = $${paramIndex++}`)
+      values.push(title)
+    }
+
+    if (is_completed !== undefined) {
+      setClauses.push(`is_completed = $${paramIndex++}`)
+      values.push(is_completed)
+    }
+
+    if (due_date !== undefined) {
+      // 空字串轉 null（清除值）
+      setClauses.push(`due_date = $${paramIndex++}`)
+      values.push(due_date === '' ? null : due_date)
+    }
+
+    if (assignee_id !== undefined) {
+      // 空字串轉 null（清除值）
+      setClauses.push(`assignee_id = $${paramIndex++}`)
+      values.push(assignee_id === '' ? null : assignee_id)
+    }
+
+    if (setClauses.length === 0) {
+      return NextResponse.json({ error: '至少需提供一個更新欄位' }, { status: 400 })
+    }
+
+    // 加入 WHERE 條件的參數
+    values.push(subtask_id, cardId)
+    const whereClause = `WHERE id = $${paramIndex++} AND card_id = $${paramIndex++}`
 
     const result = await query(
-      'UPDATE subtasks SET title = COALESCE($1, title), is_completed = COALESCE($2, is_completed) WHERE id = $3 AND card_id = $4 RETURNING *',
-      [title, is_completed, subtask_id, cardId]
+      `UPDATE subtasks SET ${setClauses.join(', ')} ${whereClause} RETURNING *`,
+      values
     )
 
-    return NextResponse.json(result[0])
+    if (result.length === 0) {
+      return NextResponse.json({ error: '子任務不存在' }, { status: 404 })
+    }
+
+    // 附加 assignee_name
+    const subtask = result[0]
+    if (subtask.assignee_id) {
+      const profile = await query('SELECT name FROM profiles WHERE id = $1', [subtask.assignee_id])
+      subtask.assignee_name = profile[0]?.name || null
+    } else {
+      subtask.assignee_name = null
+    }
+
+    return NextResponse.json(subtask)
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

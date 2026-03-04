@@ -160,6 +160,19 @@
 - [x] 統一通知分發器 (`src/lib/notifications.ts`)
 - [x] 通知偏好 CRUD (`src/app/api/notifications/preferences/route.ts`)
 
+### AI API 基礎設施（外部整合用）
+**狀態：已完成 ✅**
+
+- [x] `src/lib/api-key.ts` — API Key 生成 + SHA-256 hash 工具函式
+- [x] `src/lib/api-key-guard.ts` — 權限檢查（read_only / full / admin JWT only）
+- [x] `src/lib/rate-limit.ts` — 滑動窗口限流 60 次/分 + 10 次失敗鎖 15 分鐘
+- [x] `POST/GET/DELETE /api/ai/keys` — API Key 管理（僅 admin JWT）
+- [x] `GET /api/ai/overview` — 專案總覽端點（並行查詢、統計、階段、最近卡片）
+- [x] `POST /api/ai/batch` — 批次更新卡片（最多 50 筆、失敗隔離、活動日誌）
+- [x] DB migration: `api_keys` + `api_key_audit_log` 表
+- [x] 所有既有 API 路由加入 auth guard（支援 JWT + API Key 雙模式）
+- [x] Build 驗證通過 ✅ (`6de5ddb`)
+
 ### LINE Login + LINE 推播通知（暫緩）
 **狀態：暫不需要 ⏸️ — 目前用應用內通知中心即可**
 **技術備忘：** `memory/decisions/auth-simplification.md`

@@ -32,7 +32,11 @@ export async function GET(
     
     // Get subtasks
     const subtasks = await query(`
-      SELECT * FROM subtasks WHERE card_id = $1 ORDER BY position
+      SELECT s.id, s.title, s.is_completed, s.position, s.due_date, s.assignee_id, p.name as assignee_name
+      FROM subtasks s
+      LEFT JOIN profiles p ON s.assignee_id = p.id
+      WHERE s.card_id = $1
+      ORDER BY s.position
     `, [id])
     
     // Get tags

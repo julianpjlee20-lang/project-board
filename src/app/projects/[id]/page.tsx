@@ -7,7 +7,7 @@ import Link from 'next/link'
 import UserNav from '@/components/UserNav'
 import { ListView, CalendarView, ProgressView } from './views'
 import { GanttView } from './gantt'
-import type { Card, Column, Project, ViewType, Phase } from './types'
+import type { Card, Column, Project, ViewType, Phase, Subtask } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { DateInput } from '@/components/ui/DateInput'
@@ -210,14 +210,33 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
   )
 }
 
+// Subtask date helpers
+function isOverdue(dateStr: string): boolean {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return new Date(dateStr + 'T00:00:00') < today
+}
+function isDueSoon(dateStr: string): boolean {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const diff = (new Date(dateStr + 'T00:00:00').getTime() - today.getTime()) / 86400000
+  return diff >= 0 && diff <= 2
+}
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
 // Subtask Checklist Component
-function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange }: {
+function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange, activeUsers }: {
   cardId: string
-  subtasks: { id: string; title: string; is_completed: boolean }[]
-  onSubtasksChange: (subtasks: { id: string; title: string; is_completed: boolean }[]) => void
+  subtasks: Subtask[]
+  onSubtasksChange: (subtasks: Subtask[]) => void
+  activeUsers: { id: string; name: string }[]
 }) {
-  const [subtasks, setSubtasks] = useState(initialSubtasks || [])
+  const [subtasks, setSubtasks] = useState<Subtask[]>(initialSubtasks || [])
   const [newTitle, setNewTitle] = useState('')
+  const [newDueDate, setNewDueDate] = useState('')
+  const [newAssigneeId, setNewAssigneeId] = useState('')
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -236,7 +255,30 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
   const totalCount = subtasks.length
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
-  const toggleSubtask = async (subtask: { id: string; title: string; is_completed: boolean }) => {
+  const updateSubtaskField = async (subtaskId: string, field: 'due_date' | 'assignee_id', value: string) => {
+    const updated = subtasks.map(s => {
+      if (s.id !== subtaskId) return s
+      if (field === 'due_date') return { ...s, due_date: value || null }
+      if (field === 'assignee_id') {
+        const user = activeUsers.find(u => u.id === value)
+        return { ...s, assignee_id: value || null, assignee_name: user?.name || null }
+      }
+      return s
+    })
+    setSubtasks(updated)
+    onSubtasksChange(updated)
+
+    try {
+      const res = await fetch(`/api/cards/${cardId}/subtasks`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subtask_id: subtaskId, [field]: value || null })
+      })
+      if (!res.ok) { setSubtasks(subtasks); onSubtasksChange(subtasks) }
+    } catch { setSubtasks(subtasks); onSubtasksChange(subtasks) }
+  }
+
+  const toggleSubtask = async (subtask: Subtask) => {
     const updated = { ...subtask, is_completed: !subtask.is_completed }
     const newSubtasks = subtasks.map(s => s.id === subtask.id ? updated : s)
     setSubtasks(newSubtasks)
@@ -267,7 +309,11 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
       const res = await fetch(`/api/cards/${cardId}/subtasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle.trim() })
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          due_date: newDueDate || null,
+          assignee_id: newAssigneeId || null,
+        })
       })
       if (!res.ok) throw new Error('新增子任務失敗')
       const created = await res.json()
@@ -275,6 +321,8 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
       setSubtasks(newSubtasks)
       onSubtasksChange(newSubtasks)
       setNewTitle('')
+      setNewDueDate('')
+      setNewAssigneeId('')
     } catch (err) {
       console.error('新增子任務錯誤:', err)
     }
@@ -325,43 +373,84 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
       {/* Subtask list */}
       <div className="space-y-1 mb-2">
         {subtasks.map(subtask => (
-          <div
-            key={subtask.id}
-            className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-slate-50"
-            onMouseEnter={() => setHoveredId(subtask.id)}
-            onMouseLeave={() => setHoveredId(null)}
-          >
-            <input
-              type="checkbox"
-              checked={subtask.is_completed}
-              onChange={() => toggleSubtask(subtask)}
-              className="w-4 h-4 rounded border-slate-300 text-blue-500 cursor-pointer"
-            />
-            <span className={`flex-1 text-sm ${subtask.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-              {subtask.title}
-            </span>
-            {hoveredId === subtask.id && (
-              <button
-                onClick={() => {
-                  if (pendingDeleteId === subtask.id) {
-                    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
-                    setPendingDeleteId(null)
-                    deleteSubtask(subtask.id)
-                  } else {
-                    setPendingDeleteId(subtask.id)
-                    deleteTimerRef.current = setTimeout(() => {
-                      setPendingDeleteId(null)
-                    }, 1500)
-                  }
-                }}
-                className={`text-xs px-1 transition-colors ${
-                  pendingDeleteId === subtask.id
-                    ? 'text-red-600 font-medium'
-                    : 'text-slate-400 hover:text-red-500'
-                }`}
+          <div key={subtask.id}>
+            <div
+              className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-slate-50"
+              onMouseEnter={() => setHoveredId(subtask.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            >
+              <input
+                type="checkbox"
+                checked={subtask.is_completed}
+                onChange={() => toggleSubtask(subtask)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-500 cursor-pointer"
+              />
+              <span
+                className={`flex-1 text-sm cursor-pointer ${subtask.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}
+                onClick={() => setEditingSubtaskId(editingSubtaskId === subtask.id ? null : subtask.id)}
               >
-                {pendingDeleteId === subtask.id ? '確認？' : '✕'}
-              </button>
+                {subtask.title}
+              </span>
+              {/* Due date badge */}
+              {subtask.due_date && (
+                <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${
+                  subtask.is_completed ? 'bg-slate-100 text-slate-400' :
+                  isOverdue(subtask.due_date) ? 'bg-red-100 text-red-600' :
+                  isDueSoon(subtask.due_date) ? 'bg-amber-100 text-amber-600' :
+                  'bg-slate-100 text-slate-500'
+                }`}>
+                  {formatShortDate(subtask.due_date)}
+                </span>
+              )}
+              {/* Assignee name */}
+              {subtask.assignee_name && (
+                <span className={`text-xs whitespace-nowrap ${subtask.is_completed ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {subtask.assignee_name}
+                </span>
+              )}
+              {hoveredId === subtask.id && (
+                <button
+                  onClick={() => {
+                    if (pendingDeleteId === subtask.id) {
+                      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+                      setPendingDeleteId(null)
+                      deleteSubtask(subtask.id)
+                    } else {
+                      setPendingDeleteId(subtask.id)
+                      deleteTimerRef.current = setTimeout(() => {
+                        setPendingDeleteId(null)
+                      }, 1500)
+                    }
+                  }}
+                  className={`text-xs px-1 transition-colors ${
+                    pendingDeleteId === subtask.id
+                      ? 'text-red-600 font-medium'
+                      : 'text-slate-400 hover:text-red-500'
+                  }`}
+                >
+                  {pendingDeleteId === subtask.id ? '確認？' : '✕'}
+                </button>
+              )}
+            </div>
+            {/* Inline edit for due_date and assignee */}
+            {editingSubtaskId === subtask.id && (
+              <div className="flex items-center gap-3 pl-7 py-1 text-xs">
+                <label className="flex items-center gap-1 text-slate-500">
+                  截止
+                  <input type="date" value={subtask.due_date || ''}
+                    onChange={e => updateSubtaskField(subtask.id, 'due_date', e.target.value)}
+                    className="border rounded px-1.5 py-0.5 text-xs" />
+                </label>
+                <label className="flex items-center gap-1 text-slate-500">
+                  負責人
+                  <select value={subtask.assignee_id || ''}
+                    onChange={e => updateSubtaskField(subtask.id, 'assignee_id', e.target.value)}
+                    className="border rounded px-1.5 py-0.5 text-xs">
+                    <option value="">--</option>
+                    {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </label>
+              </div>
             )}
           </div>
         ))}
@@ -382,6 +471,24 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange 
           +
         </button>
       </form>
+      {/* Optional fields for new subtask */}
+      {newTitle.trim() && (
+        <div className="flex items-center gap-3 pl-1 pt-1 text-xs text-slate-500">
+          <label className="flex items-center gap-1">
+            截止
+            <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
+              className="border rounded px-1.5 py-0.5 text-xs" />
+          </label>
+          <label className="flex items-center gap-1">
+            負責人
+            <select value={newAssigneeId} onChange={e => setNewAssigneeId(e.target.value)}
+              className="border rounded px-1.5 py-0.5 text-xs">
+              <option value="">--</option>
+              {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
     </div>
   )
 }
@@ -647,7 +754,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
   const [priority, setPriority] = useState<Card['priority']>('medium')
   const [phaseId, setPhaseId] = useState<string | null>(null)
   const [activity, setActivity] = useState<{ id: string; action: string; target: string; old_value: string; new_value: string; created_at: string }[]>([])
-  const [cardSubtasks, setCardSubtasks] = useState<{ id: string; title: string; is_completed: boolean }[]>([])
+  const [cardSubtasks, setCardSubtasks] = useState<Subtask[]>([])
 
   // Date editing state
   const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -1031,6 +1138,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                 cardId={card.id}
                 subtasks={cardSubtasks}
                 onSubtasksChange={setCardSubtasks}
+                activeUsers={activeUsers}
               />
 
               {/* Activity Log */}
@@ -1105,7 +1213,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
   const [priority, setPriority] = useState<Card['priority']>('medium')
   const [phaseId, setPhaseId] = useState<string | null>(null)
   const [activity, setActivity] = useState<{ id: string; action: string; target: string; old_value: string; new_value: string; created_at: string }[]>([])
-  const [cardSubtasks, setCardSubtasks] = useState<{ id: string; title: string; is_completed: boolean }[]>([])
+  const [cardSubtasks, setCardSubtasks] = useState<Subtask[]>([])
 
   const [editingDate, setEditingDate] = useState<string | null>(null)
   const [scheduleExpanded, setScheduleExpanded] = useState(false)
@@ -1498,6 +1606,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
               cardId={card.id}
               subtasks={cardSubtasks}
               onSubtasksChange={setCardSubtasks}
+              activeUsers={activeUsers}
             />
 
             {/* Activity Log */}

@@ -133,6 +133,35 @@ export const updateCardSchema = z.object({
 })
 
 // ========================================
+// Subtasks API 驗證
+// ========================================
+
+/** 子任務日期驗證（僅 YYYY-MM-DD） */
+const subtaskDateSchema = z.string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, { message: '日期格式需為 YYYY-MM-DD' })
+  .refine((val) => {
+    const [y, m, d] = val.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
+    return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
+  }, { message: '無效的日期' })
+
+/** POST /api/cards/[id]/subtasks - 建立子任務 */
+export const createSubtaskSchema = z.object({
+  title: nonEmptyString.max(200, { message: '子任務標題不可超過 200 字元' }),
+  due_date: z.union([subtaskDateSchema, z.null()]).optional(),
+  assignee_id: z.union([uuidSchema, z.null()]).optional(),
+})
+
+/** PUT /api/cards/[id]/subtasks - 更新子任務 */
+export const updateSubtaskSchema = z.object({
+  subtask_id: uuidSchema,
+  title: nonEmptyString.max(200).optional(),
+  is_completed: z.boolean().optional(),
+  due_date: z.union([subtaskDateSchema, z.literal(''), z.null()]).optional(),
+  assignee_id: z.union([uuidSchema, z.literal(''), z.null()]).optional(),
+})
+
+// ========================================
 // Phases API 驗證
 // ========================================
 
