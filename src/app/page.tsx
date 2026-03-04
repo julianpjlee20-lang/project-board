@@ -94,7 +94,7 @@ export default async function Home() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm" style={{ color: '#0B1A14', opacity: 0.7 }}>
-                  建立多個專案，自定義看板欄位（To Do / In Progress / Done）
+                  建立多個專案，自訂看板欄位（待辦 / 進行中 / 已完成）
                 </p>
               </CardContent>
             </Card>

@@ -234,6 +234,18 @@ export async function PUT() {
       )
     `)
 
+    // 建立通知忽略記錄表
+    await query(`
+      CREATE TABLE IF NOT EXISTS notification_dismissed (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+        dismiss_type TEXT NOT NULL CHECK (dismiss_type IN ('overdue', 'due_soon')),
+        dismissed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(user_id, card_id, dismiss_type)
+      )
+    `)
+
     // Add new columns if tables exist (for existing data)
     try {
       await query("ALTER TABLE projects ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'")

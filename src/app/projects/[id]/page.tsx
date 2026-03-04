@@ -26,6 +26,29 @@ const PRIORITY_LABELS: Record<Card['priority'], string> = {
   low: '低',
 }
 
+// Activity action 中文對照
+const ACTION_LABELS: Record<string, string> = {
+  create_card: '建立卡片',
+  update_card: '更新卡片',
+  move_card: '移動卡片',
+  delete_card: '刪除卡片',
+  add_assignee: '新增指派人',
+  remove_assignee: '移除指派人',
+  add_comment: '新增留言',
+  update_column: '更新欄位',
+  create_column: '建立欄位',
+  delete_column: '刪除欄位',
+  add_label: '新增標籤',
+  remove_label: '移除標籤',
+  update_subtask: '更新子任務',
+  create_subtask: '建立子任務',
+  delete_subtask: '刪除子任務',
+}
+
+function translateAction(action: string): string {
+  return ACTION_LABELS[action] || action
+}
+
 // Mini Timeline Bar for CardItem (4px, hover → 8px)
 // Kept for potential reuse in Gantt/other views — currently unused in Board CardItem
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1022,7 +1045,7 @@ function CardModal({ card, phases, onClose, onUpdate }: { card: Card, phases: Ph
                   ) : (
                     activity.map((log) => (
                       <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2 py-1">
-                        <span className="font-medium text-blue-600">[{log.action}]</span>
+                        <span className="font-medium text-blue-600">[{translateAction(log.action)}]</span>
                         <span className="text-slate-700"> {log.target}</span>
                         {log.old_value && log.new_value && log.old_value !== log.new_value ? (
                           <span className="text-orange-600"> {log.old_value} → {log.new_value}</span>
@@ -1489,7 +1512,7 @@ function SlideInPane({ card, phases, onClose, onUpdate }: { card: Card, phases: 
                 ) : (
                   activity.map((log) => (
                     <div key={log.id} className="text-xs text-slate-600 border-l-2 border-blue-300 pl-2 py-1">
-                      <span className="font-medium text-blue-600">[{log.action}]</span>
+                      <span className="font-medium text-blue-600">[{translateAction(log.action)}]</span>
                       <span className="text-slate-700"> {log.target}</span>
                       {log.old_value && log.new_value && log.old_value !== log.new_value ? (
                         <span className="text-orange-600"> {log.old_value} → {log.new_value}</span>

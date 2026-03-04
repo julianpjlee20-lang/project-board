@@ -628,7 +628,7 @@ export default function AdminNotificationsPage() {
       const message = err instanceof Error ? err.message : '發送失敗'
       // If no CRON_SECRET or endpoint not configured, show friendly message
       if (message.includes('404') || message.includes('Not Found') || message.includes('Unauthorized')) {
-        setToast({ type: 'error', message: '每日摘要 API 尚未設定，請先完成 /api/notifications/daily-digest 端點' })
+        setToast({ type: 'error', message: '每日摘要功能尚未設定，請先完成相關 API 端點的建置' })
       } else {
         setToast({ type: 'error', message })
       }

@@ -32,6 +32,7 @@ export default async function globalSetup() {
 
   try {
     // 清空所有表（按照依賴順序刪除）
+    await pool.query('DROP TABLE IF EXISTS notification_dismissed CASCADE')
     await pool.query('DROP TABLE IF EXISTS notification_queue CASCADE')
     await pool.query('DROP TABLE IF EXISTS notification_preferences CASCADE')
     await pool.query('DROP TABLE IF EXISTS activity_logs CASCADE')
@@ -166,6 +167,17 @@ export default async function globalSetup() {
         old_value TEXT,
         new_value TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `)
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notification_dismissed (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+        dismiss_type TEXT NOT NULL CHECK (dismiss_type IN ('overdue', 'due_soon')),
+        dismissed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE(user_id, card_id, dismiss_type)
       )
     `)
 

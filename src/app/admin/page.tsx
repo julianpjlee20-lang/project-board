@@ -237,7 +237,7 @@ export default function AdminDashboardPage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
-          管理後台 Dashboard
+          管理後台總覽
         </h1>
         <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
           系統總覽與快速操作

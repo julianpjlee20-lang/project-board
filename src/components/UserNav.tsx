@@ -11,15 +11,26 @@ export default function UserNav() {
   const menuRef = useRef<HTMLDivElement>(null)
 
   // 取得未讀通知數量
-  useEffect(() => {
-    if (status !== 'authenticated') return
+  const fetchCount = () => {
     fetch('/api/notifications/count')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.count != null) setNotificationCount(data.count)
       })
       .catch(() => {})
+  }
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    fetchCount()
   }, [status])
+
+  // 監聽 dismiss 事件，即時更新 badge
+  useEffect(() => {
+    const handler = () => fetchCount()
+    window.addEventListener('notification-dismissed', handler)
+    return () => window.removeEventListener('notification-dismissed', handler)
+  }, [])
 
   // 點擊外部關閉下拉選單
   useEffect(() => {

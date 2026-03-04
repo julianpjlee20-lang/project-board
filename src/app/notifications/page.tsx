@@ -6,7 +6,7 @@ import UserNav from '@/components/UserNav'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabKey = 'overdue' | 'due_soon' | 'recent_changes' | 'project_summary'
+type TabKey = 'action_needed' | 'overdue' | 'due_soon' | 'recent_changes' | 'project_summary'
 
 interface CardItem {
   id: string
@@ -52,6 +52,12 @@ interface NotificationData {
   recent_changes: RecentChange[]
   project_summary: ProjectSummary[]
   counts: { due_soon: number; overdue: number; recent_changes: number }
+  dismissed: { card_id: string; dismiss_type: string }[]
+}
+
+interface UrgentItem extends CardItem {
+  urgency_type: 'overdue' | 'due_soon'
+  urgency_score: number
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -250,83 +256,186 @@ function ProjectGridSkeleton() {
 
 // ─── Summary Cards ────────────────────────────────────────────────────────────
 
+interface SummaryCardsProps {
+  counts: NotificationData['counts']
+  topOverdue: CardItem | null
+  topDueSoon: CardItem | null
+  latestChange: RecentChange | null
+  todayChangeCount: number
+  onTabChange?: (tab: TabKey) => void
+}
+
+function truncateTitle(title: string, maxLen = 18): string {
+  return title.length > maxLen ? title.slice(0, maxLen) + '...' : title
+}
+
 function SummaryCards({
   counts,
+  topOverdue,
+  topDueSoon,
+  latestChange,
+  todayChangeCount,
   onTabChange,
-}: {
-  counts: NotificationData['counts']
-  onTabChange?: (tab: TabKey) => void
-}) {
-  const cards: {
-    label: string
-    count: number
-    borderColor: string
-    textColor: string
-    tabKey: TabKey
-  }[] = [
-    {
-      label: '個逾期任務',
-      count: counts.overdue,
-      borderColor: COLORS.danger,
-      textColor: COLORS.danger,
-      tabKey: 'overdue',
-    },
-    {
-      label: '個即將到期',
-      count: counts.due_soon,
-      borderColor: COLORS.accent,
-      textColor: COLORS.warning,
-      tabKey: 'due_soon',
-    },
-    {
-      label: '筆近期變更',
-      count: counts.recent_changes,
-      borderColor: COLORS.green,
-      textColor: COLORS.green,
-      tabKey: 'recent_changes',
-    },
-  ]
-
+}: SummaryCardsProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {cards.map((card) => (
-        <button
-          key={card.label}
-          type="button"
-          onClick={() => onTabChange?.(card.tabKey)}
-          className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-          style={{
-            backgroundColor: COLORS.white,
-            borderLeftColor: card.borderColor,
-          }}
-        >
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-            {card.label.replace(/^\S+\s/, '')}
-          </p>
+      {/* Overdue Card */}
+      <button
+        type="button"
+        onClick={() => onTabChange?.('action_needed')}
+        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+        style={{
+          backgroundColor: COLORS.white,
+          borderLeftColor: COLORS.danger,
+        }}
+      >
+        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">逾期任務</p>
+        {counts.overdue === 0 ? (
           <div className="flex items-end justify-between">
             <div>
-              <p
-                className="text-3xl font-bold"
-                style={{ color: card.textColor }}
-              >
-                {card.count}
-              </p>
-              <p className="text-sm text-slate-600 mt-0.5">
-                {card.count}{card.label}
-              </p>
+              <div className="flex items-center gap-2 mt-1 mb-1">
+                <svg className="w-7 h-7 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm text-slate-600">太好了！沒有逾期任務</p>
             </div>
-            <svg
-              className="w-4 h-4 text-slate-400 mb-1"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-4 h-4 text-slate-400 mb-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </button>
-      ))}
+        ) : (
+          <div className="flex items-end justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-3xl font-bold" style={{ color: COLORS.danger }}>
+                {counts.overdue}
+              </p>
+              {topOverdue && (
+                <>
+                  <p className="text-sm text-slate-700 mt-1 truncate" title={topOverdue.title}>
+                    {truncateTitle(topOverdue.title)}
+                    <span className="text-xs ml-1" style={{ color: COLORS.danger }}>
+                      逾期 {Math.abs(Math.floor(topOverdue.days_overdue ?? 0))} 天
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded font-medium"
+                      style={{
+                        backgroundColor: PRIORITY_COLORS[topOverdue.priority] + '20',
+                        color: PRIORITY_COLORS[topOverdue.priority] || '#6B7280',
+                      }}
+                    >
+                      {PRIORITY_LABELS[topOverdue.priority] || topOverdue.priority}
+                    </span>
+                    <span className="text-xs text-slate-400 truncate">{topOverdue.project_name}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        )}
+      </button>
+
+      {/* Due Soon Card */}
+      <button
+        type="button"
+        onClick={() => onTabChange?.('action_needed')}
+        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+        style={{
+          backgroundColor: COLORS.white,
+          borderLeftColor: COLORS.accent,
+        }}
+      >
+        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">即將到期</p>
+        {counts.due_soon === 0 ? (
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="flex items-center gap-2 mt-1 mb-1">
+                <svg className="w-7 h-7 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm text-slate-600">近 7 天沒有到期任務</p>
+            </div>
+            <svg className="w-4 h-4 text-slate-400 mb-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        ) : (
+          <div className="flex items-end justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-3xl font-bold" style={{ color: COLORS.warning }}>
+                {counts.due_soon}
+              </p>
+              {topDueSoon && (
+                <>
+                  <p className="text-sm text-slate-700 mt-1 truncate" title={topDueSoon.title}>
+                    {truncateTitle(topDueSoon.title)}
+                    <span className="text-xs ml-1" style={{ color: COLORS.warning }}>
+                      {getDaysRemaining(topDueSoon.due_date)} 天後截止
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded font-medium"
+                      style={{
+                        backgroundColor: PRIORITY_COLORS[topDueSoon.priority] + '20',
+                        color: PRIORITY_COLORS[topDueSoon.priority] || '#6B7280',
+                      }}
+                    >
+                      {PRIORITY_LABELS[topDueSoon.priority] || topDueSoon.priority}
+                    </span>
+                    <span className="text-xs text-slate-400 truncate">{topDueSoon.project_name}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        )}
+      </button>
+
+      {/* Recent Changes Card */}
+      <button
+        type="button"
+        onClick={() => onTabChange?.('recent_changes')}
+        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+        style={{
+          backgroundColor: COLORS.white,
+          borderLeftColor: COLORS.green,
+        }}
+      >
+        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">近期變更</p>
+        <div className="flex items-end justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-3xl font-bold" style={{ color: COLORS.green }}>
+              {counts.recent_changes}
+            </p>
+            {todayChangeCount > 0 ? (
+              <p className="text-sm text-slate-600 mt-0.5">
+                今天 {todayChangeCount} 筆
+              </p>
+            ) : latestChange ? (
+              <p className="text-sm text-slate-600 mt-0.5 truncate">
+                {describeAction(latestChange).slice(0, 30)}
+              </p>
+            ) : (
+              <p className="text-sm text-slate-600 mt-0.5">
+                {counts.recent_changes}筆近期變更
+              </p>
+            )}
+          </div>
+          <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </button>
     </div>
   )
 }
@@ -344,12 +453,20 @@ function TabBar({
   activeTab,
   onTabChange,
   counts,
+  activeCount,
 }: {
   activeTab: TabKey
   onTabChange: (tab: TabKey) => void
   counts: NotificationData['counts']
+  activeCount: number
 }) {
   const tabs: TabDef[] = [
+    {
+      id: 'action_needed',
+      label: '需要注意',
+      dotColor: activeCount > 0 ? COLORS.danger : undefined,
+      showDot: activeCount > 0,
+    },
     {
       id: 'overdue',
       label: '已逾期',
@@ -402,9 +519,11 @@ function TabBar({
 function CardListItem({
   card,
   variant,
+  onDismiss,
 }: {
   card: CardItem
   variant: 'overdue' | 'due_soon'
+  onDismiss?: (cardId: string, type: 'overdue' | 'due_soon') => void
 }) {
   const borderColor = variant === 'overdue' ? COLORS.danger : COLORS.accent
   const priorityColor = PRIORITY_COLORS[card.priority] || '#6B7280'
@@ -424,7 +543,7 @@ function CardListItem({
   return (
     <Link
       href={`/projects/${card.project_id}`}
-      className="block rounded-lg border shadow-sm border-l-4 hover:shadow-md transition-shadow"
+      className="group block rounded-lg border shadow-sm border-l-4 hover:shadow-md transition-shadow"
       style={{
         backgroundColor: COLORS.white,
         borderLeftColor: borderColor,
@@ -443,12 +562,30 @@ function CardListItem({
               {card.title}
             </h3>
           </div>
-          <span
-            className="ml-2 flex-shrink-0 text-xs font-medium px-2.5 py-0.5 rounded-full"
-            style={{ backgroundColor: badgeBg, color: badgeText }}
-          >
-            {badgeContent}
-          </span>
+          <div className="flex items-center flex-shrink-0">
+            <span
+              className="ml-2 flex-shrink-0 text-xs font-medium px-2.5 py-0.5 rounded-full"
+              style={{ backgroundColor: badgeBg, color: badgeText }}
+            >
+              {badgeContent}
+            </span>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onDismiss(card.id, variant)
+                }}
+                className="ml-2 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100"
+                title="忽略此通知"
+              >
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Row 2: Project > Column | Assignee | Due Date */}
@@ -613,6 +750,122 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
   )
 }
 
+// ─── Action Needed Tab ───────────────────────────────────────────────────────
+
+const PRIORITY_SCORES: Record<string, number> = {
+  high: 30,
+  medium: 20,
+  low: 10,
+}
+
+function ActionNeededTab({
+  overdue,
+  dueSoon,
+  dismissedSet,
+  onDismiss,
+  onRestore,
+}: {
+  overdue: CardItem[]
+  dueSoon: CardItem[]
+  dismissedSet: Set<string>
+  onDismiss: (cardId: string, type: 'overdue' | 'due_soon') => void
+  onRestore: (cardId: string, type: 'overdue' | 'due_soon') => void
+}) {
+  const [showDismissed, setShowDismissed] = useState(false)
+
+  // Merge overdue + dueSoon into UrgentItems with urgency scores
+  const allItems: UrgentItem[] = [
+    ...overdue.map((card): UrgentItem => ({
+      ...card,
+      urgency_type: 'overdue' as const,
+      urgency_score: Math.abs(Math.floor(card.days_overdue ?? 0)) * 100 + (PRIORITY_SCORES[card.priority] ?? 0),
+    })),
+    ...dueSoon.map((card): UrgentItem => ({
+      ...card,
+      urgency_type: 'due_soon' as const,
+      urgency_score: (7 - getDaysRemaining(card.due_date)) * 10 + (PRIORITY_SCORES[card.priority] ?? 0),
+    })),
+  ]
+
+  // Split into active vs dismissed
+  const activeItems = allItems
+    .filter((item) => !dismissedSet.has(`${item.id}:${item.urgency_type}`))
+    .sort((a, b) => b.urgency_score - a.urgency_score)
+
+  const dismissedItems = allItems
+    .filter((item) => dismissedSet.has(`${item.id}:${item.urgency_type}`))
+    .sort((a, b) => b.urgency_score - a.urgency_score)
+
+  if (allItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <span className="text-4xl mb-4">&#10003;</span>
+        <p className="text-sm text-slate-500">太好了！沒有需要注意的任務</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {activeItems.length === 0 && dismissedItems.length > 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <span className="text-4xl mb-4">&#10003;</span>
+          <p className="text-sm text-slate-500">所有項目已處理</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {activeItems.map((item) => (
+            <CardListItem
+              key={`${item.id}-${item.urgency_type}`}
+              card={item}
+              variant={item.urgency_type}
+              onDismiss={onDismiss}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Dismissed items collapsible section */}
+      {dismissedItems.length > 0 && (
+        <div className="mt-6 border-t pt-4">
+          <button
+            type="button"
+            onClick={() => setShowDismissed((prev) => !prev)}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showDismissed ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            已忽略 ({dismissedItems.length})
+          </button>
+          {showDismissed && (
+            <div className="space-y-3 mt-3 opacity-60">
+              {dismissedItems.map((item) => (
+                <div key={`${item.id}-${item.urgency_type}-dismissed`} className="relative">
+                  <CardListItem card={item} variant={item.urgency_type} />
+                  <button
+                    type="button"
+                    onClick={() => onRestore(item.id, item.urgency_type)}
+                    className="absolute top-3 right-3 text-xs text-blue-600 hover:text-blue-800 transition-colors font-medium px-2 py-1 rounded hover:bg-blue-50"
+                  >
+                    恢復
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ message, icon }: { message: string; icon: string }) {
@@ -646,7 +899,8 @@ export default function NotificationsPage() {
   const [data, setData] = useState<NotificationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabKey>('overdue')
+  const [activeTab, setActiveTab] = useState<TabKey>('action_needed')
+  const [dismissedSet, setDismissedSet] = useState<Set<string>>(new Set())
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -659,6 +913,10 @@ export default function NotificationsPage() {
       }
       const json: NotificationData = await res.json()
       setData(json)
+      // Initialize dismissed set from API data
+      if (json.dismissed) {
+        setDismissedSet(new Set(json.dismissed.map(d => `${d.card_id}:${d.dismiss_type}`)))
+      }
     } catch (e) {
       console.error('載入通知中心錯誤:', e)
       setError(e instanceof Error ? e.message : '載入失敗，請重新整理頁面')
@@ -671,7 +929,60 @@ export default function NotificationsPage() {
     fetchData()
   }, [fetchData])
 
+  const handleDismiss = async (cardId: string, type: 'overdue' | 'due_soon') => {
+    const key = `${cardId}:${type}`
+    setDismissedSet(prev => new Set(prev).add(key))
+    try {
+      const res = await fetch('/api/notifications/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_id: cardId, dismiss_type: type }),
+      })
+      if (!res.ok) throw new Error()
+      window.dispatchEvent(new Event('notification-dismissed'))
+    } catch {
+      // Revert on failure
+      setDismissedSet(prev => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }
+
+  const handleRestore = async (cardId: string, type: 'overdue' | 'due_soon') => {
+    const key = `${cardId}:${type}`
+    setDismissedSet(prev => {
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
+    try {
+      const res = await fetch('/api/notifications/dismiss', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_id: cardId, dismiss_type: type }),
+      })
+      if (!res.ok) throw new Error()
+      window.dispatchEvent(new Event('notification-dismissed'))
+    } catch {
+      // Revert on failure
+      setDismissedSet(prev => new Set(prev).add(key))
+    }
+  }
+
   const counts = data?.counts ?? { due_soon: 0, overdue: 0, recent_changes: 0 }
+
+  // Calculate active (non-dismissed) count for action_needed tab
+  const activeCount = data
+    ? [...data.overdue, ...data.due_soon].filter(
+        (card) => {
+          const overdueKey = `${card.id}:overdue`
+          const dueSoonKey = `${card.id}:due_soon`
+          return !dismissedSet.has(overdueKey) && !dismissedSet.has(dueSoonKey)
+        }
+      ).length
+    : 0
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: COLORS.bg }}>
@@ -736,7 +1047,14 @@ export default function NotificationsPage() {
         {loading ? (
           <SummaryCardsSkeleton />
         ) : data ? (
-          <SummaryCards counts={counts} onTabChange={setActiveTab} />
+          <SummaryCards
+            counts={counts}
+            topOverdue={data.overdue[0] ?? null}
+            topDueSoon={data.due_soon[0] ?? null}
+            latestChange={data.recent_changes[0] ?? null}
+            todayChangeCount={data.recent_changes.filter(c => getDateGroupLabel(c.created_at) === '今天').length}
+            onTabChange={setActiveTab}
+          />
         ) : null}
 
         {/* Tab Bar */}
@@ -745,12 +1063,14 @@ export default function NotificationsPage() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={counts}
+            activeCount={activeCount}
           />
         )}
 
         {/* Tab Content */}
         {loading ? (
           <div>
+            {activeTab === 'action_needed' && <CardListSkeleton />}
             {activeTab === 'overdue' && <CardListSkeleton />}
             {activeTab === 'due_soon' && <CardListSkeleton />}
             {activeTab === 'recent_changes' && <TimelineSkeleton />}
@@ -758,6 +1078,17 @@ export default function NotificationsPage() {
           </div>
         ) : data ? (
           <div>
+            {/* Action Needed Tab */}
+            {activeTab === 'action_needed' && (
+              <ActionNeededTab
+                overdue={data.overdue}
+                dueSoon={data.due_soon}
+                dismissedSet={dismissedSet}
+                onDismiss={handleDismiss}
+                onRestore={handleRestore}
+              />
+            )}
+
             {/* Overdue Tab */}
             {activeTab === 'overdue' && (
               data.overdue.length === 0 ? (

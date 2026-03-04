@@ -10,19 +10,31 @@ import { requireAuth, AuthError } from "@/lib/auth"
 // GET /api/notifications/count
 export async function GET() {
   try {
-    await requireAuth()
+    const user = await requireAuth()
 
     const rows = await query(`
       SELECT
-        COUNT(*) FILTER (WHERE c.due_date < NOW()) AS overdue_count,
-        COUNT(*) FILTER (WHERE c.due_date >= NOW() AND c.due_date <= NOW() + INTERVAL '7 days') AS due_soon_count
+        COUNT(*) FILTER (
+          WHERE c.due_date < NOW()
+          AND NOT EXISTS (
+            SELECT 1 FROM notification_dismissed nd
+            WHERE nd.card_id = c.id AND nd.user_id = $1 AND nd.dismiss_type = 'overdue'
+          )
+        ) AS overdue_count,
+        COUNT(*) FILTER (
+          WHERE c.due_date >= NOW() AND c.due_date <= NOW() + INTERVAL '7 days'
+          AND NOT EXISTS (
+            SELECT 1 FROM notification_dismissed nd
+            WHERE nd.card_id = c.id AND nd.user_id = $1 AND nd.dismiss_type = 'due_soon'
+          )
+        ) AS due_soon_count
       FROM cards c
       JOIN columns col ON c.column_id = col.id
       JOIN projects p ON col.project_id = p.id
       WHERE c.due_date IS NOT NULL
         AND c.actual_completion_date IS NULL
         AND col.position < (SELECT MAX(col2.position) FROM columns col2 WHERE col2.project_id = p.id)
-    `)
+    `, [user.id])
 
     const { overdue_count, due_soon_count } = rows[0]
 

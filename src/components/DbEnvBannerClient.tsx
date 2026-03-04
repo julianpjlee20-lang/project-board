@@ -49,8 +49,8 @@ export default function DbEnvBannerClient({ dbEnv }: { dbEnv: string }) {
         </svg>
         <span>
           {isProduction
-            ? '⚠ 警告：目前連接的是 Production 資料庫！操作將影響真實資料。'
-            : 'ℹ 提示：目前連接的是 Testing 資料庫（測試環境）'}
+            ? '⚠ 警告：目前連接的是正式環境資料庫！操作將影響真實資料。'
+            : 'ℹ 提示：目前連接的是測試環境資料庫（測試環境）'}
         </span>
       </div>
 

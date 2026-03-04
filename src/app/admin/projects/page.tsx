@@ -173,7 +173,7 @@ function ProjectCard({ project }: { project: Project }) {
               color: project.status === 'active' ? '#059669' : '#6B7280',
             }}
           >
-            {project.status === 'active' ? '進行中' : project.status}
+            {project.status === 'active' ? '進行中' : project.status === 'completed' ? '已完成' : project.status === 'archived' ? '已封存' : project.status}
           </span>
         )}
       </div>
@@ -283,7 +283,7 @@ function ProjectTable({ projects }: { projects: Project[] }) {
                       color: project.status === 'active' ? '#059669' : '#6B7280',
                     }}
                   >
-                    {project.status === 'active' ? '進行中' : project.status}
+                    {project.status === 'active' ? '進行中' : project.status === 'completed' ? '已完成' : project.status === 'archived' ? '已封存' : project.status}
                   </span>
                 ) : (
                   <span style={{ color: '#9CA3AF' }}>—</span>

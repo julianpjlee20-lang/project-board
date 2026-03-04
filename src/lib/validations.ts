@@ -200,6 +200,14 @@ export const createProjectSchema = z.object({
 // Notification Preferences 驗證
 // ========================================
 
+/** POST/DELETE /api/notifications/dismiss - 忽略/恢復通知 */
+export const dismissNotificationSchema = z.object({
+  card_id: z.string().uuid('card_id 必須為有效的 UUID'),
+  dismiss_type: z.enum(['overdue', 'due_soon'], {
+    message: 'dismiss_type 必須為 overdue 或 due_soon'
+  }),
+})
+
 /** PUT /api/notifications/preferences - 更新通知偏好 */
 export const notificationPreferencesSchema = z.object({
   notify_assigned: z.boolean().optional(),

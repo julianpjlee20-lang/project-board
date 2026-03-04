@@ -10,10 +10,10 @@ import { requireAuth, AuthError } from "@/lib/auth"
 // GET /api/notifications/center
 export async function GET() {
   try {
-    await requireAuth()
+    const user = await requireAuth()
 
-    // 平行執行 4 個查詢
-    const [dueSoonRows, overdueRows, recentChangesRows, projectSummaryRows] =
+    // 平行執行 5 個查詢
+    const [dueSoonRows, overdueRows, recentChangesRows, projectSummaryRows, dismissedRows] =
       await Promise.all([
         // 1. 7 日內到期的卡片
         query(`
@@ -112,6 +112,12 @@ export async function GET() {
           GROUP BY p.id, p.name, max_pos.max_position
           ORDER BY p.name ASC
         `),
+
+        // 5. 當前使用者已忽略的通知
+        query(
+          `SELECT card_id, dismiss_type FROM notification_dismissed WHERE user_id = $1`,
+          [user.id]
+        ),
       ])
 
     // 應用層計算 completion_rate
@@ -133,6 +139,7 @@ export async function GET() {
       overdue: overdueRows,
       recent_changes: recentChangesRows,
       project_summary,
+      dismissed: dismissedRows,
       counts: {
         due_soon: dueSoonRows.length,
         overdue: overdueRows.length,
