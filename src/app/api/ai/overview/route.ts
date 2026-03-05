@@ -68,7 +68,7 @@ export async function GET() {
           ORDER BY ph.position
         `, [project.id]),
 
-        // 最近更新的卡片（前 10 張）
+        // 最近更新的卡片（前 10 張）— card_number 可能尚未 migrate，加 fallback
         query(`
           SELECT c.id, c.card_number, c.title, c.progress, c.priority,
                  c.due_date, c.updated_at, col.name as column_name,
@@ -81,7 +81,21 @@ export async function GET() {
           WHERE col.project_id = $1
           ORDER BY c.updated_at DESC
           LIMIT 10
-        `, [project.id]),
+        `, [project.id]).catch(() =>
+          query(`
+            SELECT c.id, NULL as card_number, c.title, c.progress, c.priority,
+                   c.due_date, c.updated_at, col.name as column_name,
+                   COALESCE(
+                     (SELECT json_agg(json_build_object('id', p.id, 'name', p.name))
+                      FROM card_assignees ca JOIN profiles p ON ca.user_id = p.id
+                      WHERE ca.card_id = c.id), '[]') as assignees
+            FROM cards c
+            JOIN columns col ON c.column_id = col.id
+            WHERE col.project_id = $1
+            ORDER BY c.updated_at DESC
+            LIMIT 10
+          `, [project.id])
+        ),
       ])
 
       return {
