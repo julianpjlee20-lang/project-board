@@ -276,8 +276,8 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
   }, [allCards.length, sort.key, sort.direction])
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <table className="w-full">
+    <div className="bg-white rounded-lg shadow overflow-x-auto">
+      <table className="w-full min-w-[700px]">
         <thead className="bg-slate-50 border-b">
           <tr>
             <SortableHeader label="標題" sortKey="title" currentSort={sort} onSort={handleSort} />

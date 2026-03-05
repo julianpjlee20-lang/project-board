@@ -11,6 +11,12 @@ import { requireAuth, AuthError } from "@/lib/auth"
 export async function GET() {
   try {
     const user = await requireAuth()
+    const isAdmin = user.role === 'admin'
+
+    // 非管理員只計算分配給自己的卡片
+    const assigneeFilter = isAdmin
+      ? ''
+      : 'AND EXISTS (SELECT 1 FROM card_assignees ca_filter WHERE ca_filter.card_id = c.id AND ca_filter.user_id = $1)'
 
     const rows = await query(`
       SELECT
@@ -34,6 +40,7 @@ export async function GET() {
       WHERE c.due_date IS NOT NULL
         AND c.actual_completion_date IS NULL
         AND col.position < (SELECT MAX(col2.position) FROM columns col2 WHERE col2.project_id = p.id)
+        ${assigneeFilter}
     `, [user.id])
 
     const { overdue_count, due_soon_count } = rows[0]

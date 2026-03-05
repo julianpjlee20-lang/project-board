@@ -96,11 +96,11 @@ export default function ProjectsPage() {
           borderColor: '#316745'
         }}
       >
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex items-start justify-between">
-            <div>
+        <div className="container mx-auto px-6 max-sm:px-4 py-8 max-sm:py-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h1
-                className="text-3xl font-bold"
+                className="text-3xl max-sm:text-2xl font-bold"
                 style={{
                   color: '#F9F8F5',
                   fontFamily: 'Inter, sans-serif',
@@ -110,22 +110,23 @@ export default function ProjectsPage() {
                 專案列表
               </h1>
               <p
-                className="mt-2"
+                className="mt-2 max-sm:mt-1 text-sm max-sm:text-xs"
                 style={{ color: '#F9F8F5', opacity: 0.7 }}
               >
                 建立和管理你的團隊專案
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Link
                 href="/calendar"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
+                className="flex items-center gap-2 px-4 max-sm:px-3 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90 min-h-[44px]"
                 style={{ backgroundColor: '#316745', color: '#F9F8F5' }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                全域行事曆
+                <span className="max-sm:hidden">全域行事曆</span>
+                <span className="sm:hidden">行事曆</span>
               </Link>
               <UserNav />
             </div>
@@ -133,17 +134,17 @@ export default function ProjectsPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 max-sm:px-4 py-8 max-sm:py-5">
         {/* Create Form - Only show if database is initialized */}
         {!initError && (
-          <form onSubmit={handleCreate} className="flex gap-3 mb-12">
+          <form onSubmit={handleCreate} className="flex max-sm:flex-col gap-3 mb-12 max-sm:mb-8">
             <input
               name="name"
               placeholder="輸入新專案名稱..."
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              className="flex h-12 w-full max-w-md rounded-lg border px-4 text-sm transition-all focus:outline-none focus:ring-2"
-              style={{ 
+              className="flex h-12 w-full max-w-md max-sm:max-w-full rounded-lg border px-4 text-base transition-all focus:outline-none focus:ring-2"
+              style={{
                 backgroundColor: '#FFFFFF',
                 borderColor: '#316745',
                 color: '#0B1A14'
@@ -153,8 +154,8 @@ export default function ProjectsPage() {
             />
             <button
               type="submit"
-              className="h-12 px-6 rounded-lg font-medium transition-all hover:opacity-90"
-              style={{ 
+              className="h-12 px-6 rounded-lg font-medium transition-all hover:opacity-90 min-h-[48px]"
+              style={{
                 backgroundColor: '#F8B500',
                 color: '#0B1A14'
               }}

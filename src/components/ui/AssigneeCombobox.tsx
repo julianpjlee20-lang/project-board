@@ -169,7 +169,7 @@ export function AssigneeCombobox({ users, value, onChange }: AssigneeComboboxPro
           onFocus={handleFocus}
           onKeyDown={handleKeyDown}
           placeholder={selectedUser ? '' : '搜尋使用者...'}
-          className={`w-full border rounded px-3 py-2 text-sm outline-none transition-colors
+          className={`w-full border rounded px-3 py-2.5 sm:py-2 text-base sm:text-sm outline-none transition-colors min-h-[44px] sm:min-h-0
             focus:border-blue-500 focus:ring-1 focus:ring-blue-500
             ${selectedUser && !isOpen ? 'pl-10' : ''}`}
           role="combobox"
@@ -199,10 +199,10 @@ export function AssigneeCombobox({ users, value, onChange }: AssigneeComboboxPro
         <ul
           ref={listRef}
           role="listbox"
-          className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto"
+          className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 sm:max-h-48 overflow-y-auto"
         >
           {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-gray-500">找不到使用者</li>
+            <li className="px-3 py-3 sm:py-2 text-base sm:text-sm text-gray-500">找不到使用者</li>
           ) : (
             <>
               {/* 未指派選項 */}
@@ -210,7 +210,7 @@ export function AssigneeCombobox({ users, value, onChange }: AssigneeComboboxPro
                 <li
                   role="option"
                   aria-selected={value === ''}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors
+                  className={`flex items-center gap-2 px-3 py-3 sm:py-2 text-base sm:text-sm cursor-pointer transition-colors min-h-[44px]
                     ${value === '' ? 'bg-blue-50 text-blue-700' : ''}
                     ${highlightIndex === -1 ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
                   onClick={() => selectUser('')}
@@ -230,7 +230,7 @@ export function AssigneeCombobox({ users, value, onChange }: AssigneeComboboxPro
                   key={user.id}
                   role="option"
                   aria-selected={user.id === value}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer transition-colors
+                  className={`flex items-center gap-2 px-3 py-3 sm:py-2 text-base sm:text-sm cursor-pointer transition-colors min-h-[44px]
                     ${user.id === value ? 'bg-blue-50 text-blue-700' : ''}
                     ${index === highlightIndex ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
                   onClick={() => selectUser(user.id)}

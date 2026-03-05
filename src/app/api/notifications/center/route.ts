@@ -11,6 +11,19 @@ import { requireAuth, AuthError } from "@/lib/auth"
 export async function GET() {
   try {
     const user = await requireAuth()
+    const isAdmin = user.role === 'admin'
+
+    // 非管理員只顯示分配給自己的卡片通知
+    const cardAssigneeFilter = isAdmin
+      ? ''
+      : 'AND EXISTS (SELECT 1 FROM card_assignees ca_filter WHERE ca_filter.card_id = c.id AND ca_filter.user_id = $1)'
+    const activityAssigneeFilter = isAdmin
+      ? ''
+      : 'AND EXISTS (SELECT 1 FROM card_assignees ca_filter WHERE ca_filter.card_id = al.card_id AND ca_filter.user_id = $1)'
+    const summaryCardJoinExtra = isAdmin
+      ? ''
+      : 'AND c.id IN (SELECT ca_filter.card_id FROM card_assignees ca_filter WHERE ca_filter.user_id = $1)'
+    const filterParams = isAdmin ? [] : [user.id]
 
     // 平行執行 5 個查詢
     const [dueSoonRows, overdueRows, recentChangesRows, projectSummaryRows, dismissedRows] =
@@ -35,10 +48,11 @@ export async function GET() {
             AND c.due_date <= NOW() + INTERVAL '7 days'
             AND c.actual_completion_date IS NULL
             AND col.position < (SELECT MAX(col2.position) FROM columns col2 WHERE col2.project_id = p.id)
+            ${cardAssigneeFilter}
           GROUP BY c.id, c.title, c.due_date, c.priority, c.progress, p.id, p.name, col.id, col.name
           ORDER BY c.due_date ASC
           LIMIT 50
-        `),
+        `, filterParams),
 
         // 2. 已逾期的卡片
         query(`
@@ -60,12 +74,13 @@ export async function GET() {
             AND c.due_date < NOW()
             AND c.actual_completion_date IS NULL
             AND col.position < (SELECT MAX(col2.position) FROM columns col2 WHERE col2.project_id = p.id)
+            ${cardAssigneeFilter}
           GROUP BY c.id, c.title, c.due_date, c.priority, c.progress, p.id, p.name, col.id, col.name
           ORDER BY c.due_date ASC
           LIMIT 50
-        `),
+        `, filterParams),
 
-        // 3. 近 7 天的活動記錄
+        // 3. 近 7 天的活動記錄（非管理員只看分配給自己的卡片活動）
         query(`
           SELECT al.id, al.action, al.target, al.old_value, al.new_value, al.created_at,
             al.card_id, prof.name AS user_name, c.title AS card_title,
@@ -75,11 +90,12 @@ export async function GET() {
           LEFT JOIN cards c ON al.card_id = c.id
           JOIN projects p ON al.project_id = p.id
           WHERE al.created_at >= NOW() - INTERVAL '7 days'
+            ${activityAssigneeFilter}
           ORDER BY al.created_at DESC
           LIMIT 100
-        `),
+        `, filterParams),
 
-        // 4. 各專案進度摘要
+        // 4. 各專案進度摘要（非管理員只計算分配給自己的卡片）
         query(`
           SELECT
             p.id, p.name,
@@ -103,7 +119,7 @@ export async function GET() {
             )::int AS due_soon_count
           FROM projects p
           LEFT JOIN columns col ON col.project_id = p.id
-          LEFT JOIN cards c ON c.column_id = col.id
+          LEFT JOIN cards c ON c.column_id = col.id ${summaryCardJoinExtra}
           LEFT JOIN LATERAL (
             SELECT MAX(col2.position) AS max_position
             FROM columns col2
@@ -111,7 +127,7 @@ export async function GET() {
           ) max_pos ON true
           GROUP BY p.id, p.name, max_pos.max_position
           ORDER BY p.name ASC
-        `),
+        `, filterParams),
 
         // 5. 當前使用者已忽略的通知
         query(
@@ -120,19 +136,21 @@ export async function GET() {
         ),
       ])
 
-    // 應用層計算 completion_rate
-    const project_summary = projectSummaryRows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      total_cards: row.total_cards,
-      completed_cards: row.completed_cards,
-      overdue_count: row.overdue_count,
-      due_soon_count: row.due_soon_count,
-      completion_rate:
-        row.total_cards > 0
-          ? Math.round((row.completed_cards / row.total_cards) * 100)
-          : 0,
-    }))
+    // 應用層計算 completion_rate（非管理員過濾掉沒有分配卡片的專案）
+    const project_summary = projectSummaryRows
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        total_cards: row.total_cards,
+        completed_cards: row.completed_cards,
+        overdue_count: row.overdue_count,
+        due_soon_count: row.due_soon_count,
+        completion_rate:
+          row.total_cards > 0
+            ? Math.round((row.completed_cards / row.total_cards) * 100)
+            : 0,
+      }))
+      .filter((row) => isAdmin || row.total_cards > 0)
 
     return NextResponse.json({
       due_soon: dueSoonRows,

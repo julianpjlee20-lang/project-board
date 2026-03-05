@@ -6,7 +6,7 @@ import UserNav from '@/components/UserNav'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TabKey = 'action_needed' | 'overdue' | 'due_soon' | 'recent_changes' | 'project_summary'
+type TabKey = 'overdue' | 'due_soon' | 'recent_changes' | 'project_summary'
 
 interface CardItem {
   id: string
@@ -53,11 +53,6 @@ interface NotificationData {
   project_summary: ProjectSummary[]
   counts: { due_soon: number; overdue: number; recent_changes: number }
   dismissed: { card_id: string; dismiss_type: string }[]
-}
-
-interface UrgentItem extends CardItem {
-  urgency_type: 'overdue' | 'due_soon'
-  urgency_score: number
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -282,7 +277,7 @@ function SummaryCards({
       {/* Overdue Card */}
       <button
         type="button"
-        onClick={() => onTabChange?.('action_needed')}
+        onClick={() => onTabChange?.('overdue')}
         className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
         style={{
           backgroundColor: COLORS.white,
@@ -292,15 +287,13 @@ function SummaryCards({
         <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">逾期任務</p>
         {counts.overdue === 0 ? (
           <div className="flex items-end justify-between">
-            <div>
-              <div className="flex items-center gap-2 mt-1 mb-1">
-                <svg className="w-7 h-7 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-sm text-slate-600">太好了！沒有逾期任務</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
+                0
+              </p>
+              <p className="text-sm text-slate-600 mt-0.5">太好了，全數完成</p>
             </div>
-            <svg className="w-4 h-4 text-slate-400 mb-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </div>
@@ -343,7 +336,7 @@ function SummaryCards({
       {/* Due Soon Card */}
       <button
         type="button"
-        onClick={() => onTabChange?.('action_needed')}
+        onClick={() => onTabChange?.('due_soon')}
         className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
         style={{
           backgroundColor: COLORS.white,
@@ -353,15 +346,13 @@ function SummaryCards({
         <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">即將到期</p>
         {counts.due_soon === 0 ? (
           <div className="flex items-end justify-between">
-            <div>
-              <div className="flex items-center gap-2 mt-1 mb-1">
-                <svg className="w-7 h-7 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-sm text-slate-600">近 7 天沒有到期任務</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
+                0
+              </p>
+              <p className="text-sm text-slate-600 mt-0.5">近 7 天無到期任務</p>
             </div>
-            <svg className="w-4 h-4 text-slate-400 mb-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </div>
@@ -453,20 +444,12 @@ function TabBar({
   activeTab,
   onTabChange,
   counts,
-  activeCount,
 }: {
   activeTab: TabKey
   onTabChange: (tab: TabKey) => void
   counts: NotificationData['counts']
-  activeCount: number
 }) {
-  const tabs: TabDef[] = [
-    {
-      id: 'action_needed',
-      label: '需要注意',
-      dotColor: activeCount > 0 ? COLORS.danger : undefined,
-      showDot: activeCount > 0,
-    },
+  const alertTabs: TabDef[] = [
     {
       id: 'overdue',
       label: '已逾期',
@@ -479,6 +462,9 @@ function TabBar({
       dotColor: COLORS.accent,
       showDot: counts.due_soon > 0,
     },
+  ]
+
+  const infoTabs: TabDef[] = [
     {
       id: 'recent_changes',
       label: '近期變更',
@@ -490,8 +476,8 @@ function TabBar({
   ]
 
   return (
-    <div className="flex bg-slate-100 rounded-lg p-1 overflow-x-auto">
-      {tabs.map((tab) => (
+    <div className="flex items-center bg-slate-100 rounded-lg p-1 overflow-x-auto">
+      {alertTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
@@ -507,6 +493,23 @@ function TabBar({
               style={{ backgroundColor: tab.dotColor }}
             />
           )}
+          {tab.label}
+        </button>
+      ))}
+
+      {/* Separator */}
+      <div className="h-5 w-px bg-slate-300 flex-shrink-0 mx-1" />
+
+      {infoTabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onTabChange(tab.id)}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+            activeTab === tab.id
+              ? 'bg-white shadow text-slate-900'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
           {tab.label}
         </button>
       ))}
@@ -623,6 +626,98 @@ function CardListItem({
         </div>
       </div>
     </Link>
+  )
+}
+
+// ─── Dismissable Card List ───────────────────────────────────────────────────
+
+function DismissableCardList({
+  items,
+  variant,
+  dismissedSet,
+  onDismiss,
+  onRestore,
+  emptyMessage,
+  emptyIcon,
+}: {
+  items: CardItem[]
+  variant: 'overdue' | 'due_soon'
+  dismissedSet: Set<string>
+  onDismiss: (cardId: string, type: 'overdue' | 'due_soon') => void
+  onRestore: (cardId: string, type: 'overdue' | 'due_soon') => void
+  emptyMessage: string
+  emptyIcon: string
+}) {
+  const [showDismissed, setShowDismissed] = useState(false)
+
+  const activeItems = items.filter(
+    (card) => !dismissedSet.has(`${card.id}:${variant}`)
+  )
+  const dismissedItems = items.filter(
+    (card) => dismissedSet.has(`${card.id}:${variant}`)
+  )
+
+  if (items.length === 0) {
+    return <EmptyState message={emptyMessage} icon={emptyIcon} />
+  }
+
+  return (
+    <div>
+      {activeItems.length === 0 && dismissedItems.length > 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <span className="text-4xl mb-4">&#10003;</span>
+          <p className="text-sm text-slate-500">所有項目已處理</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {activeItems.map((card) => (
+            <CardListItem
+              key={card.id}
+              card={card}
+              variant={variant}
+              onDismiss={onDismiss}
+            />
+          ))}
+        </div>
+      )}
+
+      {dismissedItems.length > 0 && (
+        <div className="mt-6 border-t pt-4">
+          <button
+            type="button"
+            onClick={() => setShowDismissed((prev) => !prev)}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${showDismissed ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            已忽略 ({dismissedItems.length})
+          </button>
+          {showDismissed && (
+            <div className="space-y-3 mt-3 opacity-60">
+              {dismissedItems.map((card) => (
+                <div key={`${card.id}-dismissed`} className="relative">
+                  <CardListItem card={card} variant={variant} />
+                  <button
+                    type="button"
+                    onClick={() => onRestore(card.id, variant)}
+                    className="absolute top-3 right-3 text-xs text-blue-600 hover:text-blue-800 transition-colors font-medium px-2 py-1 rounded hover:bg-blue-50"
+                  >
+                    恢復
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -750,122 +845,6 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
   )
 }
 
-// ─── Action Needed Tab ───────────────────────────────────────────────────────
-
-const PRIORITY_SCORES: Record<string, number> = {
-  high: 30,
-  medium: 20,
-  low: 10,
-}
-
-function ActionNeededTab({
-  overdue,
-  dueSoon,
-  dismissedSet,
-  onDismiss,
-  onRestore,
-}: {
-  overdue: CardItem[]
-  dueSoon: CardItem[]
-  dismissedSet: Set<string>
-  onDismiss: (cardId: string, type: 'overdue' | 'due_soon') => void
-  onRestore: (cardId: string, type: 'overdue' | 'due_soon') => void
-}) {
-  const [showDismissed, setShowDismissed] = useState(false)
-
-  // Merge overdue + dueSoon into UrgentItems with urgency scores
-  const allItems: UrgentItem[] = [
-    ...overdue.map((card): UrgentItem => ({
-      ...card,
-      urgency_type: 'overdue' as const,
-      urgency_score: Math.abs(Math.floor(card.days_overdue ?? 0)) * 100 + (PRIORITY_SCORES[card.priority] ?? 0),
-    })),
-    ...dueSoon.map((card): UrgentItem => ({
-      ...card,
-      urgency_type: 'due_soon' as const,
-      urgency_score: (7 - getDaysRemaining(card.due_date)) * 10 + (PRIORITY_SCORES[card.priority] ?? 0),
-    })),
-  ]
-
-  // Split into active vs dismissed
-  const activeItems = allItems
-    .filter((item) => !dismissedSet.has(`${item.id}:${item.urgency_type}`))
-    .sort((a, b) => b.urgency_score - a.urgency_score)
-
-  const dismissedItems = allItems
-    .filter((item) => dismissedSet.has(`${item.id}:${item.urgency_type}`))
-    .sort((a, b) => b.urgency_score - a.urgency_score)
-
-  if (allItems.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <span className="text-4xl mb-4">&#10003;</span>
-        <p className="text-sm text-slate-500">太好了！沒有需要注意的任務</p>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      {activeItems.length === 0 && dismissedItems.length > 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <span className="text-4xl mb-4">&#10003;</span>
-          <p className="text-sm text-slate-500">所有項目已處理</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {activeItems.map((item) => (
-            <CardListItem
-              key={`${item.id}-${item.urgency_type}`}
-              card={item}
-              variant={item.urgency_type}
-              onDismiss={onDismiss}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Dismissed items collapsible section */}
-      {dismissedItems.length > 0 && (
-        <div className="mt-6 border-t pt-4">
-          <button
-            type="button"
-            onClick={() => setShowDismissed((prev) => !prev)}
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            <svg
-              className={`w-4 h-4 transition-transform ${showDismissed ? 'rotate-90' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-            已忽略 ({dismissedItems.length})
-          </button>
-          {showDismissed && (
-            <div className="space-y-3 mt-3 opacity-60">
-              {dismissedItems.map((item) => (
-                <div key={`${item.id}-${item.urgency_type}-dismissed`} className="relative">
-                  <CardListItem card={item} variant={item.urgency_type} />
-                  <button
-                    type="button"
-                    onClick={() => onRestore(item.id, item.urgency_type)}
-                    className="absolute top-3 right-3 text-xs text-blue-600 hover:text-blue-800 transition-colors font-medium px-2 py-1 rounded hover:bg-blue-50"
-                  >
-                    恢復
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ message, icon }: { message: string; icon: string }) {
@@ -899,7 +878,7 @@ export default function NotificationsPage() {
   const [data, setData] = useState<NotificationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabKey>('action_needed')
+  const [activeTab, setActiveTab] = useState<TabKey>('overdue')
   const [dismissedSet, setDismissedSet] = useState<Set<string>>(new Set())
 
   const fetchData = useCallback(async () => {
@@ -972,17 +951,6 @@ export default function NotificationsPage() {
   }
 
   const counts = data?.counts ?? { due_soon: 0, overdue: 0, recent_changes: 0 }
-
-  // Calculate active (non-dismissed) count for action_needed tab
-  const activeCount = data
-    ? [...data.overdue, ...data.due_soon].filter(
-        (card) => {
-          const overdueKey = `${card.id}:overdue`
-          const dueSoonKey = `${card.id}:due_soon`
-          return !dismissedSet.has(overdueKey) && !dismissedSet.has(dueSoonKey)
-        }
-      ).length
-    : 0
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: COLORS.bg }}>
@@ -1063,14 +1031,12 @@ export default function NotificationsPage() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={counts}
-            activeCount={activeCount}
           />
         )}
 
         {/* Tab Content */}
         {loading ? (
           <div>
-            {activeTab === 'action_needed' && <CardListSkeleton />}
             {activeTab === 'overdue' && <CardListSkeleton />}
             {activeTab === 'due_soon' && <CardListSkeleton />}
             {activeTab === 'recent_changes' && <TimelineSkeleton />}
@@ -1078,41 +1044,30 @@ export default function NotificationsPage() {
           </div>
         ) : data ? (
           <div>
-            {/* Action Needed Tab */}
-            {activeTab === 'action_needed' && (
-              <ActionNeededTab
-                overdue={data.overdue}
-                dueSoon={data.due_soon}
+            {/* Overdue Tab */}
+            {activeTab === 'overdue' && (
+              <DismissableCardList
+                items={data.overdue}
+                variant="overdue"
                 dismissedSet={dismissedSet}
                 onDismiss={handleDismiss}
                 onRestore={handleRestore}
+                emptyMessage="太好了！目前沒有逾期的任務"
+                emptyIcon="✅"
               />
-            )}
-
-            {/* Overdue Tab */}
-            {activeTab === 'overdue' && (
-              data.overdue.length === 0 ? (
-                <EmptyState message="太好了！目前沒有逾期的任務" icon="✅" />
-              ) : (
-                <div className="space-y-3">
-                  {data.overdue.map((card) => (
-                    <CardListItem key={card.id} card={card} variant="overdue" />
-                  ))}
-                </div>
-              )
             )}
 
             {/* Due Soon Tab */}
             {activeTab === 'due_soon' && (
-              data.due_soon.length === 0 ? (
-                <EmptyState message="近 7 天沒有即將到期的任務" icon="📅" />
-              ) : (
-                <div className="space-y-3">
-                  {data.due_soon.map((card) => (
-                    <CardListItem key={card.id} card={card} variant="due_soon" />
-                  ))}
-                </div>
-              )
+              <DismissableCardList
+                items={data.due_soon}
+                variant="due_soon"
+                dismissedSet={dismissedSet}
+                onDismiss={handleDismiss}
+                onRestore={handleRestore}
+                emptyMessage="近 7 天沒有即將到期的任務"
+                emptyIcon="📅"
+              />
             )}
 
             {/* Recent Changes Tab */}

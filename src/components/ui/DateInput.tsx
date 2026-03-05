@@ -292,7 +292,7 @@ export function DateInput({ value, onChange, onBlur, autoFocus, className }: Dat
   }
 
   const inputBase =
-    'border-0 bg-transparent text-center text-sm outline-none p-0 focus:ring-0'
+    'border-0 bg-transparent text-center text-base sm:text-sm outline-none p-0 focus:ring-0'
 
   // Container border style: partial input gets a warning amber border
   const borderStyle = isPartial
@@ -302,7 +302,7 @@ export function DateInput({ value, onChange, onBlur, autoFocus, className }: Dat
   return (
     <div
       ref={containerRef}
-      className={`inline-flex items-center border rounded px-2 py-1 text-sm ${borderStyle} ${className || ''}`}
+      className={`inline-flex items-center border rounded px-2 py-2 sm:py-1 text-base sm:text-sm min-h-[40px] sm:min-h-0 ${borderStyle} ${className || ''}`}
       title={isPartial ? '日期尚未完成，請填寫所有欄位' : undefined}
     >
       <input
@@ -332,7 +332,7 @@ export function DateInput({ value, onChange, onBlur, autoFocus, className }: Dat
         onKeyDown={e => handleKeyDown(e, 'month')}
         onBlur={handleFieldBlur}
         onFocus={handleFieldFocus}
-        className={`${inputBase} w-[2ch]`}
+        className={`${inputBase} w-[2.5ch]`}
         aria-label="Month"
       />
       <span className="text-slate-400 mx-px select-none">-</span>
@@ -347,7 +347,7 @@ export function DateInput({ value, onChange, onBlur, autoFocus, className }: Dat
         onKeyDown={e => handleKeyDown(e, 'day')}
         onBlur={handleFieldBlur}
         onFocus={handleFieldFocus}
-        className={`${inputBase} w-[2ch]`}
+        className={`${inputBase} w-[2.5ch]`}
         aria-label="Day"
       />
     </div>

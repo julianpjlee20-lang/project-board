@@ -843,7 +843,7 @@ function CardDetailContent({ card, phases, detail }: {
   }, [dueDate, actualDate])
 
   return (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 max-sm:px-4">
       {/* ================================================================= */}
       {/* Zone A: Hero (Title + Description) */}
       {/* ================================================================= */}
@@ -851,14 +851,14 @@ function CardDetailContent({ card, phases, detail }: {
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          className="w-full text-lg font-semibold bg-transparent border border-transparent rounded-md px-2 py-1 -mx-2 focus:border-slate-300 focus:ring-0 focus:outline-none transition-colors"
+          className="w-full text-lg max-sm:text-base font-semibold bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 focus:ring-0 focus:outline-none transition-colors"
           placeholder="輸入標題..."
         />
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
-          rows={2}
-          className="w-full text-sm text-slate-600 bg-transparent border border-transparent rounded-md px-2 py-1 -mx-2 focus:border-slate-300 focus:ring-0 focus:outline-none transition-colors resize-none"
+          rows={3}
+          className="w-full text-base max-sm:text-base text-slate-600 bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 focus:ring-0 focus:outline-none transition-colors resize-none"
           placeholder="新增描述..."
         />
       </div>
@@ -868,11 +868,11 @@ function CardDetailContent({ card, phases, detail }: {
       {/* ================================================================= */}
       <div className="border-t border-slate-100 py-1 mt-3">
         {/* Priority */}
-        <div className="flex items-center min-h-[36px] px-4 rounded-md hover:bg-slate-50 -mx-4">
+        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4">
           <span className="w-20 text-sm text-slate-500 shrink-0">優先度</span>
           <div className="flex-1 min-w-0">
             <Select value={priority} onValueChange={(v) => setPriority(v as Card['priority'])}>
-              <SelectTrigger className="w-auto h-7 border-0 shadow-none px-2 hover:bg-slate-100 focus:ring-0">
+              <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 focus:ring-0">
                 <SelectValue>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PRIORITY_COLORS[priority] }} />
@@ -895,7 +895,7 @@ function CardDetailContent({ card, phases, detail }: {
         </div>
 
         {/* Assignee */}
-        <div className="flex items-center min-h-[36px] px-4 rounded-md hover:bg-slate-50 -mx-4">
+        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4">
           <span className="w-20 text-sm text-slate-500 shrink-0">指派人</span>
           <div className="flex-1 min-w-0">
             <AssigneeCombobox users={activeUsers} value={assigneeId} onChange={setAssigneeId} />
@@ -903,11 +903,11 @@ function CardDetailContent({ card, phases, detail }: {
         </div>
 
         {/* Phase */}
-        <div className="flex items-center min-h-[36px] px-4 rounded-md hover:bg-slate-50 -mx-4">
+        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4">
           <span className="w-20 text-sm text-slate-500 shrink-0">階段</span>
           <div className="flex-1 min-w-0">
             <Select value={phaseId || '__none__'} onValueChange={(v) => setPhaseId(v === '__none__' ? null : v)}>
-              <SelectTrigger className="w-auto h-7 border-0 shadow-none px-2 hover:bg-slate-100 focus:ring-0">
+              <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 focus:ring-0">
                 <SelectValue>
                   <span className="flex items-center gap-1.5">
                     {phaseId && phases.find(p => p.id === phaseId) ? (
@@ -943,7 +943,7 @@ function CardDetailContent({ card, phases, detail }: {
 
         {/* Due date (read-only display, click to expand Zone C) */}
         <div
-          className="flex items-center min-h-[36px] px-4 rounded-md hover:bg-slate-50 -mx-4 cursor-pointer"
+          className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4 cursor-pointer"
           onClick={() => setScheduleExpanded(true)}
         >
           <span className="w-20 text-sm text-slate-500 shrink-0">截止日</span>
@@ -1197,15 +1197,15 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
   }, [detail.handleCancel])
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 max-sm:p-0" onClick={onClose}>
+      <div className="bg-white rounded-xl max-sm:rounded-none w-full max-w-lg max-h-[90vh] max-sm:max-h-full max-sm:h-full flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-5 py-3 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+        <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
           <span className="text-sm font-mono text-slate-400">
             {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
           </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
         {!detail.isFormReady ? (
@@ -1215,9 +1215,9 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
             <div className="flex-1 overflow-y-auto">
               <CardDetailContent card={card} phases={phases} detail={detail} />
             </div>
-            <div className="px-5 py-3 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
-              <button onClick={detail.handleCancel} className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">取消</button>
-              <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50">
+            <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
+              <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 rounded-lg hover:bg-slate-50 min-h-[44px]">取消</button>
+              <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
                 {detail.isSaving ? '儲存中...' : '儲存'}
               </button>
             </div>
@@ -1260,17 +1260,17 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
 
   return (
     <div
-      className={`fixed top-0 right-0 h-full w-[420px] max-lg:w-full max-lg:inset-0 z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out ${
-        isVisible ? 'translate-x-0' : 'translate-x-full max-lg:translate-x-full'
+      className={`fixed top-0 right-0 h-full w-[420px] max-md:w-full max-md:inset-0 z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out ${
+        isVisible ? 'translate-x-0' : 'translate-x-full max-md:translate-x-full'
       }`}
     >
       {/* Header */}
-      <div className="px-5 py-3 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
+      <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
         <span className="text-sm font-mono text-slate-400">
           {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
         </span>
-        <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
 
@@ -1282,9 +1282,9 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
           <div className="flex-1 overflow-y-auto">
             <CardDetailContent card={card} phases={phases} detail={detail} />
           </div>
-          <div className="px-5 py-3 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
-            <button onClick={detail.handleCancel} className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">取消</button>
-            <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50">
+          <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
+            <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 rounded-lg hover:bg-slate-50 min-h-[44px]">取消</button>
+            <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
               {detail.isSaving ? '儲存中...' : '儲存'}
             </button>
           </div>
