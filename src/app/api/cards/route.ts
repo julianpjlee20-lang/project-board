@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { column_id, title } = validation.data
+    const { column_id, title, phase_id } = validation.data
 
     // 取得 project_id（透過 column_id）
     const colResult = await query(
@@ -135,11 +135,11 @@ export async function POST(request: NextRequest) {
         JOIN columns col ON c.column_id = col.id
         WHERE col.project_id = $1
       )
-      INSERT INTO cards (column_id, title, position, card_number)
-      SELECT $2, $3, $4, next_num
+      INSERT INTO cards (column_id, title, position, card_number, phase_id)
+      SELECT $2, $3, $4, next_num, $5
       FROM next_number
       RETURNING *
-    `, [projectId, column_id, title, position])
+    `, [projectId, column_id, title, position, phase_id ?? null])
 
     return NextResponse.json(result[0])
   } catch (error) {

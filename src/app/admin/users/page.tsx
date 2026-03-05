@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -41,6 +41,48 @@ interface UsersResponse {
 
 const PAGE_SIZE = 20
 const DEBOUNCE_MS = 300
+
+// ========================================
+// Sort Types & Helper
+// ========================================
+
+type SortDirection = 'asc' | 'desc' | null
+type UserSortKey = 'name' | 'email' | 'role' | 'is_active' | 'login_method' | 'created_at'
+
+interface SortState {
+  key: UserSortKey | null
+  direction: SortDirection
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  onSort,
+}: {
+  label: string
+  sortKey: UserSortKey
+  currentSort: SortState
+  onSort: (key: UserSortKey) => void
+}) {
+  const isActive = currentSort.key === sortKey
+  const direction = isActive ? currentSort.direction : null
+
+  return (
+    <th
+      className="text-left px-4 py-3 font-medium text-slate-500 select-none cursor-pointer group"
+      onClick={() => onSort(sortKey)}
+      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className={`text-xs ${isActive ? 'text-blue-500' : 'text-slate-400 opacity-0 group-hover:opacity-100'} transition-opacity`}>
+          {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '▲▼'}
+        </span>
+      </span>
+    </th>
+  )
+}
 
 // ========================================
 // Helper Components
@@ -174,6 +216,42 @@ function UsersContent() {
   const [resetShowPassword, setResetShowPassword] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
   const [resetLoading, setResetLoading] = useState(false)
+
+  // Sort state
+  const [sort, setSort] = useState<SortState>({ key: null, direction: null })
+
+  const handleSort = useCallback((key: UserSortKey) => {
+    setSort((prev) => {
+      if (prev.key !== key) return { key, direction: 'asc' }
+      if (prev.direction === 'asc') return { key, direction: 'desc' }
+      return { key: null, direction: null }
+    })
+  }, [])
+
+  // Sorted users (client-side sort on current page data)
+  const sortedUsers = useMemo(() => {
+    if (!sort.key || !sort.direction) return users
+
+    const sorted = [...users].sort((a, b) => {
+      const key = sort.key!
+      let comparison = 0
+
+      if (key === 'is_active') {
+        comparison = (a.is_active === b.is_active) ? 0 : a.is_active ? -1 : 1
+      } else if (key === 'created_at') {
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      } else {
+        // 字串排序：name, email, role, login_method
+        const valA = (a[key] ?? '').toString().toLowerCase()
+        const valB = (b[key] ?? '').toString().toLowerCase()
+        comparison = valA.localeCompare(valB, 'zh-TW')
+      }
+
+      return sort.direction === 'desc' ? -comparison : comparison
+    })
+
+    return sorted
+  }, [users, sort.key, sort.direction])
 
   // Debounce search input
   useEffect(() => {
@@ -494,12 +572,12 @@ function UsersContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ backgroundColor: '#FAFAFA' }}>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">使用者</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">Email</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">角色</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">狀態</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">登入方式</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">建立日期</th>
+                <SortableHeader label="使用者" sortKey="name" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="Email" sortKey="email" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="角色" sortKey="role" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="狀態" sortKey="is_active" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="登入方式" sortKey="login_method" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="建立日期" sortKey="created_at" currentSort={sort} onSort={handleSort} />
                 <th className="text-right px-4 py-3 font-medium text-slate-500">操作</th>
               </tr>
             </thead>
@@ -510,7 +588,7 @@ function UsersContent() {
                     載入中...
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
+              ) : sortedUsers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400">
                     {debouncedSearch || roleFilter || statusFilter
@@ -519,7 +597,7 @@ function UsersContent() {
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
+                sortedUsers.map((user) => (
                   <tr
                     key={user.id}
                     className="border-b last:border-b-0 hover:bg-slate-50 transition-colors"

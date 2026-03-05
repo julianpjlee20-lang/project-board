@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { Card, Column, Phase, CalendarMode } from './types'
 
 const PRIORITY_CONFIG = {
@@ -144,6 +144,56 @@ function TimelineTooltipContent({ card }: { card: Card }) {
 }
 
 // ──────────────────────────────────────────────
+// List View — Sortable Column Types & Helpers
+// ──────────────────────────────────────────────
+
+type SortKey = 'title' | 'phase' | 'priority' | 'column' | 'assignee' | 'due_date' | 'progress'
+type SortDirection = 'asc' | 'desc'
+
+interface SortState {
+  key: SortKey | null
+  direction: SortDirection | null
+}
+
+/** Priority weight: high > medium > low */
+const PRIORITY_WEIGHT: Record<string, number> = { high: 3, medium: 2, low: 1 }
+
+/** SortableHeader — clickable column header with sort indicator */
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  onSort,
+}: {
+  label: string
+  sortKey: SortKey
+  currentSort: SortState
+  onSort: (key: SortKey) => void
+}) {
+  const isActive = currentSort.key === sortKey
+
+  return (
+    <th
+      className="text-left px-4 py-3 text-sm font-medium text-slate-600 cursor-pointer select-none group"
+      onClick={() => onSort(sortKey)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {isActive ? (
+          <span className="text-blue-500 text-xs">
+            {currentSort.direction === 'asc' ? '▲' : '▼'}
+          </span>
+        ) : (
+          <span className="text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+            ▲▼
+          </span>
+        )}
+      </span>
+    </th>
+  )
+}
+
+// ──────────────────────────────────────────────
 // List View Component
 // ──────────────────────────────────────────────
 export function ListView({ columns, phases, onCardClick }: { columns: Column[], phases?: Phase[], onCardClick: (card: Card) => void }) {
@@ -151,22 +201,96 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
     col.cards.map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
   )
 
+  const [sort, setSort] = useState<SortState>({ key: null, direction: null })
+
+  /** Cycle sort: null → asc → desc → null */
+  const handleSort = (key: SortKey) => {
+    setSort(prev => {
+      if (prev.key !== key) return { key, direction: 'asc' }
+      if (prev.direction === 'asc') return { key, direction: 'desc' }
+      return { key: null, direction: null }
+    })
+  }
+
+  /** Resolve phase name for a card */
+  const getPhaseName = (card: Card): string | null => {
+    if (!card.phase_id || !phases) return null
+    return phases.find(p => p.id === card.phase_id)?.name ?? null
+  }
+
+  /** Sorted cards (memoised to avoid re-sorting on every render) */
+  const sortedCards = useMemo(() => {
+    if (!sort.key || !sort.direction) return allCards
+
+    const dir = sort.direction === 'asc' ? 1 : -1
+
+    return [...allCards].sort((a, b) => {
+      switch (sort.key) {
+        case 'title':
+          return dir * a.title.localeCompare(b.title, 'zh-TW')
+
+        case 'phase': {
+          const pa = getPhaseName(a)
+          const pb = getPhaseName(b)
+          if (!pa && !pb) return 0
+          if (!pa) return 1          // null always last
+          if (!pb) return -1
+          return dir * pa.localeCompare(pb, 'zh-TW')
+        }
+
+        case 'priority': {
+          const wa = PRIORITY_WEIGHT[a.priority || 'medium'] ?? 2
+          const wb = PRIORITY_WEIGHT[b.priority || 'medium'] ?? 2
+          return dir * (wa - wb)
+        }
+
+        case 'column':
+          return dir * a.columnName.localeCompare(b.columnName, 'zh-TW')
+
+        case 'assignee': {
+          const na = a.assignees?.[0]?.name ?? null
+          const nb = b.assignees?.[0]?.name ?? null
+          if (!na && !nb) return 0
+          if (!na) return 1          // unassigned last
+          if (!nb) return -1
+          return dir * na.localeCompare(nb, 'zh-TW')
+        }
+
+        case 'due_date': {
+          const da = a.due_date ? new Date(a.due_date).getTime() : null
+          const db = b.due_date ? new Date(b.due_date).getTime() : null
+          if (da === null && db === null) return 0
+          if (da === null) return 1  // no due date last
+          if (db === null) return -1
+          return dir * (da - db)
+        }
+
+        case 'progress':
+          return dir * ((a.progress || 0) - (b.progress || 0))
+
+        default:
+          return 0
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCards.length, sort.key, sort.direction])
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <table className="w-full">
         <thead className="bg-slate-50 border-b">
           <tr>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">標題</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">階段</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">優先度</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">欄位</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">指派</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">日程</th>
-            <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">進度</th>
+            <SortableHeader label="標題" sortKey="title" currentSort={sort} onSort={handleSort} />
+            <SortableHeader label="階段" sortKey="phase" currentSort={sort} onSort={handleSort} />
+            <SortableHeader label="優先度" sortKey="priority" currentSort={sort} onSort={handleSort} />
+            <SortableHeader label="欄位" sortKey="column" currentSort={sort} onSort={handleSort} />
+            <SortableHeader label="指派" sortKey="assignee" currentSort={sort} onSort={handleSort} />
+            <SortableHeader label="日程" sortKey="due_date" currentSort={sort} onSort={handleSort} />
+            <SortableHeader label="進度" sortKey="progress" currentSort={sort} onSort={handleSort} />
           </tr>
         </thead>
         <tbody>
-          {allCards.map((card) => (
+          {sortedCards.map((card) => (
             <tr
               key={card.id}
               onClick={() => onCardClick(card)}
@@ -231,7 +355,7 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
               </td>
             </tr>
           ))}
-          {allCards.length === 0 && (
+          {sortedCards.length === 0 && (
             <tr>
               <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                 尚無任務

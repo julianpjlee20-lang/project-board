@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 
 // ─── Types ───────────────────────────────────────────────
@@ -32,6 +32,48 @@ function formatDateTime(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+// ─── Sort Types & Helper ─────────────────────────────────
+type SortDirection = 'asc' | 'desc' | null
+type ProjectSortKey = 'name' | 'creator_name' | 'created_at' | 'member_count' | 'card_count' | 'status'
+
+interface SortState {
+  key: ProjectSortKey | null
+  direction: SortDirection
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  onSort,
+  align = 'left',
+}: {
+  label: string
+  sortKey: ProjectSortKey
+  currentSort: SortState
+  onSort: (key: ProjectSortKey) => void
+  align?: 'left' | 'center'
+}) {
+  const isActive = currentSort.key === sortKey
+  const direction = isActive ? currentSort.direction : null
+
+  return (
+    <th
+      className={`${align === 'center' ? 'text-center' : 'text-left'} px-6 py-3 font-medium text-xs uppercase tracking-wide select-none cursor-pointer group`}
+      style={{ color: '#6B7280' }}
+      onClick={() => onSort(sortKey)}
+      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
+    >
+      <span className={`inline-flex items-center gap-1 ${align === 'center' ? 'justify-center' : ''}`}>
+        {label}
+        <span className={`text-xs ${isActive ? 'text-blue-500' : 'text-slate-400 opacity-0 group-hover:opacity-100'} transition-opacity`}>
+          {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '▲▼'}
+        </span>
+      </span>
+    </th>
+  )
 }
 
 // ─── Skeleton Loader ─────────────────────────────────────
@@ -207,30 +249,26 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 // ─── Desktop Table ───────────────────────────────────────
-function ProjectTable({ projects }: { projects: Project[] }) {
+function ProjectTable({
+  projects,
+  sort,
+  onSort,
+}: {
+  projects: Project[]
+  sort: SortState
+  onSort: (key: ProjectSortKey) => void
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr style={{ backgroundColor: '#FAFAFA' }}>
-            <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#6B7280' }}>
-              專案名稱
-            </th>
-            <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#6B7280' }}>
-              擁有者
-            </th>
-            <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#6B7280' }}>
-              建立日期
-            </th>
-            <th className="text-center px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#6B7280' }}>
-              成員數
-            </th>
-            <th className="text-center px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#6B7280' }}>
-              卡片數
-            </th>
-            <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#6B7280' }}>
-              狀態
-            </th>
+            <SortableHeader label="專案名稱" sortKey="name" currentSort={sort} onSort={onSort} />
+            <SortableHeader label="擁有者" sortKey="creator_name" currentSort={sort} onSort={onSort} />
+            <SortableHeader label="建立日期" sortKey="created_at" currentSort={sort} onSort={onSort} />
+            <SortableHeader label="成員數" sortKey="member_count" currentSort={sort} onSort={onSort} align="center" />
+            <SortableHeader label="卡片數" sortKey="card_count" currentSort={sort} onSort={onSort} align="center" />
+            <SortableHeader label="狀態" sortKey="status" currentSort={sort} onSort={onSort} />
           </tr>
         </thead>
         <tbody>
@@ -350,12 +388,48 @@ export default function AdminProjectsPage() {
     }
   }, [])
 
+  // Sort state
+  const [sort, setSort] = useState<SortState>({ key: null, direction: null })
+
+  const handleSort = useCallback((key: ProjectSortKey) => {
+    setSort((prev) => {
+      if (prev.key !== key) return { key, direction: 'asc' }
+      if (prev.direction === 'asc') return { key, direction: 'desc' }
+      return { key: null, direction: null }
+    })
+  }, [])
+
   // Filtered projects
   const filteredProjects = searchQuery.trim()
     ? projects.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
       )
     : projects
+
+  // Sorted projects
+  const sortedProjects = useMemo(() => {
+    if (!sort.key || !sort.direction) return filteredProjects
+
+    const sorted = [...filteredProjects].sort((a, b) => {
+      const key = sort.key!
+      let comparison = 0
+
+      if (key === 'member_count' || key === 'card_count') {
+        comparison = a[key] - b[key]
+      } else if (key === 'created_at') {
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      } else {
+        // 字串排序：name, creator_name, status
+        const valA = (a[key] ?? '').toLowerCase()
+        const valB = (b[key] ?? '').toLowerCase()
+        comparison = valA.localeCompare(valB, 'zh-TW')
+      }
+
+      return sort.direction === 'desc' ? -comparison : comparison
+    })
+
+    return sorted
+  }, [filteredProjects, sort.key, sort.direction])
 
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto">
@@ -414,12 +488,12 @@ export default function AdminProjectsPage() {
               <>
                 {/* Desktop: Table */}
                 <div className="hidden md:block">
-                  <ProjectTable projects={filteredProjects} />
+                  <ProjectTable projects={sortedProjects} sort={sort} onSort={handleSort} />
                 </div>
 
                 {/* Mobile: Cards */}
                 <div className="md:hidden p-4 space-y-3">
-                  {filteredProjects.map((project) => (
+                  {sortedProjects.map((project) => (
                     <ProjectCard key={project.id} project={project} />
                   ))}
                 </div>

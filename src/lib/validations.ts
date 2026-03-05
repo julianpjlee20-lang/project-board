@@ -52,6 +52,7 @@ export const prioritySchema = z.enum(['low', 'medium', 'high'], {
 export const createCardSchema = z.object({
   column_id: uuidSchema,
   title: nonEmptyString.max(200, { message: '標題不可超過 200 字元' }),
+  phase_id: z.union([uuidSchema, z.null(), z.undefined()]),
 })
 
 /** PUT /api/cards/[id] - 更新卡片 */

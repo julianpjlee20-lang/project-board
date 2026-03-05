@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,48 @@ interface CreateKeyPayload {
   name: string
   permissions: 'full' | 'read_only'
   expires_at?: string
+}
+
+// ========================================
+// Sort Types & Helper
+// ========================================
+
+type SortDirection = 'asc' | 'desc' | null
+type ApiKeySortKey = 'name' | 'key_prefix' | 'permissions' | 'status' | 'created_at' | 'last_used_at' | 'expires_at'
+
+interface SortState {
+  key: ApiKeySortKey | null
+  direction: SortDirection
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  onSort,
+}: {
+  label: string
+  sortKey: ApiKeySortKey
+  currentSort: SortState
+  onSort: (key: ApiKeySortKey) => void
+}) {
+  const isActive = currentSort.key === sortKey
+  const direction = isActive ? currentSort.direction : null
+
+  return (
+    <th
+      className="text-left px-4 py-3 font-medium text-slate-500 select-none cursor-pointer group"
+      onClick={() => onSort(sortKey)}
+      aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className={`text-xs ${isActive ? 'text-blue-500' : 'text-slate-400 opacity-0 group-hover:opacity-100'} transition-opacity`}>
+          {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '▲▼'}
+        </span>
+      </span>
+    </th>
+  )
 }
 
 // ========================================
@@ -163,6 +205,17 @@ export default function ApiKeysPage() {
 
   // Toast state
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Sort state
+  const [sort, setSort] = useState<SortState>({ key: null, direction: null })
+
+  const handleSort = useCallback((key: ApiKeySortKey) => {
+    setSort((prev) => {
+      if (prev.key !== key) return { key, direction: 'asc' }
+      if (prev.direction === 'asc') return { key, direction: 'desc' }
+      return { key: null, direction: null }
+    })
+  }, [])
 
   // ========================================
   // Fetch Keys
@@ -351,6 +404,45 @@ export default function ApiKeysPage() {
   const activeCount = keys.filter((k) => k.is_active).length
   const revokedCount = keys.filter((k) => !k.is_active).length
 
+  // Sorted keys
+  const sortedKeys = useMemo(() => {
+    if (!sort.key || !sort.direction) return keys
+
+    function getStatusLabel(k: ApiKey): string {
+      if (!k.is_active) return '已撤銷'
+      if (k.expires_at && new Date(k.expires_at) < new Date()) return '已過期'
+      return '啟用中'
+    }
+
+    const sorted = [...keys].sort((a, b) => {
+      const key = sort.key!
+      let comparison = 0
+
+      if (key === 'status') {
+        comparison = getStatusLabel(a).localeCompare(getStatusLabel(b), 'zh-TW')
+      } else if (key === 'created_at') {
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      } else if (key === 'last_used_at' || key === 'expires_at') {
+        // null 值排最後
+        const valA = a[key] ? new Date(a[key]!).getTime() : null
+        const valB = b[key] ? new Date(b[key]!).getTime() : null
+        if (valA === null && valB === null) comparison = 0
+        else if (valA === null) comparison = 1
+        else if (valB === null) comparison = -1
+        else comparison = valA - valB
+      } else {
+        // 字串排序：name, key_prefix, permissions
+        const valA = (a[key] ?? '').toString().toLowerCase()
+        const valB = (b[key] ?? '').toString().toLowerCase()
+        comparison = valA.localeCompare(valB, 'zh-TW')
+      }
+
+      return sort.direction === 'desc' ? -comparison : comparison
+    })
+
+    return sorted
+  }, [keys, sort.key, sort.direction])
+
   // ========================================
   // Render
   // ========================================
@@ -440,13 +532,13 @@ export default function ApiKeysPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ backgroundColor: '#FAFAFA' }}>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">名稱</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">Key 前綴</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">權限</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">狀態</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">建立日期</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">最後使用</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500">過期日</th>
+                <SortableHeader label="名稱" sortKey="name" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="Key 前綴" sortKey="key_prefix" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="權限" sortKey="permissions" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="狀態" sortKey="status" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="建立日期" sortKey="created_at" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="最後使用" sortKey="last_used_at" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="過期日" sortKey="expires_at" currentSort={sort} onSort={handleSort} />
                 <th className="text-right px-4 py-3 font-medium text-slate-500">操作</th>
               </tr>
             </thead>
@@ -457,7 +549,7 @@ export default function ApiKeysPage() {
                     載入中...
                   </td>
                 </tr>
-              ) : keys.length === 0 ? (
+              ) : sortedKeys.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12">
                     <KeyIcon className="w-10 h-10 mx-auto mb-3 text-slate-300" />
@@ -468,7 +560,7 @@ export default function ApiKeysPage() {
                   </td>
                 </tr>
               ) : (
-                keys.map((apiKey) => (
+                sortedKeys.map((apiKey) => (
                   <tr
                     key={apiKey.id}
                     className="border-b last:border-b-0 hover:bg-slate-50 transition-colors"

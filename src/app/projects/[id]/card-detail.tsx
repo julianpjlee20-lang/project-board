@@ -510,7 +510,7 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
               <div className="flex items-center gap-3 pl-7 py-1 text-xs">
                 <label className="flex items-center gap-1 text-slate-500">
                   截止
-                  <input type="date" value={subtask.due_date || ''}
+                  <input type="date" value={subtask.due_date ? toDateOnly(subtask.due_date) : ''}
                     onChange={e => updateSubtaskField(subtask.id, 'due_date', e.target.value)}
                     className="border rounded px-1.5 py-0.5 text-xs" />
                 </label>
