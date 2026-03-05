@@ -542,7 +542,7 @@ function CardListItem({
 
   return (
     <Link
-      href={`/projects/${card.project_id}`}
+      href={`/projects/${card.project_id}?cardId=${card.id}`}
       className="group block rounded-lg border shadow-sm border-l-4 hover:shadow-md transition-shadow"
       style={{
         backgroundColor: COLORS.white,

@@ -56,7 +56,7 @@ test.describe('卡片移動', () => {
     const updatedColumnsRes = await request.get(`/api/projects/${projectId}/columns`)
     const updatedColumns = await updatedColumnsRes.json()
 
-    const updatedInProgress = updatedColumns.find((c: { name: string }) => c.name === 'In Progress')
+    const updatedInProgress = updatedColumns.find((c: { name: string }) => c.name === '進行中')
     const movedCard = updatedInProgress?.cards?.find((c: { id: string }) => c.id === card.id)
     expect(movedCard).toBeTruthy()
   })

@@ -52,3 +52,25 @@ export interface Project {
   id: string
   name: string
 }
+
+export interface ActivityLog {
+  id: string
+  action: string
+  target: string
+  old_value: string
+  new_value: string
+  created_at: string
+}
+
+export interface CardDetailProps {
+  card: Card
+  phases: Phase[]
+  onClose: () => void
+  onUpdate: () => void
+}
+
+export interface ActiveUser {
+  id: string
+  name: string
+  avatar_url: string | null
+}

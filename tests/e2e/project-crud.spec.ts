@@ -46,6 +46,6 @@ test.describe('專案 CRUD', () => {
 
     // 應該導航到專案詳細頁
     await page.waitForURL(/\/projects\/[\w-]+/)
-    await expect(page.getByText('Board')).toBeVisible()
+    await expect(page.getByText('看板')).toBeVisible()
   })
 })

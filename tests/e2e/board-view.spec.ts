@@ -20,11 +20,11 @@ test.describe('看板視圖', () => {
     }
   })
 
-  test('應顯示預設三個欄位 (To Do, In Progress, Done)', async ({ page }) => {
+  test('應顯示預設三個欄位 (待辦, 進行中, 已完成)', async ({ page }) => {
     await page.goto(`/projects/${projectId}`)
-    await expect(page.getByText('To Do')).toBeVisible()
-    await expect(page.getByText('In Progress')).toBeVisible()
-    await expect(page.getByText('Done')).toBeVisible()
+    await expect(page.getByText('待辦')).toBeVisible()
+    await expect(page.getByText('進行中')).toBeVisible()
+    await expect(page.getByText('已完成')).toBeVisible()
   })
 
   test('應能新增欄位', async ({ page }) => {
@@ -51,23 +51,23 @@ test.describe('看板視圖', () => {
 
   test('應能切換四種視圖', async ({ page }) => {
     await page.goto(`/projects/${projectId}`)
-    // Board 視圖（預設）
-    await expect(page.getByText('To Do')).toBeVisible()
+    // 看板視圖（預設）
+    await expect(page.getByText('待辦')).toBeVisible()
 
-    // List 視圖
-    await page.getByText('📝 List').click()
+    // 列表視圖
+    await page.getByText('📝 列表').click()
     await expect(page.locator('table')).toBeVisible({ timeout: 5000 })
 
-    // Calendar 視圖
-    await page.getByText('📅 Calendar').click()
+    // 行事曆視圖
+    await page.getByText('📅 行事曆').click()
     await expect(page.getByText('日').first()).toBeVisible({ timeout: 5000 })
 
-    // Progress 視圖
-    await page.getByText('📊 Progress').click()
+    // 進度視圖
+    await page.getByText('📊 進度').click()
     await expect(page.getByText('整體進度')).toBeVisible({ timeout: 5000 })
 
-    // 回到 Board 視圖
-    await page.getByText('📋 Board').click()
-    await expect(page.getByText('To Do')).toBeVisible()
+    // 回到看板視圖
+    await page.getByText('📋 看板').click()
+    await expect(page.getByText('待辦')).toBeVisible()
   })
 })

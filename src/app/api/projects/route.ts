@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     if (projectId) {
       // Create default columns with colors
       await query(
-        "INSERT INTO columns (project_id, name, color, position) VALUES ($1, 'To Do', '#EF4444', 0), ($1, 'In Progress', '#F59E0B', 1), ($1, 'Done', '#10B981', 2)",
+        "INSERT INTO columns (project_id, name, color, position) VALUES ($1, '待辦', '#EF4444', 0), ($1, '進行中', '#F59E0B', 1), ($1, '已完成', '#10B981', 2)",
         [projectId]
       )
     }
