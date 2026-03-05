@@ -70,6 +70,11 @@ export const proxy = auth((req) => {
   const { pathname } = req.nextUrl
   const session = req.auth
 
+  // ─── 0. API Key 認證：帶 Bearer pb_ 的 API 請求直接放行（由 route handler 驗證） ───
+  if (isApiRoute(pathname) && req.headers.get('authorization')?.startsWith('Bearer pb_')) {
+    return NextResponse.next()
+  }
+
   // ─── 1. 公開路由：直接放行 ───
   if (isPublicPath(pathname)) {
     // 已登入使用者存取 /login → redirect 到 /projects
