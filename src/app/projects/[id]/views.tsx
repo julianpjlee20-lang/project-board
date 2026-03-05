@@ -1121,7 +1121,9 @@ function ProgressStatsModal({
           ) : (
             <div className="space-y-2">
               {cards.map((card) => {
-                const progress = card.progress || 0
+                const progress = (card.subtasks && card.subtasks.length > 0)
+                  ? Math.round((card.subtasks.filter(s => s.is_completed).length / card.subtasks.length) * 100)
+                  : (card.progress || 0)
                 const priorityStyle = PRIORITY_LABEL[card.priority || 'medium']
                 const progressColor = progress === 100 ? '#10B981' : '#3B82F6'
 
@@ -1198,20 +1200,27 @@ export function ProgressView({ columns }: { columns: Column[] }) {
   const allCardsWithColumn: ProgressCardWithColumn[] = columns.flatMap(col =>
     col.cards.map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
   )
+  /** Calculate card progress from subtask completion ratio */
+  const getCardProgress = (card: ProgressCardWithColumn): number => {
+    if (!card.subtasks || card.subtasks.length === 0) return card.progress || 0
+    const completed = card.subtasks.filter(s => s.is_completed).length
+    return Math.round((completed / card.subtasks.length) * 100)
+  }
+
   const totalCards = allCardsWithColumn.length
   const overallProgress = totalCards > 0
-    ? Math.round(allCardsWithColumn.reduce((sum, card) => sum + (card.progress || 0), 0) / totalCards)
+    ? Math.round(allCardsWithColumn.reduce((sum, card) => sum + getCardProgress(card), 0) / totalCards)
     : 0
-  const completedCards = allCardsWithColumn.filter(c => (c.progress || 0) === 100).length
+  const completedCards = allCardsWithColumn.filter(c => getCardProgress(c) === 100).length
 
   function getFilteredCards(type: ProgressStatType): ProgressCardWithColumn[] {
     switch (type) {
       case 'all':
         return allCardsWithColumn
       case 'in-progress':
-        return allCardsWithColumn.filter(c => (c.progress || 0) < 100)
+        return allCardsWithColumn.filter(c => getCardProgress(c) < 100)
       case 'completed':
-        return allCardsWithColumn.filter(c => (c.progress || 0) === 100)
+        return allCardsWithColumn.filter(c => getCardProgress(c) === 100)
     }
   }
 
@@ -1239,7 +1248,11 @@ export function ProgressView({ columns }: { columns: Column[] }) {
         {columns.map(col => {
           const colTotal = col.cards.length
           const colAvgProgress = colTotal > 0
-            ? Math.round(col.cards.reduce((sum, c) => sum + (c.progress || 0), 0) / colTotal)
+            ? Math.round(col.cards.reduce((sum, c) => {
+                const st = c.subtasks
+                if (st && st.length > 0) return sum + Math.round((st.filter(s => s.is_completed).length / st.length) * 100)
+                return sum + (c.progress || 0)
+              }, 0) / colTotal)
             : 0
 
           return (
