@@ -119,8 +119,13 @@ async function getUserFromApiKey(apiKey: string): Promise<CurrentUser | null> {
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   // 1. 嘗試 API Key
   const apiKey = await getApiKeyFromHeader()
+  const h = await headers()
+  console.log('[AUTH DEBUG] authorization:', h.get('authorization')?.substring(0, 20) || '(empty)')
+  console.log('[AUTH DEBUG] apiKey found:', apiKey ? `pb_${apiKey.substring(3, 8)}...` : 'null')
   if (apiKey) {
-    return getUserFromApiKey(apiKey)
+    const user = await getUserFromApiKey(apiKey)
+    console.log('[AUTH DEBUG] apiKey user:', user ? user.name : 'null (驗證失敗)')
+    return user
   }
 
   // 2. 原有的 JWT session 邏輯
