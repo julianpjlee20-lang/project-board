@@ -15,7 +15,7 @@ export async function GET() {
     const rows = await query(
       `SELECT id, name, avatar_url
        FROM profiles
-       WHERE is_active = true AND email IS NOT NULL
+       WHERE is_active = true
        ORDER BY name ASC`
     )
 
