@@ -52,20 +52,30 @@ function toDateOnly(dateStr: string): string {
   return dateStr.split('T')[0]
 }
 
-function isOverdue(dateStr: string): boolean {
+function getDaysUntilDue(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  return new Date(toDateOnly(dateStr) + 'T00:00:00') < today
-}
-
-function isDueSoon(dateStr: string): boolean {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const diff = (new Date(toDateOnly(dateStr) + 'T00:00:00').getTime() - today.getTime()) / 86400000
-  return diff >= 0 && diff <= 2
+  return Math.round((new Date(toDateOnly(dateStr) + 'T00:00:00').getTime() - today.getTime()) / 86400000)
 }
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(toDateOnly(dateStr) + 'T00:00:00')
   return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+function getDueDateStyle(days: number, isCompleted: boolean): string {
+  if (isCompleted) return 'bg-slate-100 text-slate-400'
+  if (days < 0) return 'bg-red-100 text-red-600 font-medium'
+  if (days === 0) return 'bg-red-100 text-red-600'
+  if (days <= 3) return 'bg-amber-100 text-amber-600'
+  if (days <= 7) return 'bg-yellow-50 text-yellow-700'
+  return 'bg-slate-100 text-slate-500'
+}
+
+function formatDueDateLabel(dateStr: string, days: number): string {
+  if (days < 0) return `${formatShortDate(dateStr)} · 逾期${Math.abs(days)}天`
+  if (days === 0) return '今天截止'
+  if (days <= 7) return `${formatShortDate(dateStr)} · 剩${days}天`
+  return formatShortDate(dateStr)
 }
 
 function getScheduleSummary(dueDate: string, plannedDate: string, actualDate: string): string | null {
@@ -436,7 +446,9 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
               className="h-full rounded-full transition-all duration-300"
               style={{
                 width: `${progressPercent}%`,
-                backgroundColor: progressPercent === 100 ? '#10B981' : '#3B82F6'
+                backgroundColor: progressPercent === 100 ? '#10B981'
+                  : subtasks.some(s => !s.is_completed && s.due_date && getDaysUntilDue(s.due_date) < 0) ? '#EF4444'
+                  : '#3B82F6'
               }}
             />
           </div>
@@ -465,16 +477,14 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
                 {subtask.title}
               </span>
               {/* Due date badge */}
-              {subtask.due_date && (
-                <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${
-                  subtask.is_completed ? 'bg-slate-100 text-slate-400' :
-                  isOverdue(subtask.due_date) ? 'bg-red-100 text-red-600' :
-                  isDueSoon(subtask.due_date) ? 'bg-amber-100 text-amber-600' :
-                  'bg-slate-100 text-slate-500'
-                }`}>
-                  {formatShortDate(subtask.due_date)}
-                </span>
-              )}
+              {subtask.due_date && (() => {
+                const days = getDaysUntilDue(subtask.due_date!)
+                return (
+                  <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${getDueDateStyle(days, subtask.is_completed)}`}>
+                    {subtask.is_completed ? formatShortDate(subtask.due_date!) : formatDueDateLabel(subtask.due_date!, days)}
+                  </span>
+                )
+              })()}
               {/* Assignee name */}
               {subtask.assignee_name && (
                 <span className={`text-xs whitespace-nowrap ${subtask.is_completed ? 'text-slate-400' : 'text-slate-500'}`}>
