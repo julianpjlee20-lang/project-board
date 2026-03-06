@@ -63,12 +63,12 @@ function formatShortDate(dateStr: string): string {
 }
 
 function getDueDateStyle(days: number, isCompleted: boolean): string {
-  if (isCompleted) return 'bg-slate-100 text-slate-400'
-  if (days < 0) return 'bg-red-100 text-red-600 font-medium'
-  if (days === 0) return 'bg-red-100 text-red-600'
-  if (days <= 3) return 'bg-amber-100 text-amber-600'
-  if (days <= 7) return 'bg-yellow-50 text-yellow-700'
-  return 'bg-slate-100 text-slate-500'
+  if (isCompleted) return 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+  if (days < 0) return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium'
+  if (days === 0) return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+  if (days <= 3) return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+  if (days <= 7) return 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+  return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
 }
 
 function formatDueDateLabel(dateStr: string, days: number): string {
@@ -133,7 +133,7 @@ function getScheduleCollapsedDisplay(
     const due = new Date(dueDate + 'T00:00:00')
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const left = Math.round((due.getTime() - today.getTime()) / 86400000)
-    if (left > 0) return { text: `${fmtShort(start)} → ${fmtShort(due)}（剩 ${left} 天）`, icon: '🕐', color: 'text-slate-600' }
+    if (left > 0) return { text: `${fmtShort(start)} → ${fmtShort(due)}（剩 ${left} 天）`, icon: '🕐', color: 'text-slate-600 dark:text-slate-300' }
     if (left < 0) return { text: `${fmtShort(start)} → ${fmtShort(due)}（已超過 ${Math.abs(left)} 天）`, icon: '⚠️', color: 'text-red-500' }
     return { text: `${fmtShort(start)} → ${fmtShort(due)}（今天截止）`, icon: '🕐', color: 'text-amber-600' }
   }
@@ -141,13 +141,13 @@ function getScheduleCollapsedDisplay(
     const due = new Date(dueDate + 'T00:00:00')
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const left = Math.round((due.getTime() - today.getTime()) / 86400000)
-    if (left > 0) return { text: `${fmtShort(due)} 截止（剩 ${left} 天）`, icon: '🕐', color: 'text-slate-600' }
+    if (left > 0) return { text: `${fmtShort(due)} 截止（剩 ${left} 天）`, icon: '🕐', color: 'text-slate-600 dark:text-slate-300' }
     if (left < 0) return { text: `${fmtShort(due)} 截止（已超過 ${Math.abs(left)} 天）`, icon: '⚠️', color: 'text-red-500' }
     return { text: `今天截止（${fmtShort(due)}）`, icon: '🕐', color: 'text-amber-600' }
   }
   if (startDate) {
     const start = new Date(startDate + 'T00:00:00')
-    return { text: `${fmtShort(start)} 開始`, icon: '📅', color: 'text-slate-500' }
+    return { text: `${fmtShort(start)} 開始`, icon: '📅', color: 'text-slate-500 dark:text-slate-400' }
   }
   return null
 }
@@ -175,7 +175,7 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
 
   if (dates.length < 2) {
     return (
-      <div className="text-xs text-slate-400 mt-2">需要至少 2 個日期才能顯示時間軸</div>
+      <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">需要至少 2 個日期才能顯示時間軸</div>
     )
   }
 
@@ -256,7 +256,7 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
   return (
     <div className="mt-3">
       {/* Marker labels */}
-      <div className="relative h-4 text-[10px] text-slate-500 mb-1">
+      <div className="relative h-4 text-[10px] text-slate-500 dark:text-slate-400 mb-1">
         {markers.map((m, i) => (
           <span
             key={i}
@@ -268,7 +268,7 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
         ))}
       </div>
       {/* Bar */}
-      <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+      <div className="relative w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
         {segments.map((seg, i) => (
           <div
             key={i}
@@ -284,13 +284,13 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
         {/* Due date dashed marker */}
         {dueDateParsed && (
           <div
-            className="absolute top-0 h-full border-l-2 border-dashed border-slate-500"
+            className="absolute top-0 h-full border-l-2 border-dashed border-slate-500 dark:border-slate-400"
             style={{ left: `${toPercent(dueDateParsed)}%` }}
           />
         )}
       </div>
       {/* Legend labels */}
-      <div className="relative h-4 text-[10px] text-slate-400 mt-0.5">
+      <div className="relative h-4 text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
         {markers.map((m, i) => (
           <span
             key={i}
@@ -309,11 +309,12 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
 // SubtaskChecklist
 // ---------------------------------------------------------------------------
 
-function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange, activeUsers }: {
+function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange, activeUsers, cardDueDate }: {
   cardId: string
   subtasks: Subtask[]
   onSubtasksChange: (subtasks: Subtask[]) => void
   activeUsers: { id: string; name: string }[]
+  cardDueDate?: string | null
 }) {
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialSubtasks || [])
   const [newTitle, setNewTitle] = useState('')
@@ -338,9 +339,10 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
   const totalCount = subtasks.length
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
-  const updateSubtaskField = async (subtaskId: string, field: 'due_date' | 'assignee_id', value: string) => {
+  const updateSubtaskField = async (subtaskId: string, field: 'title' | 'due_date' | 'assignee_id', value: string) => {
     const updated = subtasks.map(s => {
       if (s.id !== subtaskId) return s
+      if (field === 'title') return { ...s, title: value }
       if (field === 'due_date') return { ...s, due_date: value || null }
       if (field === 'assignee_id') {
         const user = activeUsers.find(u => u.id === value)
@@ -416,7 +418,7 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
     onSubtasksChange(newSubtasks)
 
     try {
-      const res = await fetch(`/api/cards/${cardId}/subtasks?id=${id}`, {
+      const res = await fetch(`/api/cards/${cardId}/subtasks?subtask_id=${id}`, {
         method: 'DELETE'
       })
       if (!res.ok) {
@@ -432,16 +434,16 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-sm font-medium text-slate-700">子任務</span>
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">子任務</span>
         {totalCount > 0 && (
-          <span className="text-xs text-slate-400">{completedCount}/{totalCount}</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">{completedCount}/{totalCount}</span>
         )}
       </div>
 
       {/* Progress bar */}
       {totalCount > 0 && (
         <div className="mb-2">
-          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
@@ -460,7 +462,7 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
         {subtasks.map(subtask => (
           <div key={subtask.id}>
             <div
-              className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-slate-50"
+              className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
               onMouseEnter={() => setHoveredId(subtask.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
@@ -468,26 +470,40 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
                 type="checkbox"
                 checked={subtask.is_completed}
                 onChange={() => toggleSubtask(subtask)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-500 cursor-pointer"
+                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-500 cursor-pointer dark:bg-slate-800"
               />
               <span
-                className={`flex-1 text-sm cursor-pointer ${subtask.is_completed ? 'line-through text-slate-400' : 'text-slate-700'}`}
+                className={`flex-1 text-sm cursor-pointer ${subtask.is_completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}
                 onClick={() => setEditingSubtaskId(editingSubtaskId === subtask.id ? null : subtask.id)}
               >
                 {subtask.title}
               </span>
               {/* Due date badge */}
-              {subtask.due_date && (() => {
-                const days = getDaysUntilDue(subtask.due_date!)
+              {(() => {
+                const effectiveDueDate = subtask.due_date || cardDueDate || null
+                if (!effectiveDueDate) return null
+                const isInherited = !subtask.due_date && !!cardDueDate
+                const days = getDaysUntilDue(effectiveDueDate)
                 return (
-                  <span className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${getDueDateStyle(days, subtask.is_completed)}`}>
-                    {subtask.is_completed ? formatShortDate(subtask.due_date!) : formatDueDateLabel(subtask.due_date!, days)}
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${
+                      isInherited
+                        ? 'text-slate-400 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600'
+                        : getDueDateStyle(days, subtask.is_completed)
+                    }`}
+                    title={isInherited ? '繼承自卡片截止日' : undefined}
+                  >
+                    {subtask.is_completed
+                      ? formatShortDate(effectiveDueDate)
+                      : formatDueDateLabel(effectiveDueDate, days)
+                    }
+                    {isInherited && ' ↑'}
                   </span>
                 )
               })()}
               {/* Assignee name */}
               {subtask.assignee_name && (
-                <span className={`text-xs whitespace-nowrap ${subtask.is_completed ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className={`text-xs whitespace-nowrap ${subtask.is_completed ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
                   {subtask.assignee_name}
                 </span>
               )}
@@ -518,17 +534,43 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
             {/* Inline edit for due_date and assignee */}
             {editingSubtaskId === subtask.id && (
               <div className="flex items-center gap-3 pl-7 py-1 text-xs">
-                <label className="flex items-center gap-1 text-slate-500">
+                <label className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                  名稱
+                  <input
+                    type="text"
+                    defaultValue={subtask.title}
+                    onBlur={e => {
+                      const val = e.target.value.trim()
+                      if (val && val !== subtask.title) {
+                        updateSubtaskField(subtask.id, 'title', val)
+                      }
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const val = (e.target as HTMLInputElement).value.trim()
+                        if (val && val !== subtask.title) {
+                          updateSubtaskField(subtask.id, 'title', val)
+                        }
+                        setEditingSubtaskId(null)
+                      }
+                      if (e.key === 'Escape') setEditingSubtaskId(null)
+                    }}
+                    className="border rounded px-1.5 py-0.5 text-xs w-40 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
+                    autoFocus
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
                   截止
                   <input type="date" value={subtask.due_date ? toDateOnly(subtask.due_date) : ''}
                     onChange={e => updateSubtaskField(subtask.id, 'due_date', e.target.value)}
-                    className="border rounded px-1.5 py-0.5 text-xs" />
+                    className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200" />
                 </label>
-                <label className="flex items-center gap-1 text-slate-500">
+                <label className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
                   負責人
                   <select value={subtask.assignee_id || ''}
                     onChange={e => updateSubtaskField(subtask.id, 'assignee_id', e.target.value)}
-                    className="border rounded px-1.5 py-0.5 text-xs">
+                    className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200">
                     <option value="">--</option>
                     {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
@@ -545,27 +587,27 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
           value={newTitle}
           onChange={e => setNewTitle(e.target.value)}
           placeholder="新增子任務..."
-          className="flex-1 text-sm border rounded px-2 py-1.5"
+          className="flex-1 text-sm border rounded px-2 py-1.5 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
         />
         <button
           type="submit"
-          className="text-sm px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded"
+          className="text-sm px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-600 rounded dark:text-slate-200"
         >
           +
         </button>
       </form>
       {/* Optional fields for new subtask */}
       {newTitle.trim() && (
-        <div className="flex items-center gap-3 pl-1 pt-1 text-xs text-slate-500">
+        <div className="flex items-center gap-3 pl-1 pt-1 text-xs text-slate-500 dark:text-slate-400">
           <label className="flex items-center gap-1">
             截止
             <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-              className="border rounded px-1.5 py-0.5 text-xs" />
+              className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200" />
           </label>
           <label className="flex items-center gap-1">
             負責人
             <select value={newAssigneeId} onChange={e => setNewAssigneeId(e.target.value)}
-              className="border rounded px-1.5 py-0.5 text-xs">
+              className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200">
               <option value="">--</option>
               {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
@@ -831,13 +873,13 @@ function CardDetailContent({ card, phases, detail }: {
     if (actualDate) {
       // Already completed — no urgency badge
     } else if (diffDays < 0) {
-      badge = { text: `逾期 ${Math.abs(diffDays)} 天`, className: 'bg-red-100 text-red-600' }
+      badge = { text: `逾期 ${Math.abs(diffDays)} 天`, className: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' }
     } else if (diffDays === 0) {
-      badge = { text: '今天截止', className: 'bg-amber-100 text-amber-600' }
+      badge = { text: '今天截止', className: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' }
     } else if (diffDays <= 3) {
-      badge = { text: `剩 ${diffDays} 天`, className: 'bg-amber-50 text-amber-600' }
+      badge = { text: `剩 ${diffDays} 天`, className: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' }
     } else {
-      badge = { text: `剩 ${diffDays} 天`, className: 'bg-slate-100 text-slate-500' }
+      badge = { text: `剩 ${diffDays} 天`, className: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' }
     }
     return { dateText, badge }
   }, [dueDate, actualDate])
@@ -851,14 +893,14 @@ function CardDetailContent({ card, phases, detail }: {
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          className="w-full text-lg max-sm:text-base font-semibold bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 focus:ring-0 focus:outline-none transition-colors"
+          className="w-full text-lg max-sm:text-base font-semibold bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 dark:focus:border-slate-600 focus:ring-0 focus:outline-none transition-colors dark:text-slate-100"
           placeholder="輸入標題..."
         />
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
           rows={3}
-          className="w-full text-base max-sm:text-base text-slate-600 bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 focus:ring-0 focus:outline-none transition-colors resize-none"
+          className="w-full text-base max-sm:text-base text-slate-600 dark:text-slate-300 bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 dark:focus:border-slate-600 focus:ring-0 focus:outline-none transition-colors resize-none"
           placeholder="新增描述..."
         />
       </div>
@@ -866,13 +908,13 @@ function CardDetailContent({ card, phases, detail }: {
       {/* ================================================================= */}
       {/* Zone B: Property Rows */}
       {/* ================================================================= */}
-      <div className="border-t border-slate-100 py-1 mt-3">
+      <div className="border-t border-slate-100 dark:border-slate-700 py-1 mt-3">
         {/* Priority */}
-        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4">
-          <span className="w-20 text-sm text-slate-500 shrink-0">優先度</span>
+        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 -mx-4">
+          <span className="w-20 text-sm text-slate-500 dark:text-slate-400 shrink-0">優先度</span>
           <div className="flex-1 min-w-0">
             <Select value={priority} onValueChange={(v) => setPriority(v as Card['priority'])}>
-              <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 focus:ring-0">
+              <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 dark:hover:bg-slate-700 focus:ring-0">
                 <SelectValue>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PRIORITY_COLORS[priority] }} />
@@ -895,19 +937,19 @@ function CardDetailContent({ card, phases, detail }: {
         </div>
 
         {/* Assignee */}
-        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4">
-          <span className="w-20 text-sm text-slate-500 shrink-0">指派人</span>
+        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 -mx-4">
+          <span className="w-20 text-sm text-slate-500 dark:text-slate-400 shrink-0">指派人</span>
           <div className="flex-1 min-w-0">
             <AssigneeCombobox users={activeUsers} value={assigneeId} onChange={setAssigneeId} />
           </div>
         </div>
 
         {/* Phase */}
-        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4">
-          <span className="w-20 text-sm text-slate-500 shrink-0">階段</span>
+        <div className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 -mx-4">
+          <span className="w-20 text-sm text-slate-500 dark:text-slate-400 shrink-0">階段</span>
           <div className="flex-1 min-w-0">
             <Select value={phaseId || '__none__'} onValueChange={(v) => setPhaseId(v === '__none__' ? null : v)}>
-              <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 focus:ring-0">
+              <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 dark:hover:bg-slate-700 focus:ring-0">
                 <SelectValue>
                   <span className="flex items-center gap-1.5">
                     {phaseId && phases.find(p => p.id === phaseId) ? (
@@ -919,7 +961,7 @@ function CardDetailContent({ card, phases, detail }: {
                         <span className="text-sm">{phases.find(p => p.id === phaseId)?.name}</span>
                       </>
                     ) : (
-                      <span className="text-sm text-slate-400">無階段</span>
+                      <span className="text-sm text-slate-400 dark:text-slate-500">無階段</span>
                     )}
                   </span>
                 </SelectValue>
@@ -943,14 +985,14 @@ function CardDetailContent({ card, phases, detail }: {
 
         {/* Due date (read-only display, click to expand Zone C) */}
         <div
-          className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 -mx-4 cursor-pointer"
+          className="flex items-center min-h-[44px] px-4 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 -mx-4 cursor-pointer"
           onClick={() => setScheduleExpanded(true)}
         >
-          <span className="w-20 text-sm text-slate-500 shrink-0">截止日</span>
+          <span className="w-20 text-sm text-slate-500 dark:text-slate-400 shrink-0">截止日</span>
           <div className="flex-1 min-w-0 flex items-center gap-2">
             {dueDateDisplay ? (
               <>
-                <span className="text-sm text-slate-700">{dueDateDisplay.dateText}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-200">{dueDateDisplay.dateText}</span>
                 {dueDateDisplay.badge && (
                   <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${dueDateDisplay.badge.className}`}>
                     {dueDateDisplay.badge.text}
@@ -958,7 +1000,7 @@ function CardDetailContent({ card, phases, detail }: {
                 )}
               </>
             ) : (
-              <span className="text-sm text-slate-400">+ 設定截止日</span>
+              <span className="text-sm text-slate-400 dark:text-slate-500">+ 設定截止日</span>
             )}
           </div>
         </div>
@@ -967,14 +1009,14 @@ function CardDetailContent({ card, phases, detail }: {
       {/* ================================================================= */}
       {/* Zone C: Schedule (collapsible) */}
       {/* ================================================================= */}
-      <div className="border-t border-slate-100">
+      <div className="border-t border-slate-100 dark:border-slate-700">
         {/* Header row */}
         <div className="flex items-center justify-between py-2">
-          <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">日程安排</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1.5">日程安排</span>
           <button
             type="button"
             onClick={() => setScheduleExpanded((prev: boolean) => !prev)}
-            className="text-xs text-slate-400 hover:text-blue-500 transition-colors px-1"
+            className="text-xs text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors px-1"
           >
             {scheduleExpanded ? '收合' : '展開'}
           </button>
@@ -995,7 +1037,7 @@ function CardDetailContent({ card, phases, detail }: {
               <button
                 type="button"
                 onClick={() => setScheduleExpanded(true)}
-                className="text-sm text-slate-400 hover:text-blue-500 transition-colors"
+                className="text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors"
               >
                 + 設定日期
               </button>
@@ -1014,7 +1056,7 @@ function CardDetailContent({ card, phases, detail }: {
                   <DateInput value={startDate} onChange={setStartDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
                 ) : startDate ? (
                   <span
-                    className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                    className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer hover:text-blue-600 transition-colors"
                     onClick={() => setEditingDate('start')}
                     title="點擊編輯"
                   >
@@ -1024,7 +1066,7 @@ function CardDetailContent({ card, phases, detail }: {
                   <button
                     type="button"
                     onClick={() => setEditingDate('start')}
-                    className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                    className="flex-1 text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 text-left transition-colors"
                   >
                     + 設定開始日
                   </button>
@@ -1048,7 +1090,7 @@ function CardDetailContent({ card, phases, detail }: {
                   <DateInput value={dueDate} onChange={setDueDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
                 ) : dueDate ? (
                   <span
-                    className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                    className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer hover:text-blue-600 transition-colors"
                     onClick={() => setEditingDate('due')}
                     title="點擊編輯"
                   >
@@ -1058,7 +1100,7 @@ function CardDetailContent({ card, phases, detail }: {
                   <button
                     type="button"
                     onClick={() => setEditingDate('due')}
-                    className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                    className="flex-1 text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 text-left transition-colors"
                   >
                     + 設定截止日
                   </button>
@@ -1075,7 +1117,7 @@ function CardDetailContent({ card, phases, detail }: {
             </div>
 
             {/* Completion tracking divider */}
-            <div className="text-xs font-medium text-slate-400 tracking-wide pt-2 pb-1 border-t border-slate-200 mt-2">完成追蹤</div>
+            <div className="text-xs font-medium text-slate-400 dark:text-slate-500 tracking-wide pt-2 pb-1 border-t border-slate-200 dark:border-slate-700 mt-2">完成追蹤</div>
 
             {/* Actual completion */}
             <div className="flex items-center justify-between group min-h-[28px]">
@@ -1085,7 +1127,7 @@ function CardDetailContent({ card, phases, detail }: {
                   <DateInput value={actualDate} onChange={setActualDate} onBlur={() => setEditingDate(null)} className="flex-1" autoFocus />
                 ) : actualDate ? (
                   <span
-                    className="flex-1 text-sm font-medium text-slate-800 cursor-pointer hover:text-blue-600 transition-colors"
+                    className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer hover:text-blue-600 transition-colors"
                     onClick={() => setEditingDate('actual')}
                     title="點擊編輯"
                   >
@@ -1095,7 +1137,7 @@ function CardDetailContent({ card, phases, detail }: {
                   <button
                     type="button"
                     onClick={() => setEditingDate('actual')}
-                    className="flex-1 text-sm text-slate-400 hover:text-blue-500 text-left transition-colors"
+                    className="flex-1 text-sm text-slate-400 dark:text-slate-500 hover:text-blue-500 text-left transition-colors"
                   >
                     + 設定日期
                   </button>
@@ -1137,19 +1179,20 @@ function CardDetailContent({ card, phases, detail }: {
       {/* ================================================================= */}
       {/* Zone D: Subtasks */}
       {/* ================================================================= */}
-      <div className="border-t border-slate-100 pt-3">
+      <div className="border-t border-slate-100 dark:border-slate-700 pt-3">
         <SubtaskChecklist
           cardId={card.id}
           subtasks={cardSubtasks}
           onSubtasksChange={setCardSubtasks}
           activeUsers={activeUsers}
+          cardDueDate={dueDate}
         />
       </div>
 
       {/* ================================================================= */}
       {/* Zone E: Activity Log */}
       {/* ================================================================= */}
-      <div className="border-t border-slate-100 pt-3 mt-3">
+      <div className="border-t border-slate-100 dark:border-slate-700 pt-3 mt-3">
         <details className="group">
           <summary className="text-sm font-medium cursor-pointer select-none list-none flex items-center gap-1">
             <svg className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
@@ -1160,13 +1203,13 @@ function CardDetailContent({ card, phases, detail }: {
               <p className="text-sm text-slate-400">尚無活動紀錄</p>
             ) : (
               activity.map((log) => (
-                <div key={log.id} className="text-xs border-l-2 border-slate-200 pl-2 py-1">
-                  <span className="font-medium text-slate-700">{translateAction(log.action)}</span>
-                  <span className="text-slate-500"> {log.target}</span>
+                <div key={log.id} className="text-xs border-l-2 border-slate-200 dark:border-slate-700 pl-2 py-1">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{translateAction(log.action)}</span>
+                  <span className="text-slate-500 dark:text-slate-400"> {log.target}</span>
                   {log.old_value && log.new_value && log.old_value !== log.new_value ? (
-                    <span className="text-slate-500"> {log.old_value} → {log.new_value}</span>
+                    <span className="text-slate-500 dark:text-slate-400"> {log.old_value} → {log.new_value}</span>
                   ) : (
-                    <span className="text-slate-500"> {log.new_value}</span>
+                    <span className="text-slate-500 dark:text-slate-400"> {log.new_value}</span>
                   )}
                   <span className="text-slate-400 text-[11px] block mt-0.5">
                     {new Date(log.created_at).toLocaleString('zh-TW')}
@@ -1198,25 +1241,25 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 max-sm:p-0" onClick={onClose}>
-      <div className="bg-white rounded-xl max-sm:rounded-none w-full max-w-lg max-h-[90vh] max-sm:max-h-full max-sm:h-full flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 rounded-xl max-sm:rounded-none w-full max-w-lg max-h-[90vh] max-sm:max-h-full max-sm:h-full flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-          <span className="text-sm font-mono text-slate-400">
+        <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
+          <span className="text-sm font-mono text-slate-400 dark:text-slate-500">
             {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
           </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
         {!detail.isFormReady ? (
-          <div className="p-8 text-center text-slate-400">載入中...</div>
+          <div className="p-8 text-center text-slate-400 dark:text-slate-500">載入中...</div>
         ) : (
           <>
             <div className="flex-1 overflow-y-auto">
               <CardDetailContent card={card} phases={phases} detail={detail} />
             </div>
-            <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
-              <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 rounded-lg hover:bg-slate-50 min-h-[44px]">取消</button>
+            <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2 flex-shrink-0">
+              <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
               <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
                 {detail.isSaving ? '儲存中...' : '儲存'}
               </button>
@@ -1260,30 +1303,30 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
 
   return (
     <div
-      className={`fixed top-0 right-0 h-full w-[420px] max-md:w-full max-md:inset-0 z-50 bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out ${
+      className={`fixed top-0 right-0 h-full w-[420px] max-md:w-full max-md:inset-0 z-50 bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-700 flex flex-col transition-transform duration-300 ease-in-out ${
         isVisible ? 'translate-x-0' : 'translate-x-full max-md:translate-x-full'
       }`}
     >
       {/* Header */}
-      <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
-        <span className="text-sm font-mono text-slate-400">
+      <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
+        <span className="text-sm font-mono text-slate-400 dark:text-slate-500">
           {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
         </span>
-        <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100">
+        <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
 
       {/* Content */}
       {!detail.isFormReady ? (
-        <div className="flex-1 flex items-center justify-center text-slate-400">載入中...</div>
+        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">載入中...</div>
       ) : (
         <>
           <div className="flex-1 overflow-y-auto">
             <CardDetailContent card={card} phases={phases} detail={detail} />
           </div>
-          <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 flex justify-end gap-2 flex-shrink-0">
-            <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 rounded-lg hover:bg-slate-50 min-h-[44px]">取消</button>
+          <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2 flex-shrink-0">
+            <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
             <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
               {detail.isSaving ? '儲存中...' : '儲存'}
             </button>

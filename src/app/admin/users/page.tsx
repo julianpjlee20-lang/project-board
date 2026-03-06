@@ -70,7 +70,7 @@ function SortableHeader({
 
   return (
     <th
-      className="text-left px-4 py-3 font-medium text-slate-500 select-none cursor-pointer group"
+      className="text-left px-4 py-3 font-medium text-slate-500 dark:text-slate-400 select-none cursor-pointer group"
       onClick={() => onSort(sortKey)}
       aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
     >
@@ -485,7 +485,7 @@ function UsersContent() {
           className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
             i === page
               ? 'bg-slate-800 text-white'
-              : 'text-slate-600 hover:bg-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
           }`}
         >
           {i}
@@ -531,7 +531,7 @@ function UsersContent() {
             placeholder="搜尋名稱或 Email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
           />
         </div>
 
@@ -539,7 +539,7 @@ function UsersContent() {
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="">所有角色</option>
           <option value="admin">管理員</option>
@@ -550,7 +550,7 @@ function UsersContent() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="">所有狀態</option>
           <option value="active">啟用</option>
@@ -567,7 +567,7 @@ function UsersContent() {
       )}
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -578,7 +578,7 @@ function UsersContent() {
                 <SortableHeader label="狀態" sortKey="is_active" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="登入方式" sortKey="login_method" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="建立日期" sortKey="created_at" currentSort={sort} onSort={handleSort} />
-                <th className="text-right px-4 py-3 font-medium text-slate-500">操作</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-500 dark:text-slate-400">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -600,19 +600,19 @@ function UsersContent() {
                 sortedUsers.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b last:border-b-0 hover:bg-slate-50 transition-colors"
+                    className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     {/* Avatar + Name */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <UserAvatar user={user} />
-                        <span className="font-medium text-slate-800">
+                        <span className="font-medium text-slate-800 dark:text-slate-200">
                           {user.name || '(未設定)'}
                         </span>
                       </div>
                     </td>
                     {/* Email */}
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
                       {user.email}
                     </td>
                     {/* Role */}
@@ -628,7 +628,7 @@ function UsersContent() {
                       <LoginMethodLabel method={user.login_method} />
                     </td>
                     {/* Created At */}
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                       {new Date(user.created_at).toLocaleDateString('zh-TW')}
                     </td>
                     {/* Actions */}
@@ -661,7 +661,7 @@ function UsersContent() {
                         )}
                         <Link
                           href={`/admin/users/${user.id}`}
-                          className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                          className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
                           詳情
                         </Link>
@@ -677,14 +677,14 @@ function UsersContent() {
         {/* Pagination */}
         {!loading && total > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t" style={{ backgroundColor: '#FAFAFA' }}>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-500 dark:text-slate-400">
               第 {startIndex}-{endIndex} 筆，共 {total} 筆
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="px-3 py-1.5 text-sm rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 text-sm rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 上一頁
               </button>
@@ -692,7 +692,7 @@ function UsersContent() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="px-3 py-1.5 text-sm rounded-md text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 text-sm rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 下一頁
               </button>
@@ -746,7 +746,7 @@ function UsersContent() {
           <div className="space-y-4">
             {/* New Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 新密碼
               </label>
               <div className="relative">
@@ -758,7 +758,7 @@ function UsersContent() {
                     setResetError(null)
                   }}
                   placeholder="輸入新密碼"
-                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
                 />
                 <button
                   type="button"
@@ -782,7 +782,7 @@ function UsersContent() {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 確認密碼
               </label>
               <input
@@ -793,7 +793,7 @@ function UsersContent() {
                   setResetError(null)
                 }}
                 placeholder="再次輸入新密碼"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
               />
             </div>
 
@@ -801,7 +801,7 @@ function UsersContent() {
             <button
               type="button"
               onClick={handleGenerateRandomPassword}
-              className="text-sm text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors"
+              className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 underline underline-offset-2 transition-colors"
             >
               產生隨機密碼
             </button>

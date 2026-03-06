@@ -50,7 +50,7 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">卡片詳情</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
@@ -92,7 +92,7 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
 function Card({ card, onClick }: { card: CardData, onClick: () => void }) {
   console.log('Card rendered:', card.id, card.title, 'onClick type:', typeof onClick)
   return (
-    <div onClick={onClick} className="bg-white p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md border-l-4 border-blue-500">
+    <div onClick={onClick} className="bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm cursor-pointer hover:shadow-md border-l-4 border-blue-500">
       <p className="font-medium">{card.title}</p>
       <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
         {card.due_date && <span>📅 {new Date(card.due_date).toLocaleDateString('zh-TW')}</span>}
@@ -122,7 +122,7 @@ function Column({ column, onCardClick, onAddCard }: {
   return (
     <div className="w-72 flex-shrink-0 flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-slate-700">
+        <h2 className="font-semibold text-slate-700 dark:text-slate-200">
           {column.name}
           <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
         </h2>
@@ -152,7 +152,7 @@ function Column({ column, onCardClick, onAddCard }: {
           </div>
         </form>
       ) : (
-        <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
+        <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2 text-sm text-left text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
           + 新增卡片
         </button>
       )}
@@ -179,7 +179,7 @@ export default function BoardClient({
 
   return (
     <>
-      <div className="flex-1 overflow-x-auto p-6 bg-slate-50">
+      <div className="flex-1 overflow-x-auto p-6 bg-slate-50 dark:bg-slate-800">
         <div className="flex gap-4 h-full">
           {columns.map((column: ColumnData) => (
             <Column
@@ -207,7 +207,7 @@ export default function BoardClient({
                 <button type="button" onClick={() => setNewColumnName('')} className="px-4 py-2 border rounded">✕</button>
               </form>
             ) : (
-              <button onClick={() => setNewColumnName('新欄位')} className="w-full px-3 py-2 text-sm text-left text-slate-500 hover:bg-slate-100 rounded">
+              <button onClick={() => setNewColumnName('新欄位')} className="w-full px-3 py-2 text-sm text-left text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
                 + 新增欄位
               </button>
             )}

@@ -203,7 +203,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-1">
             <Link
               href="/projects"
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               title="返回看板"
               style={{ color: '#6B7280' }}
             >
@@ -212,7 +212,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Mobile close button */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              className="md:hidden p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               aria-label="關閉選單"
             >
               <CloseIcon className="w-5 h-5" />
@@ -311,14 +311,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="fixed top-4 left-4 right-4 z-40 md:hidden flex items-center justify-between">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="p-2 rounded-lg bg-white shadow-md hover:bg-slate-50 transition-colors"
+          className="p-2 rounded-lg bg-white shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           aria-label="開啟選單"
         >
           <MenuIcon className="w-5 h-5" />
         </button>
         <Link
           href="/projects"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white shadow-md text-sm font-medium hover:bg-slate-50 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white shadow-md text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           style={{ color: '#374151' }}
         >
           <BackIcon className="w-4 h-4" />

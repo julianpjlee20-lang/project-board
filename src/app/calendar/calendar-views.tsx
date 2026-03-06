@@ -98,7 +98,7 @@ function MonthView({ year, month, cards, onCardClick }: {
   return (
     <div className="grid grid-cols-7 gap-1">
       {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-        <div key={day} className="text-center text-sm font-medium text-slate-500 py-2">
+        <div key={day} className="text-center text-sm font-medium text-slate-500 dark:text-slate-400 py-2">
           {day}
         </div>
       ))}
@@ -145,7 +145,7 @@ function MonthView({ year, month, cards, onCardClick }: {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-1 ring-emerald-300" title="實際完成" />
                   )}
                 </span>
-                <span className="truncate text-slate-600">
+                <span className="truncate text-slate-600 dark:text-slate-300">
                   <span className="text-slate-400">[{card.project_name}]</span>{' '}
                   {card.card_number != null ? `#${card.card_number} ` : ''}{card.title}
                 </span>
@@ -201,11 +201,11 @@ function MiniMonth({ year, month, cards, onCardClick }: {
   )
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h4 className="text-sm font-semibold text-slate-700 mb-2">{month + 1}月</h4>
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-4">
+      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">{month + 1}月</h4>
       <div className="grid grid-cols-7 gap-0.5 text-center">
         {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-          <div key={d} className="text-[10px] font-medium text-slate-400 py-1">{d}</div>
+          <div key={d} className="text-[10px] font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
         ))}
         {blanks.map(i => <div key={`b-${i}`} className="h-8" />)}
         {days.map(day => {
@@ -244,13 +244,13 @@ function MiniMonth({ year, month, cards, onCardClick }: {
                 </div>
               )}
               {hoveredDay === day && dayEntries.length > 0 && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[200px] max-w-[280px]">
-                  <div className="text-xs font-medium text-slate-500 mb-1">{month + 1}月{day}日</div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-[200px] max-w-[280px]">
+                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{month + 1}月{day}日</div>
                   {dayEntries.map((entry, idx) => (
                     <div
                       key={`${entry.card.id}-${entry.type}-${idx}`}
                       onClick={() => onCardClick(entry.card)}
-                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 cursor-pointer truncate flex items-center gap-1.5"
+                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer truncate flex items-center gap-1.5"
                     >
                       {entry.type === 'due' && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.card.columnColor }} />}
                       {entry.type === 'planned' && <span className="w-2 h-2 rounded-full flex-shrink-0 bg-transparent ring-1.5 ring-blue-400" />}
@@ -319,10 +319,10 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
   const entryCountForDay = (day: number) => monthEntries.filter(e => e.date.getDate() === day).length
 
   return (
-    <div className="bg-white rounded-lg shadow p-3 cursor-pointer hover:shadow-md transition-shadow" onClick={() => onMonthClick(month)}>
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-3 cursor-pointer hover:shadow-md transition-shadow" onClick={() => onMonthClick(month)}>
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-semibold text-slate-700">{month + 1}月</h4>
-        {monthCardCount > 0 && <span className="text-xs text-slate-400">{monthCardCount} 張卡片</span>}
+        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{month + 1}月</h4>
+        {monthCardCount > 0 && <span className="text-xs text-slate-400 dark:text-slate-500">{monthCardCount} 張卡片</span>}
       </div>
       <div className="grid grid-cols-7 gap-0.5">
         {blanks.map(i => <div key={`b-${i}`} className="w-3 h-3" />)}
@@ -345,15 +345,15 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
               />
               {hoveredDay === day && dayEntries.length > 0 && (
                 <div
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[200px] max-w-[280px]"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-[200px] max-w-[280px]"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="text-xs font-medium text-slate-500 mb-1">{month + 1}月{day}日</div>
+                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{month + 1}月{day}日</div>
                   {dayEntries.map((entry, idx) => (
                     <div
                       key={`${entry.card.id}-${entry.type}-${idx}`}
                       onClick={(e) => { e.stopPropagation(); onCardClick(entry.card) }}
-                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 cursor-pointer truncate flex items-center gap-1.5"
+                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer truncate flex items-center gap-1.5"
                     >
                       {entry.type === 'due' && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.card.columnColor }} />}
                       {entry.type === 'planned' && <span className="w-2 h-2 rounded-full flex-shrink-0 bg-transparent ring-1.5 ring-blue-400" />}
@@ -486,15 +486,15 @@ export function GlobalCalendarView({
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b flex-wrap gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b dark:border-slate-700 flex-wrap gap-2">
         {/* Left: Navigation */}
         <div className="flex items-center gap-1">
           <button
             onClick={navigatePrev}
             aria-label={prevLabel}
-            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
@@ -511,14 +511,14 @@ export function GlobalCalendarView({
           <button
             onClick={navigateNext}
             aria-label={nextLabel}
-            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
 
         {/* Center: Title */}
-        <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{title}</h3>
 
         {/* Right: Filter + Mode tabs */}
         <div className="flex items-center gap-2">
@@ -529,7 +529,7 @@ export function GlobalCalendarView({
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors border ${
                 selectedProjects.size < projects.length
                   ? 'border-blue-300 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <span className="flex items-center gap-1.5">
@@ -542,20 +542,20 @@ export function GlobalCalendarView({
             {filterOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setFilterOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[200px]">
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-[200px]">
                   <div className="flex items-center justify-between mb-2 pb-2 border-b">
                     <button onClick={selectAllProjects} className="text-xs text-blue-600 hover:text-blue-800">全選</button>
                     <button onClick={clearAllProjects} className="text-xs text-slate-500 hover:text-slate-700">清除</button>
                   </div>
                   {projects.map(p => (
-                    <label key={p.id} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-slate-50 cursor-pointer">
+                    <label key={p.id} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedProjects.has(p.id)}
                         onChange={() => toggleProject(p.id)}
                         className="rounded border-slate-300"
                       />
-                      <span className="text-sm text-slate-700 truncate">{p.name}</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-200 truncate">{p.name}</span>
                     </label>
                   ))}
                 </div>
@@ -564,13 +564,13 @@ export function GlobalCalendarView({
           </div>
 
           {/* Mode tabs */}
-          <div className="bg-slate-100 rounded-lg p-1 flex">
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex">
             {modeOptions.map(opt => (
               <button
                 key={opt.id}
                 onClick={() => setCalendarMode(opt.id)}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                  calendarMode === opt.id ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
+                  calendarMode === opt.id ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >
                 {opt.label}
@@ -581,7 +581,7 @@ export function GlobalCalendarView({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-2 border-b text-xs text-slate-500">
+      <div className="flex items-center gap-4 px-4 py-2 border-b dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-slate-400" />
           截止日
@@ -599,8 +599,8 @@ export function GlobalCalendarView({
       {/* Content */}
       <div className="p-4">
         {cardsWithDates.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center py-16 text-slate-400 dark:text-slate-500">
+            <svg className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <p>沒有含日期的卡片</p>

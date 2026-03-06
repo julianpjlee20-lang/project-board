@@ -100,11 +100,8 @@ export default function UserNav() {
       {/* 鈴鐺 */}
       <Link
         href="/notifications"
-        className="relative p-2 rounded-full transition-colors"
-        style={{ color: '#F9F8F5' }}
+        className="relative p-2 rounded-full transition-colors text-[#F9F8F5] hover:bg-white/10"
         aria-label="通知中心"
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round"
@@ -149,22 +146,21 @@ export default function UserNav() {
         {/* 下拉選單 */}
         {open && (
           <div
-            className="absolute right-0 mt-2 w-56 rounded-lg border bg-white shadow-lg overflow-hidden"
+            className="absolute right-0 mt-2 w-56 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
             style={{
               zIndex: 9999,
               animation: 'userNavFadeIn 150ms ease-out',
-              borderColor: '#E5E5E5',
             }}
             role="menu"
             aria-orientation="vertical"
           >
             {/* 使用者資訊 */}
-            <div className="px-4 py-3 border-b" style={{ borderColor: '#E5E5E5' }}>
-              <p className="text-sm font-medium truncate" style={{ color: '#0B1A14' }}>
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-medium truncate text-slate-900 dark:text-slate-100">
                 {userName}
               </p>
               {userEmail && (
-                <p className="text-xs truncate mt-0.5" style={{ color: '#6B7280' }}>
+                <p className="text-xs truncate mt-0.5 text-slate-500 dark:text-slate-400">
                   {userEmail}
                 </p>
               )}
@@ -175,14 +171,7 @@ export default function UserNav() {
               <Link
                 href="/settings"
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
-                style={{ color: '#374151' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F3F4F6'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 role="menuitem"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -196,14 +185,7 @@ export default function UserNav() {
                 <Link
                   href="/settings#password"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
-                  style={{ color: '#374151' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#F3F4F6'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                   role="menuitem"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -217,14 +199,7 @@ export default function UserNav() {
                 <Link
                   href="/admin"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
-                  style={{ color: '#374151' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#F3F4F6'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                   role="menuitem"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -236,17 +211,10 @@ export default function UserNav() {
             </div>
 
             {/* 分隔線 + 登出 */}
-            <div className="border-t py-1" style={{ borderColor: '#E5E5E5' }}>
+            <div className="border-t border-slate-200 dark:border-slate-700 py-1">
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors"
-                style={{ color: '#DC2626' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FEF2F2'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 role="menuitem"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>

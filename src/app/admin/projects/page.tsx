@@ -61,7 +61,7 @@ function SortableHeader({
 
   return (
     <th
-      className={`${align === 'center' ? 'text-center' : 'text-left'} px-6 py-3 font-medium text-xs uppercase tracking-wide select-none cursor-pointer group`}
+      className={`${align === 'center' ? 'text-center' : 'text-left'} px-6 py-3 font-medium text-xs uppercase tracking-wide select-none cursor-pointer group text-slate-500 dark:text-slate-400`}
       style={{ color: '#6B7280' }}
       onClick={() => onSort(sortKey)}
       aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
@@ -84,8 +84,8 @@ function TableSkeleton() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[1, 2, 3].map((i) => (
           <div key={i} className="bg-white rounded-xl p-5 border" style={{ borderColor: '#E5E5E5' }}>
-            <div className="h-3 w-20 rounded bg-slate-200 mb-3" />
-            <div className="h-7 w-12 rounded bg-slate-200" />
+            <div className="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700 mb-3" />
+            <div className="h-7 w-12 rounded bg-slate-200 dark:bg-slate-700" />
           </div>
         ))}
       </div>
@@ -96,11 +96,11 @@ function TableSkeleton() {
         </div>
         {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="flex items-center gap-4 px-6 py-4 border-b" style={{ borderColor: '#F3F4F6' }}>
-            <div className="h-4 flex-1 rounded bg-slate-100" />
-            <div className="h-4 w-20 rounded bg-slate-100" />
-            <div className="h-4 w-24 rounded bg-slate-100" />
-            <div className="h-4 w-12 rounded bg-slate-100" />
-            <div className="h-4 w-12 rounded bg-slate-100" />
+            <div className="h-4 flex-1 rounded bg-slate-100 dark:bg-slate-800" />
+            <div className="h-4 w-20 rounded bg-slate-100 dark:bg-slate-800" />
+            <div className="h-4 w-24 rounded bg-slate-100 dark:bg-slate-800" />
+            <div className="h-4 w-12 rounded bg-slate-100 dark:bg-slate-800" />
+            <div className="h-4 w-12 rounded bg-slate-100 dark:bg-slate-800" />
           </div>
         ))}
       </div>
@@ -112,7 +112,7 @@ function TableSkeleton() {
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   return (
     <div className="text-center py-16">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4">
         <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
         </svg>

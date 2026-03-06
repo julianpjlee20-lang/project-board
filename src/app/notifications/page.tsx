@@ -177,9 +177,9 @@ function SummaryCardsSkeleton() {
           className="rounded-xl border shadow-sm p-5 animate-pulse border-l-4"
           style={{ backgroundColor: COLORS.white, borderLeftColor: '#E2E8F0' }}
         >
-          <div className="h-3 bg-slate-200 rounded w-20 mb-3" />
-          <div className="h-8 bg-slate-200 rounded w-16 mb-1" />
-          <div className="h-3 bg-slate-200 rounded w-24" />
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-3" />
+          <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-16 mb-1" />
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24" />
         </div>
       ))}
     </div>
@@ -197,13 +197,13 @@ function CardListSkeleton() {
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 bg-slate-200 rounded-full" />
-              <div className="h-4 bg-slate-200 rounded w-48" />
+              <div className="h-3 w-3 bg-slate-200 dark:bg-slate-700 rounded-full" />
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-48" />
             </div>
-            <div className="h-5 bg-slate-200 rounded w-20" />
+            <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-20" />
           </div>
-          <div className="h-3 bg-slate-200 rounded w-64 mb-3" />
-          <div className="h-2 bg-slate-100 rounded-full w-full" />
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-64 mb-3" />
+          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full w-full" />
         </div>
       ))}
     </div>
@@ -213,13 +213,13 @@ function CardListSkeleton() {
 function TimelineSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-4 bg-slate-200 rounded w-12 animate-pulse" />
+      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse" />
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="flex gap-3 animate-pulse">
-          <div className="h-3 bg-slate-200 rounded w-12 mt-0.5" />
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 mt-0.5" />
           <div className="flex-1">
-            <div className="h-4 bg-slate-200 rounded w-3/4 mb-2" />
-            <div className="h-3 bg-slate-200 rounded w-32" />
+            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-32" />
           </div>
         </div>
       ))}
@@ -236,12 +236,12 @@ function ProjectGridSkeleton() {
           className="rounded-xl border shadow-sm p-5 animate-pulse"
           style={{ backgroundColor: COLORS.white }}
         >
-          <div className="h-5 bg-slate-200 rounded w-32 mb-4" />
-          <div className="h-2 bg-slate-100 rounded-full w-full mb-3" />
-          <div className="h-3 bg-slate-200 rounded w-24 mb-2" />
+          <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-4" />
+          <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full w-full mb-3" />
+          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-2" />
           <div className="flex gap-4">
-            <div className="h-3 bg-slate-200 rounded w-16" />
-            <div className="h-3 bg-slate-200 rounded w-16" />
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16" />
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16" />
           </div>
         </div>
       ))}
@@ -284,14 +284,14 @@ function SummaryCards({
           borderLeftColor: COLORS.danger,
         }}
       >
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">逾期任務</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">逾期任務</p>
         {counts.overdue === 0 ? (
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
                 0
               </p>
-              <p className="text-sm text-slate-600 mt-0.5">太好了，全數完成</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">太好了，全數完成</p>
             </div>
             <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -305,7 +305,7 @@ function SummaryCards({
               </p>
               {topOverdue && (
                 <>
-                  <p className="text-sm text-slate-700 mt-1 truncate" title={topOverdue.title}>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 truncate" title={topOverdue.title}>
                     {truncateTitle(topOverdue.title)}
                     <span className="text-xs ml-1" style={{ color: COLORS.danger }}>
                       逾期 {Math.abs(Math.floor(topOverdue.days_overdue ?? 0))} 天
@@ -321,7 +321,7 @@ function SummaryCards({
                     >
                       {PRIORITY_LABELS[topOverdue.priority] || topOverdue.priority}
                     </span>
-                    <span className="text-xs text-slate-400 truncate">{topOverdue.project_name}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{topOverdue.project_name}</span>
                   </div>
                 </>
               )}
@@ -343,14 +343,14 @@ function SummaryCards({
           borderLeftColor: COLORS.accent,
         }}
       >
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">即將到期</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">即將到期</p>
         {counts.due_soon === 0 ? (
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
                 0
               </p>
-              <p className="text-sm text-slate-600 mt-0.5">近 7 天無到期任務</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">近 7 天無到期任務</p>
             </div>
             <svg className="w-4 h-4 text-slate-400 mb-1 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -364,7 +364,7 @@ function SummaryCards({
               </p>
               {topDueSoon && (
                 <>
-                  <p className="text-sm text-slate-700 mt-1 truncate" title={topDueSoon.title}>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 truncate" title={topDueSoon.title}>
                     {truncateTitle(topDueSoon.title)}
                     <span className="text-xs ml-1" style={{ color: COLORS.warning }}>
                       {getDaysRemaining(topDueSoon.due_date)} 天後截止
@@ -380,7 +380,7 @@ function SummaryCards({
                     >
                       {PRIORITY_LABELS[topDueSoon.priority] || topDueSoon.priority}
                     </span>
-                    <span className="text-xs text-slate-400 truncate">{topDueSoon.project_name}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 truncate">{topDueSoon.project_name}</span>
                   </div>
                 </>
               )}
@@ -402,22 +402,22 @@ function SummaryCards({
           borderLeftColor: COLORS.green,
         }}
       >
-        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">近期變更</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">近期變更</p>
         <div className="flex items-end justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-3xl font-bold" style={{ color: COLORS.green }}>
               {counts.recent_changes}
             </p>
             {todayChangeCount > 0 ? (
-              <p className="text-sm text-slate-600 mt-0.5">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
                 今天 {todayChangeCount} 筆
               </p>
             ) : latestChange ? (
-              <p className="text-sm text-slate-600 mt-0.5 truncate">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5 truncate">
                 {describeAction(latestChange).slice(0, 30)}
               </p>
             ) : (
-              <p className="text-sm text-slate-600 mt-0.5">
+              <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
                 {counts.recent_changes}筆近期變更
               </p>
             )}
@@ -476,15 +476,15 @@ function TabBar({
   ]
 
   return (
-    <div className="flex items-center bg-slate-100 rounded-lg p-1 overflow-x-auto">
+    <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1 overflow-x-auto">
       {alertTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
             activeTab === tab.id
-              ? 'bg-white shadow text-slate-900'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
           {tab.showDot && (
@@ -498,7 +498,7 @@ function TabBar({
       ))}
 
       {/* Separator */}
-      <div className="h-5 w-px bg-slate-300 flex-shrink-0 mx-1" />
+      <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 flex-shrink-0 mx-1" />
 
       {infoTabs.map((tab) => (
         <button
@@ -506,8 +506,8 @@ function TabBar({
           onClick={() => onTabChange(tab.id)}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
             activeTab === tab.id
-              ? 'bg-white shadow text-slate-900'
-              : 'text-slate-600 hover:text-slate-900'
+              ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-slate-100'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
           {tab.label}
@@ -580,7 +580,7 @@ function CardListItem({
                   e.stopPropagation()
                   onDismiss(card.id, variant)
                 }}
-                className="ml-2 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100"
+                className="ml-2 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-100 dark:hover:bg-slate-700"
                 title="忽略此通知"
               >
                 <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -592,7 +592,7 @@ function CardListItem({
         </div>
 
         {/* Row 2: Project > Column | Assignee | Due Date */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mb-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mb-3">
           <span className="inline-flex items-center gap-1">
             <span>📁</span>
             <span>{card.project_name}</span>
@@ -611,7 +611,7 @@ function CardListItem({
 
         {/* Row 3: Progress bar */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -620,7 +620,7 @@ function CardListItem({
               }}
             />
           </div>
-          <span className="text-xs text-slate-500 flex-shrink-0 w-8 text-right">
+          <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 w-8 text-right">
             {card.progress}%
           </span>
         </div>
@@ -666,7 +666,7 @@ function DismissableCardList({
       {activeItems.length === 0 && dismissedItems.length > 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <span className="text-4xl mb-4">&#10003;</span>
-          <p className="text-sm text-slate-500">所有項目已處理</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">所有項目已處理</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -686,7 +686,7 @@ function DismissableCardList({
           <button
             type="button"
             onClick={() => setShowDismissed((prev) => !prev)}
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
           >
             <svg
               className={`w-4 h-4 transition-transform ${showDismissed ? 'rotate-90' : ''}`}
@@ -753,13 +753,13 @@ function RecentChangesTimeline({ changes }: { changes: RecentChange[] }) {
               {items.map((change) => (
                 <div
                   key={change.id}
-                  className="flex gap-3 rounded-lg p-3 hover:bg-slate-50 transition-colors"
+                  className="flex gap-3 rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   <span className="text-xs text-slate-400 mt-0.5 flex-shrink-0 w-12 text-right font-mono">
                     {formatTime(change.created_at)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 leading-relaxed">
+                    <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
                       {describeAction(change)}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
@@ -799,7 +799,7 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
 
           {/* Progress bar */}
           <div className="flex items-center gap-2 mb-3">
-            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
                 style={{
@@ -808,13 +808,13 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
                 }}
               />
             </div>
-            <span className="text-xs font-medium text-slate-600 flex-shrink-0">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 flex-shrink-0">
               {Math.round(project.completion_rate)}%
             </span>
           </div>
 
           {/* Stats */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
               📋 {project.total_cards} 張卡片
             </span>
@@ -851,7 +851,7 @@ function EmptyState({ message, icon }: { message: string; icon: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <span className="text-4xl mb-4">{icon}</span>
-      <p className="text-sm text-slate-500">{message}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{message}</p>
     </div>
   )
 }

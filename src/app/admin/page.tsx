@@ -138,10 +138,10 @@ function StatCardSkeleton() {
     <div className="bg-white rounded-xl border p-5 animate-pulse" style={{ borderColor: '#E5E5E5' }}>
       <div className="flex items-start justify-between">
         <div>
-          <div className="h-4 w-20 bg-slate-200 rounded" />
-          <div className="h-8 w-16 bg-slate-200 rounded mt-2" />
+          <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+          <div className="h-8 w-16 bg-slate-200 dark:bg-slate-700 rounded mt-2" />
         </div>
-        <div className="w-11 h-11 bg-slate-200 rounded-lg" />
+        <div className="w-11 h-11 bg-slate-200 dark:bg-slate-700 rounded-lg" />
       </div>
     </div>
   )

@@ -139,8 +139,8 @@ function ResetPasswordContent() {
   if (pageState === 'checking') {
     return (
       <div className="flex flex-col items-center gap-3 py-4">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        <p className="text-slate-500 text-sm">驗證連結中...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500" />
+        <p className="text-slate-500 dark:text-slate-400 text-sm">驗證連結中...</p>
       </div>
     )
   }
@@ -155,7 +155,7 @@ function ResetPasswordContent() {
           <h2 className="text-xl font-semibold mb-1" style={{ color: '#0B1A14' }}>
             密碼已重設成功
           </h2>
-          <p className="text-slate-500 text-sm">請使用新密碼登入</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">請使用新密碼登入</p>
         </div>
         <Link
           href="/login"
@@ -179,11 +179,11 @@ function ResetPasswordContent() {
             連結已失效
           </h2>
           <p className="text-red-500 text-sm mb-1">{invalidMessage}</p>
-          <p className="text-slate-400 text-xs">此連結可能已被使用或已過期</p>
+          <p className="text-slate-400 dark:text-slate-500 text-xs">此連結可能已被使用或已過期</p>
         </div>
         <Link
           href="/login"
-          className="mt-2 text-sm text-slate-500 hover:text-slate-700 hover:underline"
+          className="mt-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:underline"
         >
           返回登入頁
         </Link>
@@ -197,14 +197,14 @@ function ResetPasswordContent() {
   return (
     <div>
       <div className="flex flex-col items-center gap-2 mb-6">
-        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-          <KeyRound className="w-6 h-6 text-slate-600" />
+        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+          <KeyRound className="w-6 h-6 text-slate-600 dark:text-slate-300" />
         </div>
         <h2 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
           設定新密碼
         </h2>
         {maskedEmail && (
-          <p className="text-slate-500 text-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
             為 <span className="font-medium">{maskedEmail}</span> 設定新密碼
           </p>
         )}
@@ -227,12 +227,12 @@ function ResetPasswordContent() {
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-3 pr-11 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+              className="w-full px-4 py-3 pr-11 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
             />
             <button
               type="button"
               onClick={() => setShowNewPassword(!showNewPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
               aria-label={showNewPassword ? '隱藏密碼' : '顯示密碼'}
             >
               {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -250,16 +250,16 @@ function ResetPasswordContent() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className={`w-full px-4 py-3 pr-11 rounded-lg border focus:outline-none focus:ring-2 text-sm ${
+              className={`w-full px-4 py-3 pr-11 rounded-lg border focus:outline-none focus:ring-2 text-sm dark:bg-slate-800 dark:text-slate-200 ${
                 passwordMismatch
                   ? 'border-red-300 focus:ring-red-300'
-                  : 'border-slate-300 focus:ring-slate-400'
+                  : 'border-slate-300 dark:border-slate-600 focus:ring-slate-400'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
               aria-label={showConfirmPassword ? '隱藏密碼' : '顯示密碼'}
             >
               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -283,7 +283,7 @@ function ResetPasswordContent() {
       <div className="mt-4 text-center">
         <Link
           href="/login"
-          className="text-sm text-slate-400 hover:text-slate-600 hover:underline"
+          className="text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:underline"
         >
           返回登入頁
         </Link>
@@ -300,12 +300,12 @@ export default function ResetPasswordPage() {
       className="min-h-screen flex items-center justify-center px-4"
       style={{ backgroundColor: '#F9F8F5' }}
     >
-      <div className="w-full max-w-md bg-white rounded-2xl p-8 shadow-sm">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm">
         <Suspense
           fallback={
             <div className="flex flex-col items-center gap-3 py-4">
-              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-              <p className="text-slate-500 text-sm">載入中...</p>
+              <Loader2 className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500" />
+              <p className="text-slate-500 dark:text-slate-400 text-sm">載入中...</p>
             </div>
           }
         >

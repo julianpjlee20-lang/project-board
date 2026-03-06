@@ -62,7 +62,7 @@ function SortableHeader({
 
   return (
     <th
-      className="text-left px-4 py-3 font-medium text-slate-500 select-none cursor-pointer group"
+      className="text-left px-4 py-3 font-medium text-slate-500 dark:text-slate-400 select-none cursor-pointer group"
       onClick={() => onSort(sortKey)}
       aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
     >
@@ -89,7 +89,7 @@ function PermissionBadge({ permissions }: { permissions: ApiKey['permissions'] }
     )
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
       唯讀
     </span>
   )
@@ -121,7 +121,7 @@ function StatusBadge({ isActive, expiresAt }: { isActive: boolean; expiresAt: st
 
 function KeyPrefixDisplay({ prefix }: { prefix: string }) {
   return (
-    <code className="px-1.5 py-0.5 rounded bg-slate-100 text-xs font-mono text-slate-700">
+    <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-700 dark:text-slate-200">
       {prefix}...
     </code>
   )
@@ -484,36 +484,36 @@ export default function ApiKeysPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-slate-100">
-              <KeyIcon className="w-5 h-5 text-slate-600" />
+            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+              <KeyIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
             </div>
             <div>
               <p className="text-2xl font-bold" style={{ color: '#0B1A14' }}>{keys.length}</p>
-              <p className="text-xs text-slate-500">全部金鑰</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">全部金鑰</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-50">
               <ShieldCheckIcon className="w-5 h-5 text-green-600" />
             </div>
             <div>
               <p className="text-2xl font-bold" style={{ color: '#0B1A14' }}>{activeCount}</p>
-              <p className="text-xs text-slate-500">啟用中</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">啟用中</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-red-50">
               <WarningIcon className="w-5 h-5 text-red-500" />
             </div>
             <div>
               <p className="text-2xl font-bold" style={{ color: '#0B1A14' }}>{revokedCount}</p>
-              <p className="text-xs text-slate-500">已撤銷</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">已撤銷</p>
             </div>
           </div>
         </div>
@@ -527,7 +527,7 @@ export default function ApiKeysPage() {
       )}
 
       {/* Keys Table */}
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -539,22 +539,22 @@ export default function ApiKeysPage() {
                 <SortableHeader label="建立日期" sortKey="created_at" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="最後使用" sortKey="last_used_at" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="過期日" sortKey="expires_at" currentSort={sort} onSort={handleSort} />
-                <th className="text-right px-4 py-3 font-medium text-slate-500">操作</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-500 dark:text-slate-400">操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400 dark:text-slate-500">
                     載入中...
                   </td>
                 </tr>
               ) : sortedKeys.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12">
-                    <KeyIcon className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                    <p className="text-slate-400 mb-1">尚未建立任何 API Key</p>
-                    <p className="text-xs text-slate-400">
+                    <KeyIcon className="w-10 h-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+                    <p className="text-slate-400 dark:text-slate-500 mb-1">尚未建立任何 API Key</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
                       點擊「生成新 Key」按鈕建立第一個金鑰
                     </p>
                   </td>
@@ -563,11 +563,11 @@ export default function ApiKeysPage() {
                 sortedKeys.map((apiKey) => (
                   <tr
                     key={apiKey.id}
-                    className="border-b last:border-b-0 hover:bg-slate-50 transition-colors"
+                    className="border-b last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     {/* Name */}
                     <td className="px-4 py-3">
-                      <span className="font-medium text-slate-800">{apiKey.name}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">{apiKey.name}</span>
                     </td>
                     {/* Key Prefix */}
                     <td className="px-4 py-3">
@@ -582,15 +582,15 @@ export default function ApiKeysPage() {
                       <StatusBadge isActive={apiKey.is_active} expiresAt={apiKey.expires_at} />
                     </td>
                     {/* Created At */}
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                       {formatDate(apiKey.created_at)}
                     </td>
                     {/* Last Used */}
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                       {formatDateTime(apiKey.last_used_at)}
                     </td>
                     {/* Expires At */}
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                       {apiKey.expires_at ? formatDate(apiKey.expires_at) : '永不過期'}
                     </td>
                     {/* Actions */}
@@ -604,7 +604,7 @@ export default function ApiKeysPage() {
                             撤銷
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-400">-</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
                         )}
                       </div>
                     </td>
@@ -651,7 +651,7 @@ export default function ApiKeysPage() {
           <div className="space-y-4">
             {/* Key Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 名稱 <span className="text-red-500">*</span>
               </label>
               <input
@@ -663,13 +663,13 @@ export default function ApiKeysPage() {
                 }}
                 placeholder="例如：Production Bot、Development Testing"
                 maxLength={100}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
               />
             </div>
 
             {/* Permissions */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 權限
               </label>
               <div className="flex gap-3">
@@ -677,7 +677,7 @@ export default function ApiKeysPage() {
                   className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     createPermissions === 'full'
                       ? 'border-blue-300 bg-blue-50'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   <input
@@ -689,15 +689,15 @@ export default function ApiKeysPage() {
                     className="sr-only"
                   />
                   <div>
-                    <p className="text-sm font-medium text-slate-800">完整權限</p>
-                    <p className="text-xs text-slate-500">可讀取及寫入</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">完整權限</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">可讀取及寫入</p>
                   </div>
                 </label>
                 <label
                   className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     createPermissions === 'read_only'
                       ? 'border-blue-300 bg-blue-50'
-                      : 'border-slate-200 hover:bg-slate-50'
+                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   <input
@@ -709,8 +709,8 @@ export default function ApiKeysPage() {
                     className="sr-only"
                   />
                   <div>
-                    <p className="text-sm font-medium text-slate-800">唯讀</p>
-                    <p className="text-xs text-slate-500">僅可讀取資料</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">唯讀</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">僅可讀取資料</p>
                   </div>
                 </label>
               </div>
@@ -718,7 +718,7 @@ export default function ApiKeysPage() {
 
             {/* Expiration Date */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                 過期日期（選填）
               </label>
               <input
@@ -726,9 +726,9 @@ export default function ApiKeysPage() {
                 value={createExpiresAt}
                 onChange={(e) => setCreateExpiresAt(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
               />
-              <p className="text-xs text-slate-400 mt-1">不設定則永不過期</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">不設定則永不過期</p>
             </div>
 
             {/* Error */}
@@ -780,27 +780,27 @@ export default function ApiKeysPage() {
           <div className="space-y-4">
             {/* Key Name */}
             <div>
-              <p className="text-sm text-slate-500 mb-1">名稱</p>
-              <p className="text-sm font-medium text-slate-800">{newKeyName}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">名稱</p>
+              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{newKeyName}</p>
             </div>
 
             {/* Plaintext Key */}
             <div>
-              <p className="text-sm text-slate-500 mb-1.5">API Key</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1.5">API Key</p>
               <div className="relative">
-                <div className="w-full px-3 py-3 pr-12 rounded-lg bg-slate-50 border border-slate-200 font-mono text-xs text-slate-800 break-all select-all">
+                <div className="w-full px-3 py-3 pr-12 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-800 dark:text-slate-100 break-all select-all">
                   {newKeyPlaintext}
                 </div>
                 <button
                   onClick={handleCopyKey}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-slate-200 transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                   aria-label="複製金鑰"
                   title="複製金鑰"
                 >
                   {copied ? (
                     <CheckIcon className="w-4 h-4 text-green-600" />
                   ) : (
-                    <CopyIcon className="w-4 h-4 text-slate-500" />
+                    <CopyIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   )}
                 </button>
               </div>

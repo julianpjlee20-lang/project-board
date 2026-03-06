@@ -199,7 +199,7 @@ export function AssigneeCombobox({ users, value, onChange }: AssigneeComboboxPro
         <ul
           ref={listRef}
           role="listbox"
-          className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 sm:max-h-48 overflow-y-auto"
+          className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-md shadow-lg max-h-48 sm:max-h-48 overflow-y-auto"
         >
           {filtered.length === 0 ? (
             <li className="px-3 py-3 sm:py-2 text-base sm:text-sm text-gray-500">找不到使用者</li>

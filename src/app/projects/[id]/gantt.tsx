@@ -225,13 +225,13 @@ function GanttToolbar({
   title: string
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b flex-wrap gap-2">
+    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex-wrap gap-2">
       {/* Left: Navigation */}
       <div className="flex items-center gap-1">
         <button
           onClick={onNavigatePrev}
           aria-label="前一段時間"
-          className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition-colors"
+          className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -240,14 +240,14 @@ function GanttToolbar({
         <button
           onClick={onNavigateToday}
           aria-label="回到今天"
-          className="px-3 py-1 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+          className="px-3 py-1 rounded-md text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           今天
         </button>
         <button
           onClick={onNavigateNext}
           aria-label="後一段時間"
-          className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition-colors"
+          className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -256,18 +256,18 @@ function GanttToolbar({
       </div>
 
       {/* Center: Title */}
-      <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
 
       {/* Right: Scale tabs */}
-      <div className="bg-slate-100 rounded-lg p-1 flex">
+      <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex">
         {(['week', 'month'] as GanttScale[]).map(s => (
           <button
             key={s}
             onClick={() => onScaleChange(s)}
             className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
               scale === s
-                ? 'bg-white shadow-sm text-slate-900'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
             {SCALE_LABELS[s]}
@@ -316,13 +316,13 @@ function GanttHeader({
     }
 
     return (
-      <div className="sticky top-0 z-10 bg-white border-b" style={{ height: HEADER_HEIGHT }}>
+      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700" style={{ height: HEADER_HEIGHT }}>
         {/* Month row */}
-        <div className="flex border-b" style={{ height: HEADER_HEIGHT / 2 }}>
+        <div className="flex border-b border-slate-200 dark:border-slate-700" style={{ height: HEADER_HEIGHT / 2 }}>
           {months.map((m, i) => (
             <div
               key={i}
-              className="text-xs font-semibold text-slate-600 flex items-center px-2 border-r border-slate-200"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center px-2 border-r border-slate-200 dark:border-slate-700"
               style={{ width: m.span * dayWidth, minWidth: m.span * dayWidth }}
             >
               {m.label}
@@ -338,8 +338,8 @@ function GanttHeader({
             return (
               <div
                 key={i}
-                className={`text-[10px] flex items-center justify-center border-r border-slate-100 flex-shrink-0 ${
-                  isToday_ ? 'bg-blue-50 text-blue-600 font-bold' : isWkend ? 'text-slate-400 bg-slate-50' : 'text-slate-500'
+                className={`text-[10px] flex items-center justify-center border-r border-slate-100 dark:border-slate-800 flex-shrink-0 ${
+                  isToday_ ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold' : isWkend ? 'text-slate-400 bg-slate-50 dark:bg-slate-800' : 'text-slate-500 dark:text-slate-400'
                 }`}
                 style={{ width: dayWidth, minWidth: dayWidth }}
               >
@@ -389,13 +389,13 @@ function GanttHeader({
   }
 
   return (
-    <div className="sticky top-0 z-10 bg-white border-b" style={{ height: HEADER_HEIGHT }}>
+    <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700" style={{ height: HEADER_HEIGHT }}>
       {/* Month row */}
-      <div className="flex border-b" style={{ height: HEADER_HEIGHT / 2 }}>
+      <div className="flex border-b border-slate-200 dark:border-slate-700" style={{ height: HEADER_HEIGHT / 2 }}>
         {months.map((m, i) => (
           <div
             key={i}
-            className="text-xs font-semibold text-slate-600 flex items-center px-1 border-r border-slate-200"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center px-1 border-r border-slate-200 dark:border-slate-700"
             style={{ width: m.span * dayWidth, minWidth: m.span * dayWidth }}
           >
             {m.label}
@@ -407,7 +407,7 @@ function GanttHeader({
         {weeks.map((w, i) => (
           <div
             key={i}
-            className="text-[10px] text-slate-400 flex items-center justify-center border-r border-slate-100"
+            className="text-[10px] text-slate-400 flex items-center justify-center border-r border-slate-100 dark:border-slate-800"
             style={{ width: w.span * dayWidth, minWidth: w.span * dayWidth }}
           >
             {w.label}
@@ -538,7 +538,7 @@ function GanttBar({
         {/* Tooltip */}
         {showTooltip && (
           <div
-            className="absolute z-30 bg-white border border-slate-200 rounded-lg shadow-lg p-3 min-w-[220px] whitespace-nowrap pointer-events-none"
+            className="absolute z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3 min-w-[220px] whitespace-nowrap pointer-events-none"
             style={{
               bottom: '100%',
               left: '50%',
@@ -546,27 +546,27 @@ function GanttBar({
               marginBottom: 4,
             }}
           >
-            <div className="text-sm font-semibold text-slate-800 mb-2 truncate max-w-[240px]">
+            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2 truncate max-w-[240px]">
               {card.card_number != null && <span className="font-mono text-slate-400 mr-1">#{card.card_number}</span>}
               {card.title}
             </div>
             <div className="text-xs space-y-1.5">
               {card.start_date && (
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400 w-16">開始日</span>
-                  <span className="text-slate-700">{formatDateFull(card.start_date)}</span>
+                  <span className="text-slate-400 dark:text-slate-500 w-16">開始日</span>
+                  <span className="text-slate-700 dark:text-slate-200">{formatDateFull(card.start_date)}</span>
                 </div>
               )}
               {card.due_date && (
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400 w-16">截止日</span>
-                  <span className="text-slate-700">{formatDateFull(card.due_date)}</span>
+                  <span className="text-slate-400 dark:text-slate-500 w-16">截止日</span>
+                  <span className="text-slate-700 dark:text-slate-200">{formatDateFull(card.due_date)}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <span className="text-slate-400 w-16">進度</span>
+                <span className="text-slate-400 dark:text-slate-500 w-16">進度</span>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -575,12 +575,12 @@ function GanttBar({
                       }}
                     />
                   </div>
-                  <span className="text-slate-600">{progress}%</span>
+                  <span className="text-slate-600 dark:text-slate-300">{progress}%</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400 w-16">指派人</span>
-                <span className="text-slate-700">{assigneeNames}</span>
+                <span className="text-slate-400 dark:text-slate-500 w-16">指派人</span>
+                <span className="text-slate-700 dark:text-slate-200">{assigneeNames}</span>
               </div>
             </div>
           </div>
@@ -615,7 +615,7 @@ function PhaseGroup({
     <div>
       {/* Phase header */}
       <div
-        className="flex items-center gap-2 px-3 cursor-pointer select-none hover:bg-slate-50 transition-colors border-b border-slate-100"
+        className="flex items-center gap-2 px-3 cursor-pointer select-none hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800"
         style={{ height: PHASE_HEADER_HEIGHT, minWidth: totalWidth }}
         onClick={onToggle}
       >
@@ -636,11 +636,11 @@ function PhaseGroup({
         />
 
         {/* Phase name */}
-        <span className="text-sm font-semibold text-slate-700">{group.phaseName}</span>
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{group.phaseName}</span>
 
         {/* Progress */}
         <div className="flex items-center gap-1.5 ml-2">
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full"
               style={{
@@ -661,10 +661,10 @@ function PhaseGroup({
       {/* Cards */}
       {isExpanded &&
         group.cards.map(card => (
-          <div key={card.id} className="flex border-b border-slate-50" style={{ minWidth: totalWidth }}>
+          <div key={card.id} className="flex border-b border-slate-50 dark:border-slate-800" style={{ minWidth: totalWidth }}>
             {/* Left sidebar: card title */}
             <div
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 bg-white border-r border-slate-100 overflow-hidden sticky left-0 z-10"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 overflow-hidden sticky left-0 z-10"
               style={{ width: 220, height: ROW_HEIGHT }}
             >
               <span
@@ -672,7 +672,7 @@ function PhaseGroup({
                 style={{ backgroundColor: PRIORITY_BORDER_COLORS[card.priority] || PRIORITY_BORDER_COLORS.medium }}
               />
               <span
-                className="text-xs text-slate-600 truncate cursor-pointer hover:text-slate-900 transition-colors"
+                className="text-xs text-slate-600 dark:text-slate-300 truncate cursor-pointer hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 onClick={() => onCardClick(card)}
                 title={card.card_number != null ? `#${card.card_number} ${card.title}` : card.title}
               >
@@ -802,11 +802,11 @@ function UnscheduledPanel({
   for (const p of phases) phaseMap.set(p.id, p)
 
   return (
-    <div className="border-t">
+    <div className="border-t border-slate-200 dark:border-slate-700">
       {/* Toggle header */}
       <button
         onClick={() => setIsExpanded(prev => !prev)}
-        className="flex items-center gap-2 w-full px-4 py-2.5 text-left hover:bg-slate-50 transition-colors"
+        className="flex items-center gap-2 w-full px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
       >
         <svg
           className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
@@ -816,7 +816,7 @@ function UnscheduledPanel({
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-slate-500 dark:text-slate-400">
           {cards.length} 張卡片未排程
         </span>
       </button>
@@ -830,11 +830,11 @@ function UnscheduledPanel({
             return (
               <div
                 key={card.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 cursor-pointer transition-colors border border-slate-100"
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-slate-100 dark:border-slate-800"
                 style={{ borderLeftWidth: 3, borderLeftColor: priorityColor }}
                 onClick={() => onCardClick(card)}
               >
-                <span className="text-sm text-slate-700 flex-1 truncate">
+                <span className="text-sm text-slate-700 dark:text-slate-200 flex-1 truncate">
                   {card.card_number != null && <span className="font-mono text-slate-400 mr-1">#{card.card_number}</span>}
                   {card.title}
                 </span>
@@ -983,7 +983,7 @@ export function GanttView({
   // Empty state
   if (scheduledCards.length === 0 && unscheduledCards.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow">
         <GanttToolbar
           scale={scale}
           onScaleChange={handleScaleChange}
@@ -999,8 +999,8 @@ export function GanttView({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-4m-5 0v4m0-4h4m-4 0H9" />
               </svg>
             </div>
-            <p className="text-slate-500 text-sm">尚無任務</p>
-            <p className="text-slate-400 text-xs mt-1">建立卡片並設定日期後，甘特圖將會顯示</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">尚無任務</p>
+            <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">建立卡片並設定日期後，甘特圖將會顯示</p>
           </div>
         </div>
       </div>
@@ -1010,7 +1010,7 @@ export function GanttView({
   // All cards are unscheduled
   if (!adjustedRange) {
     return (
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow">
         <GanttToolbar
           scale={scale}
           onScaleChange={handleScaleChange}
@@ -1020,7 +1020,7 @@ export function GanttView({
           title="甘特圖"
         />
         <div className="flex items-center justify-center py-12">
-          <p className="text-slate-500 text-sm">所有卡片均未排程，請設定開始日或截止日</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">所有卡片均未排程，請設定開始日或截止日</p>
         </div>
         <UnscheduledPanel cards={unscheduledCards} phases={phases} onCardClick={onCardClick} />
       </div>
@@ -1028,7 +1028,7 @@ export function GanttView({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow">
       {/* Toolbar */}
       <GanttToolbar
         scale={scale}
@@ -1040,7 +1040,7 @@ export function GanttView({
       />
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-2 border-b text-xs text-slate-500">
+      <div className="flex items-center gap-4 px-4 py-2 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-1.5 rounded-sm bg-slate-300" />
           任務時程
@@ -1087,10 +1087,10 @@ export function GanttView({
           <div className="flex">
             {/* Sidebar header */}
             <div
-              className="flex-shrink-0 bg-white border-r border-b border-slate-200 flex items-center px-3 sticky left-0 z-20"
+              className="flex-shrink-0 bg-white dark:bg-slate-900 border-r border-b border-slate-200 dark:border-slate-700 flex items-center px-3 sticky left-0 z-20"
               style={{ width: 220, height: HEADER_HEIGHT }}
             >
-              <span className="text-xs font-medium text-slate-500">任務名稱</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">任務名稱</span>
             </div>
             {/* Time axis */}
             <div className="flex-1">

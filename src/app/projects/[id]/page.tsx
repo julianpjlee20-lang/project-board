@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import Link from 'next/link'
 import UserNav from '@/components/UserNav'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { ListView, CalendarView, ProgressView } from './views'
 import { GanttView } from './gantt'
 import type { Card, Column, Project, ViewType, Phase } from './types'
@@ -83,7 +84,7 @@ function MiniTimelineBar({ card }: { card: Card }) {
 
   return (
     <div
-      className="mt-1.5 relative w-full h-1 hover:h-2 bg-slate-100 rounded-full overflow-hidden transition-all cursor-default"
+      className="mt-1.5 relative w-full h-1 hover:h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden transition-all cursor-default"
       title={tooltipParts.join(' | ')}
     >
       {segments.map((seg, i) => (
@@ -101,7 +102,7 @@ function MiniTimelineBar({ card }: { card: Card }) {
       {/* Due date dashed marker */}
       {dueDate && (
         <div
-          className="absolute top-0 h-full border-l border-dashed border-slate-500"
+          className="absolute top-0 h-full border-l border-dashed border-slate-500 dark:border-slate-400"
           style={{ left: `${toPercent(dueDate)}%` }}
         />
       )}
@@ -129,7 +130,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
             e.stopPropagation()
             onClick()
           }}
-          className={`bg-white p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 cursor-pointer ${
+          className={`bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 cursor-pointer ${
             snapshot.isDragging ? 'shadow-lg rotate-2' : ''
           }`}
           style={{
@@ -153,7 +154,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
           {/* Card number + Title */}
           <div className="flex items-start gap-1.5">
             {card.card_number != null && (
-              <span className="text-[10px] font-mono text-slate-400 mt-[2px] flex-shrink-0">#{card.card_number}</span>
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-[2px] flex-shrink-0">#{card.card_number}</span>
             )}
             <p className="font-medium text-sm leading-snug">{card.title}</p>
           </div>
@@ -164,7 +165,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
               <div className="flex items-center">
                 {assigneeInitial && (
                   <span
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold"
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold"
                     title={assigneeName}
                   >
                     {assigneeInitial}
@@ -173,7 +174,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
               </div>
               <div className="flex items-center">
                 {totalSubtasks > 0 && (
-                  <span className={`text-xs ${completedSubtasks === totalSubtasks ? 'text-green-600' : 'text-slate-500'}`}>
+                  <span className={`text-xs ${completedSubtasks === totalSubtasks ? 'text-green-600' : 'text-slate-500 dark:text-slate-400'}`}>
                     ✓ {completedSubtasks}/{totalSubtasks}
                   </span>
                 )}
@@ -213,14 +214,14 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
           className="w-72 max-sm:w-full flex-shrink-0 flex flex-col"
         >
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-slate-700">
+            <h2 className="font-semibold text-slate-700 dark:text-slate-200">
               {column.name}
-              <span className="ml-2 text-sm text-slate-400">{column.cards?.length || 0}</span>
+              <span className="ml-2 text-sm text-slate-400 dark:text-slate-500">{column.cards?.length || 0}</span>
             </h2>
           </div>
 
           <div
-            className={`flex-1 space-y-2 overflow-y-auto min-h-[100px] rounded ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+            className={`flex-1 space-y-2 overflow-y-auto min-h-[100px] rounded ${snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-950' : ''}`}
           >
             {column.cards?.map((card, index) => (
               <CardItem
@@ -240,16 +241,16 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
                 value={newCardTitle}
                 onChange={e => setNewCardTitle(e.target.value)}
                 placeholder="卡片標題..."
-                className="w-full px-3 py-2.5 max-sm:py-3 text-base border rounded mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2.5 max-sm:py-3 text-base border rounded mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                 autoFocus
               />
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 px-3 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded min-h-[44px]">新增</button>
-                <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2.5 max-sm:py-3 text-sm max-sm:text-base border rounded min-h-[44px]">取消</button>
+                <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2.5 max-sm:py-3 text-sm max-sm:text-base border rounded min-h-[44px] dark:border-slate-700 dark:text-slate-300">取消</button>
               </div>
             </form>
           ) : (
-            <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2.5 text-sm text-left text-slate-500 hover:bg-slate-100 rounded min-h-[44px]">
+            <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2.5 text-sm text-left text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded min-h-[44px]">
               + 新增卡片
             </button>
           )}
@@ -286,14 +287,14 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
   const presetColors = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444', '#06B6D4']
 
   return (
-    <div className="flex flex-wrap max-sm:flex-nowrap items-center gap-2 px-6 max-sm:px-3 py-2 bg-white border-b max-h-28 max-sm:max-h-none overflow-y-auto max-sm:overflow-y-hidden max-sm:overflow-x-auto">
+    <div className="flex flex-wrap max-sm:flex-nowrap items-center gap-2 px-6 max-sm:px-3 py-2 bg-white dark:bg-slate-900 border-b dark:border-slate-700 max-h-28 max-sm:max-h-none overflow-y-auto max-sm:overflow-y-hidden max-sm:overflow-x-auto">
       {/* "All" button */}
       <button
         onClick={() => onSelect(null)}
         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 min-h-[36px] ${
           selectedPhase === null
-            ? 'bg-slate-800 text-white shadow-sm'
-            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm'
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
         }`}
       >
         全部
@@ -307,7 +308,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 min-h-[36px] ${
               selectedPhase === phase.id
                 ? 'text-white shadow-sm'
-                : 'text-slate-600 hover:opacity-80'
+                : 'text-slate-600 dark:text-slate-300 hover:opacity-80'
             }`}
             style={{
               backgroundColor: selectedPhase === phase.id ? phase.color : phase.color + '20',
@@ -341,7 +342,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
             value={newName}
             onChange={e => setNewName(e.target.value)}
             placeholder="階段名稱..."
-            className="px-2 py-1 text-sm border rounded w-28"
+            className="px-2 py-1 text-sm border rounded w-28 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100"
             autoFocus
           />
           <div className="flex gap-1">
@@ -350,18 +351,18 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
                 key={c}
                 type="button"
                 onClick={() => setNewColor(c)}
-                className={`w-5 h-5 rounded-full border-2 transition-all ${newColor === c ? 'border-slate-800 scale-110' : 'border-transparent'}`}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${newColor === c ? 'border-slate-800 dark:border-slate-200 scale-110' : 'border-transparent'}`}
                 style={{ backgroundColor: c }}
               />
             ))}
           </div>
           <button type="submit" className="px-2 py-1 text-sm bg-blue-500 text-white rounded">新增</button>
-          <button type="button" onClick={() => setShowAdd(false)} className="px-2 py-1 text-sm border rounded">取消</button>
+          <button type="button" onClick={() => setShowAdd(false)} className="px-2 py-1 text-sm border rounded dark:border-slate-600 dark:text-slate-300">取消</button>
         </form>
       ) : (
         <button
           onClick={() => setShowAdd(true)}
-          className="px-3 py-1.5 rounded-full text-sm text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+          className="px-3 py-1.5 rounded-full text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
         >
           + 新增階段
         </button>
@@ -376,13 +377,13 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
             </DialogDescription>
           </DialogHeader>
           {pendingDeletePhase && pendingDeletePhase.total_cards > 0 && (
-            <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+            <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
               <p className="font-medium">⚠ 此階段包含 {pendingDeletePhase.total_cards} 個任務</p>
-              <p className="mt-1 text-amber-700">請選擇要將任務移至哪個階段：</p>
+              <p className="mt-1 text-amber-700 dark:text-amber-300">請選擇要將任務移至哪個階段：</p>
               <select
                 value={targetPhaseId}
                 onChange={(e) => setTargetPhaseId(e.target.value)}
-                className="mt-2 w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-2 w-full rounded-md border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="">不指定階段（移除標記）</option>
                 {phases.filter(p => p.id !== pendingDeletePhase.id).map(p => (
@@ -689,22 +690,23 @@ export default function BoardPage() {
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col">
-        <header className="border-b px-6 max-sm:px-3 py-4 max-sm:py-3 flex flex-wrap items-center justify-between gap-2 bg-white">
+        <header className="border-b dark:border-slate-700 px-6 max-sm:px-3 py-4 max-sm:py-3 flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900">
           <h1 className="text-xl max-sm:text-lg font-bold truncate max-w-[50vw]">{project.name}</h1>
           <div className="flex items-center gap-2 max-sm:gap-1">
-            <Link href="/projects" className="px-3 py-2 border rounded hover:bg-slate-50 text-sm min-h-[40px] flex items-center max-sm:order-last">返回</Link>
+            <Link href="/projects" className="px-3 py-2 border rounded hover:bg-slate-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-300 text-sm min-h-[40px] flex items-center max-sm:order-last">返回</Link>
+            <ThemeToggle />
             <UserNav />
           </div>
           <div className="w-full sm:hidden" />
-          <div className="flex bg-slate-100 rounded-lg p-1 max-sm:w-full max-sm:overflow-x-auto">
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 max-sm:w-full max-sm:overflow-x-auto">
             {viewTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setCurrentView(tab.id)}
                 className={`px-3 py-1.5 max-sm:px-2 max-sm:py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap max-sm:flex-1 min-h-[36px] ${
                   currentView === tab.id
-                    ? 'bg-white shadow text-slate-900'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-slate-100'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 <span className="sm:hidden">{tab.icon}</span>
@@ -724,7 +726,7 @@ export default function BoardPage() {
           onDeletePhase={deletePhase}
         />
 
-        <div className={`flex-1 overflow-auto p-6 max-sm:p-3 bg-slate-50 transition-all duration-300 ${
+        <div className={`flex-1 overflow-auto p-6 max-sm:p-3 bg-slate-50 dark:bg-slate-800 transition-all duration-300 ${
           selectedCard && currentView === 'board' ? 'md:mr-[420px]' : ''
         }`}>
           {currentView === 'board' && (
@@ -792,8 +794,8 @@ function AddColumnForm({ onAdd }: { onAdd: (name: string) => void }) {
   return (
     <div className="w-72 max-sm:w-full flex-shrink-0">
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="新欄位名稱..." className="flex h-10 max-sm:h-12 w-full rounded-md border px-3 py-2 text-base" />
-        <button type="submit" className="px-4 py-2 bg-slate-100 rounded min-h-[44px] min-w-[44px]">+</button>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="新欄位名稱..." className="flex h-10 max-sm:h-12 w-full rounded-md border dark:border-slate-700 px-3 py-2 text-base bg-white dark:bg-slate-900 dark:text-slate-100" />
+        <button type="submit" className="px-4 py-2 bg-slate-100 dark:bg-slate-700 dark:text-slate-200 rounded min-h-[44px] min-w-[44px]">+</button>
       </form>
     </div>
   )

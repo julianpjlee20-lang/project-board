@@ -83,11 +83,11 @@ function ProviderBadge({ method }: { method: UserDetail['login_method'] }) {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-slate-50 rounded-lg px-4 py-3 text-center">
+    <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3 text-center">
       <div className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
         {value}
       </div>
-      <div className="text-xs text-slate-500 mt-1">{label}</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{label}</div>
     </div>
   )
 }
@@ -398,7 +398,7 @@ export default function AdminUserDetailPage() {
         <div className="flex items-center gap-3 mb-6">
           <Link
             href="/admin/users"
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
             返回使用者列表
@@ -416,7 +416,7 @@ export default function AdminUserDetailPage() {
         <div className="flex items-center gap-3 mb-6">
           <Link
             href="/admin/users"
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
           >
             <ArrowLeftIcon className="w-4 h-4" />
             返回使用者列表
@@ -435,7 +435,7 @@ export default function AdminUserDetailPage() {
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/admin/users"
-          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
         >
           <ArrowLeftIcon className="w-4 h-4" />
           返回使用者列表
@@ -456,7 +456,7 @@ export default function AdminUserDetailPage() {
       )}
 
       {/* User Info Card */}
-      <div className="bg-white rounded-lg border p-6 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-6 mb-6">
         <div className="flex items-start gap-5">
           <LargeAvatar user={user} />
           <div className="flex-1">
@@ -495,7 +495,7 @@ export default function AdminUserDetailPage() {
       </div>
 
       {/* Edit Form */}
-      <div className="bg-white rounded-lg border p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-6">
         <h2 className="text-lg font-semibold mb-4" style={{ color: '#0B1A14' }}>
           編輯使用者
         </h2>
@@ -503,7 +503,7 @@ export default function AdminUserDetailPage() {
         <div className="space-y-5">
           {/* Display Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
               顯示名稱
             </label>
             <input
@@ -511,19 +511,19 @@ export default function AdminUserDetailPage() {
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="輸入顯示名稱"
-              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
             />
           </div>
 
           {/* Role */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
               角色
             </label>
             <select
               value={formRole}
               onChange={(e) => setFormRole(e.target.value as 'admin' | 'user')}
-              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
             >
               <option value="user">一般使用者</option>
               <option value="admin">管理員</option>
@@ -533,10 +533,10 @@ export default function AdminUserDetailPage() {
           {/* Active Toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
                 帳號狀態
               </label>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                 {formActive ? '帳號已啟用，使用者可正常登入' : '帳號已停用，使用者無法登入'}
               </p>
             </div>
@@ -551,7 +551,7 @@ export default function AdminUserDetailPage() {
             <button
               type="button"
               onClick={() => router.push('/admin/users')}
-              className="px-4 py-2.5 text-sm rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             >
               取消
             </button>
@@ -570,20 +570,20 @@ export default function AdminUserDetailPage() {
 
       {/* Reset Password Section */}
       {(user.login_method === 'credentials' || user.login_method === 'both') && (
-        <div className="bg-white rounded-lg border p-6 mt-6">
+        <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-6 mt-6">
           <h2 className="text-lg font-semibold mb-1" style={{ color: '#0B1A14' }}>
             重設密碼
           </h2>
-          <p className="text-sm text-slate-500 mb-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             為此使用者設定新密碼，使用者下次登入時需使用新密碼
           </p>
 
           {/* ─── 方式一：產生重設連結 ─── */}
-          <div className="mb-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
-            <p className="text-sm font-medium text-slate-700 mb-2">
+          <div className="mb-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
               方式一：產生重設連結
             </p>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
               產生一次性連結，複製後透過 Discord / LINE 傳給使用者，讓使用者自行設定新密碼（60 分鐘有效）
             </p>
 
@@ -599,7 +599,7 @@ export default function AdminUserDetailPage() {
                   <button
                     type="button"
                     onClick={handleCopyResetLink}
-                    className="shrink-0 px-4 py-2 text-sm rounded-lg font-medium text-white transition-colors"
+                    className="shrink-0 px-4 py-2 text-sm rounded-lg font-medium text-white dark:text-slate-100 transition-colors"
                     style={{ backgroundColor: resetLinkCopied ? '#10B981' : '#0B1A14' }}
                   >
                     {resetLinkCopied ? '已複製 ✓' : '複製'}
@@ -612,7 +612,7 @@ export default function AdminUserDetailPage() {
                 type="button"
                 onClick={handleGenerateResetLink}
                 disabled={resetLinkLoading}
-                className="px-4 py-2 text-sm rounded-lg font-medium border border-slate-300 text-slate-700 hover:bg-white transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm rounded-lg font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 {resetLinkLoading ? '產生中...' : '產生重設連結'}
               </button>
@@ -620,18 +620,18 @@ export default function AdminUserDetailPage() {
           </div>
 
           {/* ─── 方式二：直接設定新密碼 ─── */}
-          <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-            <p className="text-sm font-medium text-slate-700 mb-2">
+          <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
               方式二：直接設定新密碼
             </p>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
               由管理員直接為使用者設定密碼，使用者登入後會被要求更改
             </p>
 
             <div className="space-y-4">
               {/* New Password */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   新密碼
                 </label>
                 <div className="relative">
@@ -643,7 +643,7 @@ export default function AdminUserDetailPage() {
                       setResetError(null)
                     }}
                     placeholder="輸入新密碼"
-                    className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                    className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
                   />
                   <button
                     type="button"
@@ -667,7 +667,7 @@ export default function AdminUserDetailPage() {
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
                   確認密碼
                 </label>
                 <input
@@ -678,7 +678,7 @@ export default function AdminUserDetailPage() {
                     setResetError(null)
                   }}
                   placeholder="再次輸入新密碼"
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
                 />
               </div>
 
@@ -686,7 +686,7 @@ export default function AdminUserDetailPage() {
               <button
                 type="button"
                 onClick={handleGenerateRandomPassword}
-                className="text-sm text-slate-600 hover:text-slate-800 underline underline-offset-2 transition-colors"
+                className="text-sm text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 underline underline-offset-2 transition-colors"
               >
                 產生隨機密碼
               </button>

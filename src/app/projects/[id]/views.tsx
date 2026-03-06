@@ -99,7 +99,7 @@ function MiniTimelineBar({ card }: { card: Card }) {
   const duePercent = dueDate ? toPercent(dueDate) : null
 
   return (
-    <div className="relative w-[120px] h-1 bg-slate-200 rounded-full mt-1.5">
+    <div className="relative w-[120px] h-1 bg-slate-200 dark:bg-slate-700 rounded-full mt-1.5">
       {segments.map((seg, i) => (
         <div
           key={i}
@@ -110,7 +110,7 @@ function MiniTimelineBar({ card }: { card: Card }) {
       {/* Due date vertical dashed marker */}
       {duePercent !== null && (
         <div
-          className="absolute top-[-3px] w-[1px] h-[10px] border-l border-dashed border-slate-500"
+          className="absolute top-[-3px] w-[1px] h-[10px] border-l border-dashed border-slate-500 dark:border-slate-400"
           style={{ left: `${duePercent}%` }}
         />
       )}
@@ -126,18 +126,18 @@ function TimelineTooltipContent({ card }: { card: Card }) {
     <div className="text-xs space-y-1">
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
-        <span className="text-slate-500">截止日：</span>
-        <span className="font-medium">{card.due_date ? formatDateShort(card.due_date) : '-'}</span>
+        <span className="text-slate-500 dark:text-slate-400">截止日：</span>
+        <span className="font-medium dark:text-slate-200">{card.due_date ? formatDateShort(card.due_date) : '-'}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
-        <span className="text-slate-500">預計完成：</span>
-        <span className="font-medium">{card.planned_completion_date ? formatDateShort(card.planned_completion_date) : '-'}</span>
+        <span className="text-slate-500 dark:text-slate-400">預計完成：</span>
+        <span className="font-medium dark:text-slate-200">{card.planned_completion_date ? formatDateShort(card.planned_completion_date) : '-'}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
-        <span className="text-slate-500">實際完成：</span>
-        <span className="font-medium">{card.actual_completion_date ? formatDateShort(card.actual_completion_date) : '-'}</span>
+        <span className="text-slate-500 dark:text-slate-400">實際完成：</span>
+        <span className="font-medium dark:text-slate-200">{card.actual_completion_date ? formatDateShort(card.actual_completion_date) : '-'}</span>
       </div>
     </div>
   )
@@ -174,7 +174,7 @@ function SortableHeader({
 
   return (
     <th
-      className="text-left px-4 py-3 text-sm font-medium text-slate-600 cursor-pointer select-none group"
+      className="text-left px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none group"
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1">
@@ -184,7 +184,7 @@ function SortableHeader({
             {currentSort.direction === 'asc' ? '▲' : '▼'}
           </span>
         ) : (
-          <span className="text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="text-slate-400 dark:text-slate-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
             ▲▼
           </span>
         )}
@@ -276,9 +276,9 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
   }, [allCards.length, sort.key, sort.direction])
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-x-auto">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow overflow-x-auto">
       <table className="w-full min-w-[700px]">
-        <thead className="bg-slate-50 border-b">
+        <thead className="bg-slate-50 dark:bg-slate-800 border-b">
           <tr>
             <SortableHeader label="標題" sortKey="title" currentSort={sort} onSort={handleSort} />
             <SortableHeader label="階段" sortKey="phase" currentSort={sort} onSort={handleSort} />
@@ -294,15 +294,15 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
             <tr
               key={card.id}
               onClick={() => onCardClick(card)}
-              className="border-b hover:bg-slate-50 cursor-pointer"
+              className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: card.columnColor }} />
                   {card.card_number != null && (
-                    <span className="text-xs font-mono text-slate-400 flex-shrink-0">#{card.card_number}</span>
+                    <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">#{card.card_number}</span>
                   )}
-                  <span className="font-medium">{card.title}</span>
+                  <span className="font-medium dark:text-slate-100">{card.title}</span>
                 </div>
               </td>
               <td className="px-4 py-3 text-sm">
@@ -316,7 +316,7 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
                       {phase.name}
                     </span>
                   ) : (
-                    <span className="text-slate-400">-</span>
+                    <span className="text-slate-400 dark:text-slate-500">-</span>
                   )
                 })()}
               </td>
@@ -327,13 +327,13 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
                   return (
                     <span className="inline-flex items-center gap-1.5">
                       <span className={`w-2 h-2 rounded-full ${config.color}`} />
-                      <span className="text-slate-600">{config.label}</span>
+                      <span className="text-slate-600 dark:text-slate-300">{config.label}</span>
                     </span>
                   )
                 })()}
               </td>
-              <td className="px-4 py-3 text-sm text-slate-600">{card.columnName}</td>
-              <td className="px-4 py-3 text-sm text-slate-600">
+              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{card.columnName}</td>
+              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                 {card.assignees?.[0]?.name || '-'}
               </td>
               <td className="px-4 py-3">
@@ -341,7 +341,7 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -350,14 +350,14 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
                       }}
                     />
                   </div>
-                  <span className="text-xs text-slate-500">{card.progress || 0}%</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">{card.progress || 0}%</span>
                 </div>
               </td>
             </tr>
           ))}
           {sortedCards.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+              <td colSpan={7} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
                 尚無任務
               </td>
             </tr>
@@ -376,7 +376,7 @@ function ScheduleCell({ card }: { card: Card }) {
   const hasAnyDate = hasDueDate || !!card.planned_completion_date || !!card.actual_completion_date
 
   if (!hasAnyDate) {
-    return <span className="text-sm text-slate-400">-</span>
+    return <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
   }
 
   // Check if actual > due (late)
@@ -395,7 +395,7 @@ function ScheduleCell({ card }: { card: Card }) {
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      <div className="text-sm text-slate-600">
+      <div className="text-sm text-slate-600 dark:text-slate-300">
         {hasDueDate && (
           <span className={isLate || isOverdue ? 'text-red-500 font-medium' : ''}>
             截止 {formatDateShort(card.due_date!)}
@@ -411,7 +411,7 @@ function ScheduleCell({ card }: { card: Card }) {
 
       {/* Hover tooltip */}
       {showTooltip && (
-        <div className="absolute top-full left-0 mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-3 min-w-[180px] whitespace-nowrap">
+        <div className="absolute top-full left-0 mt-1 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3 min-w-[180px] whitespace-nowrap">
           <TimelineTooltipContent card={card} />
         </div>
       )}
@@ -494,7 +494,7 @@ function MonthView({ year, month, cards, onCardClick }: {
   return (
     <div className="grid grid-cols-7 gap-1">
       {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-        <div key={day} className="text-center text-sm font-medium text-slate-500 py-2">
+        <div key={day} className="text-center text-sm font-medium text-slate-500 dark:text-slate-400 py-2">
           {day}
         </div>
       ))}
@@ -519,9 +519,9 @@ function MonthView({ year, month, cards, onCardClick }: {
         return (
           <div
             key={day}
-            className={`h-24 border rounded p-1 overflow-hidden ${isToday ? 'bg-blue-50 border-blue-200' : ''}`}
+            className={`h-24 border dark:border-slate-700 rounded p-1 overflow-hidden ${isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700' : ''}`}
           >
-            <div className={`text-sm mb-1 ${isToday ? 'font-bold text-blue-600' : 'text-slate-500'}`}>
+            <div className={`text-sm mb-1 ${isToday ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
               {day}
             </div>
             {cardGroups.slice(0, 3).map(({ card, types }) => (
@@ -559,7 +559,7 @@ function MonthView({ year, month, cards, onCardClick }: {
               </div>
             ))}
             {cardGroups.length > 3 && (
-              <div className="text-[10px] text-slate-400 text-center">+{cardGroups.length - 3}</div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center">+{cardGroups.length - 3}</div>
             )}
           </div>
         )
@@ -615,11 +615,11 @@ function MiniMonth({ year, month, cards, onCardClick }: {
   )
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h4 className="text-sm font-semibold text-slate-700 mb-2">{month + 1}月</h4>
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-4">
+      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">{month + 1}月</h4>
       <div className="grid grid-cols-7 gap-0.5 text-center">
         {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-          <div key={d} className="text-[10px] font-medium text-slate-400 py-1">{d}</div>
+          <div key={d} className="text-[10px] font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
         ))}
         {blanks.map(i => <div key={`b-${i}`} className="h-8" />)}
         {days.map(day => {
@@ -660,7 +660,7 @@ function MiniMonth({ year, month, cards, onCardClick }: {
                 className={`text-xs leading-none ${
                   isToday
                     ? 'bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold'
-                    : 'text-slate-600'
+                    : 'text-slate-600 dark:text-slate-300'
                 }`}
               >
                 {day}
@@ -694,19 +694,19 @@ function MiniMonth({ year, month, cards, onCardClick }: {
                     )
                   })}
                   {overflow > 0 && (
-                    <span className="text-[8px] text-slate-400">+{overflow}</span>
+                    <span className="text-[8px] text-slate-400 dark:text-slate-500">+{overflow}</span>
                   )}
                 </div>
               )}
               {/* Tooltip */}
               {hoveredDay === day && dayEntries.length > 0 && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
-                  <div className="text-xs font-medium text-slate-500 mb-1">{month + 1}月{day}日</div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]">
+                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{month + 1}月{day}日</div>
                   {dayEntries.map((entry, idx) => (
                     <div
                       key={`${entry.card.id}-${entry.type}-${idx}`}
                       onClick={() => onCardClick(entry.card)}
-                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 cursor-pointer truncate flex items-center gap-1.5"
+                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer truncate flex items-center gap-1.5"
                     >
                       {entry.type === 'due' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.card.columnColor }} />
@@ -717,8 +717,8 @@ function MiniMonth({ year, month, cards, onCardClick }: {
                       {entry.type === 'actual' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0 bg-emerald-400 ring-1.5 ring-emerald-300" />
                       )}
-                      <span className="truncate">{entry.card.title}</span>
-                      <span className="text-slate-400 flex-shrink-0">({DATE_TYPE_STYLES[entry.type].label})</span>
+                      <span className="truncate dark:text-slate-200">{entry.card.title}</span>
+                      <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">({DATE_TYPE_STYLES[entry.type].label})</span>
                     </div>
                   ))}
                 </div>
@@ -758,10 +758,10 @@ function YearView({ year, cards, onCardClick, onMonthClick }: {
 
 /** Heatmap colour based on date entry count */
 function heatColor(count: number): string {
-  if (count === 0) return 'bg-slate-100'
-  if (count === 1) return 'bg-blue-200'
-  if (count === 2) return 'bg-blue-300'
-  return 'bg-blue-500'
+  if (count === 0) return 'bg-slate-100 dark:bg-slate-800'
+  if (count === 1) return 'bg-blue-200 dark:bg-blue-900'
+  if (count === 2) return 'bg-blue-300 dark:bg-blue-800'
+  return 'bg-blue-500 dark:bg-blue-600'
 }
 
 /** Single month tile for YearView */
@@ -793,13 +793,13 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
 
   return (
     <div
-      className="bg-white rounded-lg shadow p-3 cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-white dark:bg-slate-900 rounded-lg shadow p-3 cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => onMonthClick(month)}
     >
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-semibold text-slate-700">{month + 1}月</h4>
+        <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{month + 1}月</h4>
         {monthCardCount > 0 && (
-          <span className="text-xs text-slate-400">{monthCardCount} 張卡片</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">{monthCardCount} 張卡片</span>
         )}
       </div>
       <div className="grid grid-cols-7 gap-0.5">
@@ -824,15 +824,15 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
               {/* Tooltip */}
               {hoveredDay === day && dayEntries.length > 0 && (
                 <div
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 min-w-[180px] max-w-[240px]"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="text-xs font-medium text-slate-500 mb-1">{month + 1}月{day}日</div>
+                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{month + 1}月{day}日</div>
                   {dayEntries.map((entry, idx) => (
                     <div
                       key={`${entry.card.id}-${entry.type}-${idx}`}
                       onClick={(e) => { e.stopPropagation(); onCardClick(entry.card) }}
-                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 cursor-pointer truncate flex items-center gap-1.5"
+                      className="text-xs py-1 px-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer truncate flex items-center gap-1.5"
                     >
                       {entry.type === 'due' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.card.columnColor }} />
@@ -843,8 +843,8 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
                       {entry.type === 'actual' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0 bg-emerald-400 ring-1.5 ring-emerald-300" />
                       )}
-                      <span className="truncate">{entry.card.title}</span>
-                      <span className="text-slate-400 flex-shrink-0">({DATE_TYPE_STYLES[entry.type].label})</span>
+                      <span className="truncate dark:text-slate-200">{entry.card.title}</span>
+                      <span className="text-slate-400 dark:text-slate-500 flex-shrink-0">({DATE_TYPE_STYLES[entry.type].label})</span>
                     </div>
                   ))}
                 </div>
@@ -942,15 +942,15 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b flex-wrap gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b dark:border-slate-700 flex-wrap gap-2">
         {/* Left: Navigation */}
         <div className="flex items-center gap-1">
           <button
             onClick={navigatePrev}
             aria-label={prevLabel}
-            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
@@ -959,8 +959,8 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
             aria-label="回到今天"
             className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
               isCurrentPeriod
-                ? 'text-slate-300 cursor-default'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'text-slate-300 dark:text-slate-600 cursor-default'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
             }`}
             disabled={isCurrentPeriod}
           >
@@ -969,25 +969,25 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
           <button
             onClick={navigateNext}
             aria-label={nextLabel}
-            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
 
         {/* Center: Title */}
-        <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">{title}</h3>
 
         {/* Right: Mode tabs */}
-        <div className="bg-slate-100 rounded-lg p-1 flex">
+        <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-1 flex">
           {modeOptions.map(opt => (
             <button
               key={opt.id}
               onClick={() => setCalendarMode(opt.id)}
               className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
                 calendarMode === opt.id
-                  ? 'bg-white shadow-sm text-slate-900'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-slate-100'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
               {opt.label}
@@ -997,7 +997,7 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-2 border-b text-xs text-slate-500">
+      <div className="flex items-center gap-4 px-4 py-2 border-b dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-slate-400" />
           截止日
@@ -1060,9 +1060,9 @@ const PROGRESS_STAT_CONFIG: Record<ProgressStatType, { title: string; emptyText:
 }
 
 const PRIORITY_LABEL: Record<Card['priority'], { bg: string; text: string; label: string }> = {
-  low:    { bg: 'bg-slate-100', text: 'text-slate-600', label: '低' },
-  medium: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: '中' },
-  high:   { bg: 'bg-red-100', text: 'text-red-700', label: '高' },
+  low:    { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300', label: '低' },
+  medium: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', label: '中' },
+  high:   { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', label: '高' },
 }
 
 function ProgressStatsModal({
@@ -1094,18 +1094,18 @@ function ProgressStatsModal({
 
       {/* Modal */}
       <div
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[70vh] flex flex-col animate-[scaleIn_150ms_ease-out] mx-4"
+        className="relative bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-lg max-h-[70vh] flex flex-col animate-[scaleIn_150ms_ease-out] mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 flex-shrink-0">
           <div>
-            <h4 className="text-lg font-semibold text-slate-900">{config.title}</h4>
-            <p className="text-sm text-slate-500 mt-0.5">{cards.length} 張卡片</p>
+            <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{config.title}</h4>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{cards.length} 張卡片</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
             aria-label="關閉"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1117,7 +1117,7 @@ function ProgressStatsModal({
         {/* Card list */}
         <div className="overflow-y-auto flex-1 px-5 py-3">
           {cards.length === 0 ? (
-            <div className="text-center text-slate-400 py-8">{config.emptyText}</div>
+            <div className="text-center text-slate-400 dark:text-slate-500 py-8">{config.emptyText}</div>
           ) : (
             <div className="space-y-2">
               {cards.map((card) => {
@@ -1130,29 +1130,29 @@ function ProgressStatsModal({
                 return (
                   <div
                     key={card.id}
-                    className="border border-slate-200 rounded-lg p-3 hover:border-slate-300 transition-colors"
+                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
                   >
                     {/* Title row */}
                     <div className="flex items-center gap-2 mb-2">
                       {card.card_number != null && (
-                        <span className="text-xs font-mono text-slate-400 flex-shrink-0">
+                        <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">
                           #{card.card_number}
                         </span>
                       )}
-                      <span className="font-medium text-sm text-slate-900 truncate">
+                      <span className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">
                         {card.title}
                       </span>
                     </div>
 
                     {/* Progress bar */}
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{ width: `${progress}%`, backgroundColor: progressColor }}
                         />
                       </div>
-                      <span className="text-xs text-slate-500 flex-shrink-0 w-8 text-right">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 w-8 text-right">
                         {progress}%
                       </span>
                     </div>
@@ -1225,15 +1225,15 @@ export function ProgressView({ columns }: { columns: Column[] }) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold mb-6">專案進度</h3>
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+      <h3 className="text-lg font-semibold dark:text-slate-100 mb-6">專案進度</h3>
 
       <div className="mb-8">
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-slate-600">整體進度</span>
-          <span className="font-medium">{overallProgress}%</span>
+          <span className="text-slate-600 dark:text-slate-300">整體進度</span>
+          <span className="font-medium dark:text-slate-200">{overallProgress}%</span>
         </div>
-        <div className="h-4 bg-slate-200 rounded-full overflow-hidden">
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all"
             style={{
@@ -1257,14 +1257,14 @@ export function ProgressView({ columns }: { columns: Column[] }) {
 
           return (
             <div key={col.id}>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-sm mb-1 dark:text-slate-200">
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: col.color }} />
                   {col.name}
                 </span>
-                <span className="text-slate-500">{colTotal} 任務</span>
+                <span className="text-slate-500 dark:text-slate-400">{colTotal} 任務</span>
               </div>
-              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full"
                   style={{ width: `${colAvgProgress}%`, backgroundColor: col.color }}
@@ -1275,30 +1275,30 @@ export function ProgressView({ columns }: { columns: Column[] }) {
         })}
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t">
+      <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t dark:border-slate-700">
         <button
           type="button"
           onClick={() => setModalType('all')}
-          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-slate-50 hover:scale-105 active:scale-100"
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-100"
         >
-          <div className="text-2xl font-bold text-slate-900">{totalCards}</div>
-          <div className="text-sm text-slate-500">總任務</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalCards}</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">總任務</div>
         </button>
         <button
           type="button"
           onClick={() => setModalType('in-progress')}
-          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-blue-50 hover:scale-105 active:scale-100"
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:scale-105 active:scale-100"
         >
-          <div className="text-2xl font-bold text-blue-600">{totalCards - completedCards}</div>
-          <div className="text-sm text-slate-500">進行中</div>
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalCards - completedCards}</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">進行中</div>
         </button>
         <button
           type="button"
           onClick={() => setModalType('completed')}
-          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-green-50 hover:scale-105 active:scale-100"
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-green-50 dark:hover:bg-green-900/30 hover:scale-105 active:scale-100"
         >
-          <div className="text-2xl font-bold text-green-600">{completedCards}</div>
-          <div className="text-sm text-slate-500">已完成</div>
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{completedCards}</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">已完成</div>
         </button>
       </div>
 
