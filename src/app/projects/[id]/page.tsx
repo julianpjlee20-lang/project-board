@@ -218,6 +218,17 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
               {column.name}
               <span className="ml-2 text-sm text-slate-400 dark:text-slate-500">{column.cards?.length || 0}</span>
             </h2>
+            {!showAddCard && (
+              <button
+                onClick={() => setShowAddCard(true)}
+                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                title="新增卡片"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
           </div>
 
           <div
@@ -235,7 +246,7 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
             {provided.placeholder}
           </div>
 
-          {showAddCard ? (
+          {showAddCard && (
             <form onSubmit={handleAddCard} className="mt-2">
               <input
                 value={newCardTitle}
@@ -249,10 +260,6 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
                 <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2.5 max-sm:py-3 text-sm max-sm:text-base border rounded min-h-[44px] dark:border-slate-700 dark:text-slate-300">取消</button>
               </div>
             </form>
-          ) : (
-            <button onClick={() => setShowAddCard(true)} className="w-full mt-2 px-3 py-2.5 text-sm text-left text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded min-h-[44px]">
-              + 新增卡片
-            </button>
           )}
         </div>
       )}

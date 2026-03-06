@@ -4,6 +4,7 @@ import { updateCardSchema, validateData } from '@/lib/validations'
 import { sendNotification } from '@/lib/notifications'
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
+import { autoTransitionOnDateSet } from '@/lib/auto-transition'
 
 // GET /api/cards/[id]
 export async function GET(
@@ -265,7 +266,19 @@ export async function PUT(
     }
 
 
-    return NextResponse.json({ success: true })
+    // 自動狀態轉換：日期從無到有 → 待辦移到進行中
+    step = 'auto-transition'
+    let autoTransition = null
+    const dateWasSet =
+      (start_date && !oldStartDate) ||
+      (due_date && !oldDueDate)
+    if (dateWasSet) {
+      autoTransition = await autoTransitionOnDateSet(id)
+      if (autoTransition.moved) autoTransition = { moved: true, newColumnId: autoTransition.newColumnId, newColumnName: autoTransition.newColumnName }
+      else autoTransition = null
+    }
+
+    return NextResponse.json({ success: true, auto_transition: autoTransition })
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

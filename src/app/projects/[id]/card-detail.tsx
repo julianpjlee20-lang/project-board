@@ -309,12 +309,13 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
 // SubtaskChecklist
 // ---------------------------------------------------------------------------
 
-function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange, activeUsers, cardDueDate }: {
+function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange, activeUsers, cardDueDate, onBoardUpdate }: {
   cardId: string
   subtasks: Subtask[]
   onSubtasksChange: (subtasks: Subtask[]) => void
   activeUsers: { id: string; name: string }[]
   cardDueDate?: string | null
+  onBoardUpdate?: () => void
 }) {
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialSubtasks || [])
   const [newTitle, setNewTitle] = useState('')
@@ -360,6 +361,10 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
         body: JSON.stringify({ subtask_id: subtaskId, [field]: value || null })
       })
       if (!res.ok) { setSubtasks(subtasks); onSubtasksChange(subtasks) }
+      else {
+        const data = await res.json()
+        if (data.auto_transition?.moved && onBoardUpdate) onBoardUpdate()
+      }
     } catch { setSubtasks(subtasks); onSubtasksChange(subtasks) }
   }
 
@@ -378,6 +383,9 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
       if (!res.ok) {
         setSubtasks(subtasks)
         onSubtasksChange(subtasks)
+      } else {
+        const data = await res.json()
+        if (data.auto_transition?.moved && onBoardUpdate) onBoardUpdate()
       }
     } catch {
       setSubtasks(subtasks)
@@ -657,9 +665,16 @@ interface UseCardDetailReturn {
   isFormReady: boolean
   saveCard: () => Promise<void>
   handleCancel: () => void
+  // Delete
+  isDeleting: boolean
+  showDeleteConfirm: boolean
+  setShowDeleteConfirm: (v: boolean) => void
+  deleteCard: () => Promise<void>
   // Computed
   scheduleSummary: string | null
   collapsedDisplay: { text: string; icon: string; color: string } | null
+  // Board refresh
+  onUpdate: () => void
 }
 
 function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => void): UseCardDetailReturn {
@@ -693,6 +708,8 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
   const [editingDate, setEditingDate] = useState<string | null>(null)
   const [scheduleExpanded, setScheduleExpanded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Fetch active users for assignee dropdown
   useEffect(() => {
@@ -792,6 +809,19 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
     }
   }, [isSaving, title, description, assigneeId, startDate, dueDate, plannedDate, actualDate, priority, phaseId, cardId, onCloseFn, onUpdate])
 
+  const deleteCard = useCallback(async () => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/cards/${cardId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete card')
+      onUpdate()
+      onCloseFn()
+    } catch (error) {
+      console.error('Delete card error:', error)
+      setIsDeleting(false)
+    }
+  }, [cardId, onUpdate, onCloseFn])
+
   const handleCancel = useCallback(() => {
     setTitle(originalData.title)
     setDescription(originalData.description)
@@ -828,8 +858,12 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
     isFormReady,
     saveCard,
     handleCancel,
+    isDeleting,
+    showDeleteConfirm, setShowDeleteConfirm,
+    deleteCard,
     scheduleSummary,
     collapsedDisplay,
+    onUpdate,
   }
 }
 
@@ -860,6 +894,7 @@ function CardDetailContent({ card, phases, detail }: {
     scheduleExpanded, setScheduleExpanded,
     scheduleSummary,
     collapsedDisplay,
+    onUpdate,
   } = detail
 
   // Compute due date display for Zone B
@@ -1186,6 +1221,7 @@ function CardDetailContent({ card, phases, detail }: {
           onSubtasksChange={setCardSubtasks}
           activeUsers={activeUsers}
           cardDueDate={dueDate}
+          onBoardUpdate={onUpdate}
         />
       </div>
 
@@ -1228,6 +1264,40 @@ function CardDetailContent({ card, phases, detail }: {
 // CardModal — thin container (~35 lines)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// DeleteConfirmDialog
+// ---------------------------------------------------------------------------
+
+function DeleteConfirmDialog({ cardTitle, isDeleting, onConfirm, onCancel }: {
+  cardTitle: string
+  isDeleting: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">刪除卡片</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-5">
+          確定要刪除「{cardTitle}」嗎？所有子任務、留言、活動記錄都會一併刪除，此操作無法復原。
+        </p>
+        <div className="flex justify-end gap-2">
+          <button onClick={onCancel} disabled={isDeleting} className="px-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 min-h-[40px] dark:text-slate-200">
+            取消
+          </button>
+          <button onClick={onConfirm} disabled={isDeleting} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 min-h-[40px]">
+            {isDeleting ? '刪除中...' : '確認刪除'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CardModal — thin container (~40 lines)
+// ---------------------------------------------------------------------------
+
 export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) {
   const detail = useCardDetail(card.id, onClose, onUpdate)
 
@@ -1258,12 +1328,29 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
             <div className="flex-1 overflow-y-auto">
               <CardDetailContent card={card} phases={phases} detail={detail} />
             </div>
-            <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2 flex-shrink-0">
-              <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
-              <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
-                {detail.isSaving ? '儲存中...' : '儲存'}
+            <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
+              <button
+                onClick={() => detail.setShowDeleteConfirm(true)}
+                className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                刪除
               </button>
+              <div className="flex gap-2">
+                <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
+                <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
+                  {detail.isSaving ? '儲存中...' : '儲存'}
+                </button>
+              </div>
             </div>
+            {detail.showDeleteConfirm && (
+              <DeleteConfirmDialog
+                cardTitle={detail.title || card.title}
+                isDeleting={detail.isDeleting}
+                onConfirm={detail.deleteCard}
+                onCancel={() => detail.setShowDeleteConfirm(false)}
+              />
+            )}
           </>
         )}
       </div>
@@ -1325,12 +1412,29 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
           <div className="flex-1 overflow-y-auto">
             <CardDetailContent card={card} phases={phases} detail={detail} />
           </div>
-          <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2 flex-shrink-0">
-            <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
-            <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
-              {detail.isSaving ? '儲存中...' : '儲存'}
+          <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
+            <button
+              onClick={() => detail.setShowDeleteConfirm(true)}
+              className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              刪除
             </button>
+            <div className="flex gap-2">
+              <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
+              <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
+                {detail.isSaving ? '儲存中...' : '儲存'}
+              </button>
+            </div>
           </div>
+          {detail.showDeleteConfirm && (
+            <DeleteConfirmDialog
+              cardTitle={detail.title || card.title}
+              isDeleting={detail.isDeleting}
+              onConfirm={detail.deleteCard}
+              onCancel={() => detail.setShowDeleteConfirm(false)}
+            />
+          )}
         </>
       )}
     </div>

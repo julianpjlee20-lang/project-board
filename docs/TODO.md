@@ -186,6 +186,23 @@
 
 ---
 
+## Dark Mode 全站修復
+**狀態：待開發 🔲**
+
+### 問題描述
+Dark mode 基礎架構已完成（ThemeProvider + CSS 變數 + ThemeToggle 元件），但前端看不到切換效果。
+
+### 修復項目
+- [ ] 1. ThemeToggle 移至全域位置（layout 或 UserNav），讓所有頁面都能切換
+- [ ] 2. `projects/page.tsx`（專案列表）— 移除 hardcoded `style={{ backgroundColor: '#F9F8F5' }}`，改用 Tailwind dark: 類別
+- [ ] 3. `settings/page.tsx` — 移除 `COLORS` 常數固定色彩，改用 Tailwind dark: 類別
+- [ ] 4. `notifications/page.tsx` — 移除 `COLORS.bg` / `COLORS.white`，改用 Tailwind dark: 類別
+- [ ] 5. `admin/layout.tsx` — 移除 9 處 hardcoded `style={{ backgroundColor: '#F9F8F5' }}`
+- [ ] 6. `admin/page.tsx` + `admin/projects/page.tsx` — `bg-white` 加對應 `dark:bg-*` 類別
+- [ ] 7. Build 驗證 + 全頁面 dark mode 視覺檢查
+
+---
+
 ## 待驗證項目
 - [x] Discord OAuth 登入流程 ✅
 - [x] Discord 登入 403 修復 ✅

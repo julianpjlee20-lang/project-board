@@ -3,6 +3,11 @@ import { query } from '@/lib/db'
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
 import { validateData, createSubtaskSchema, updateSubtaskSchema } from '@/lib/validations'
+import {
+  autoTransitionOnDateSet,
+  autoTransitionOnAllSubtasksCompleted,
+  autoTransitionOnSubtaskUncompleted,
+} from '@/lib/auto-transition'
 
 // GET /api/cards/[id]/subtasks
 export async function GET(
@@ -159,7 +164,24 @@ export async function PUT(
       subtask.assignee_name = null
     }
 
-    return NextResponse.json(subtask)
+    // 自動狀態轉換
+    let autoTransition = null
+    if (is_completed === true) {
+      // 規則 2：所有子任務完成 → 移到已完成欄
+      const result = await autoTransitionOnAllSubtasksCompleted(cardId)
+      if (result.moved) autoTransition = result
+    } else if (is_completed === false) {
+      // 規則 3：取消完成 → 從已完成回到進行中
+      const result = await autoTransitionOnSubtaskUncompleted(cardId)
+      if (result.moved) autoTransition = result
+    }
+    if (due_date !== undefined && due_date && due_date !== '') {
+      // 規則 1：子任務設定日期 → 待辦移到進行中
+      const result = await autoTransitionOnDateSet(cardId)
+      if (result.moved) autoTransition = result
+    }
+
+    return NextResponse.json({ ...subtask, auto_transition: autoTransition })
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

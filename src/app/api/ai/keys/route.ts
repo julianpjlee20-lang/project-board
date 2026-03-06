@@ -30,6 +30,14 @@ const createApiKeySchema = z.object({
 // 撤銷 API Key 的驗證 schema
 const revokeApiKeySchema = z.object({
   key_id: z.string().uuid('key_id 必須為有效的 UUID'),
+  action: z.enum(['revoke', 'delete'], {
+    message: 'action 必須為 revoke 或 delete'
+  }).optional().default('revoke'),
+})
+
+// 重新生成 API Key 的驗證 schema
+const regenerateApiKeySchema = z.object({
+  key_id: z.string().uuid('key_id 必須為有效的 UUID'),
 })
 
 /**
@@ -121,7 +129,80 @@ export async function GET() {
 }
 
 /**
- * DELETE /api/ai/keys — 撤銷 API Key（僅管理員 JWT）
+ * PATCH /api/ai/keys — 重新生成 API Key（僅管理員 JWT）
+ * 產生新的明文金鑰，更新 hash 和 prefix，明文只回傳一次
+ */
+export async function PATCH(request: Request) {
+  try {
+    await requireAdminJwtOnly()
+
+    const body = await request.json()
+    const validation = validateData(regenerateApiKeySchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { key_id } = validation.data
+
+    // 確認 key 存在且為啟用狀態
+    const existing = await query(
+      'SELECT id, name, is_active FROM api_keys WHERE id = $1',
+      [key_id]
+    )
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'API Key 不存在' }, { status: 404 })
+    }
+    if (!existing[0].is_active) {
+      return NextResponse.json({ error: '無法重新生成已撤銷的 API Key' }, { status: 400 })
+    }
+
+    // 生成新的 API Key
+    const plainKey = generateApiKey()
+    const keyHash = hashApiKey(plainKey)
+    const keyPrefix = getKeyPrefix(plainKey)
+
+    // 更新資料庫
+    const result = await query(
+      `UPDATE api_keys SET key_hash = $1, key_prefix = $2
+       WHERE id = $3
+       RETURNING id, name, key_prefix, permissions, expires_at, created_at`,
+      [keyHash, keyPrefix, key_id]
+    )
+
+    // 寫入審計日誌
+    const h = await headers()
+    const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
+    await query(
+      `INSERT INTO api_key_audit_log (action, key_id, ip_address, user_agent)
+       VALUES ('regenerated', $1, $2, $3)`,
+      [key_id, ip, h.get('user-agent') || null]
+    )
+
+    return NextResponse.json({
+      success: true,
+      key: result[0],
+      api_key: plainKey,
+      warning: '請立即複製此 API Key，之後將無法再查看明文。',
+    })
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    console.error('PATCH /api/ai/keys error:', error)
+    return NextResponse.json({
+      error: '重新生成 API Key 失敗',
+      detail: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/ai/keys — 撤銷或永久刪除 API Key（僅管理員 JWT）
+ * action = 'revoke'（預設）：soft delete（設 is_active = false）
+ * action = 'delete'：hard delete（僅限已撤銷的 key）
  */
 export async function DELETE(request: Request) {
   try {
@@ -136,24 +217,53 @@ export async function DELETE(request: Request) {
       }, { status: 400 })
     }
 
-    const { key_id } = validation.data
+    const { key_id, action } = validation.data
 
     // 檢查 key 是否存在
-    const existing = await query('SELECT id, name FROM api_keys WHERE id = $1', [key_id])
+    const existing = await query(
+      'SELECT id, name, is_active FROM api_keys WHERE id = $1',
+      [key_id]
+    )
     if (existing.length === 0) {
       return NextResponse.json({ error: 'API Key 不存在' }, { status: 404 })
     }
 
-    // 撤銷（soft delete）
+    const h = await headers()
+    const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
+    const userAgent = h.get('user-agent') || null
+
+    if (action === 'delete') {
+      // 永久刪除：只能刪除已撤銷的 key
+      if (existing[0].is_active) {
+        return NextResponse.json({
+          error: '只能永久刪除已撤銷的 API Key，請先撤銷再刪除'
+        }, { status: 400 })
+      }
+
+      // 先寫審計日誌（因為 ON DELETE SET NULL 會讓 key_id 變 null）
+      await query(
+        `INSERT INTO api_key_audit_log (action, key_id, ip_address, user_agent)
+         VALUES ('deleted', $1, $2, $3)`,
+        [key_id, ip, userAgent]
+      )
+
+      // 永久刪除 key（audit log 的 FK 會因 ON DELETE SET NULL 自動設為 null）
+      await query('DELETE FROM api_keys WHERE id = $1', [key_id])
+
+      return NextResponse.json({
+        success: true,
+        message: `已永久刪除 API Key「${existing[0].name}」`,
+      })
+    }
+
+    // 預設行為：撤銷（soft delete）
     await query('UPDATE api_keys SET is_active = false WHERE id = $1', [key_id])
 
     // 寫入審計日誌
-    const h = await headers()
-    const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
     await query(
       `INSERT INTO api_key_audit_log (action, key_id, ip_address, user_agent)
        VALUES ('revoked', $1, $2, $3)`,
-      [key_id, ip, h.get('user-agent') || null]
+      [key_id, ip, userAgent]
     )
 
     return NextResponse.json({
@@ -166,7 +276,7 @@ export async function DELETE(request: Request) {
     }
     console.error('DELETE /api/ai/keys error:', error)
     return NextResponse.json({
-      error: '撤銷 API Key 失敗',
+      error: '操作 API Key 失敗',
       detail: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
