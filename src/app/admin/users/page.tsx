@@ -97,7 +97,7 @@ function RoleBadge({ role }: { role: User['role'] }) {
     )
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
       一般使用者
     </span>
   )
@@ -145,8 +145,7 @@ function UserAvatar({ user }: { user: User }) {
   const initial = (user.name || user.email || '?')[0].toUpperCase()
   return (
     <div
-      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium text-white"
-      style={{ backgroundColor: '#94A3B8' }}
+      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium text-white bg-slate-400"
     >
       {initial}
     </div>
@@ -399,6 +398,84 @@ function UsersContent() {
     }
   }
 
+  // Delete user state
+  const [pendingDelete, setPendingDelete] = useState<User | null>(null)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteCardCount, setDeleteCardCount] = useState<number | null>(null)
+  const [deleteTransferTo, setDeleteTransferTo] = useState('')
+  const [deleteActiveUsers, setDeleteActiveUsers] = useState<{ id: string; name: string }[]>([])
+
+  // 開啟刪除 Dialog 時，查詢該使用者的卡片數量 + 可選代理人
+  async function handleOpenDelete(user: User) {
+    setPendingDelete(user)
+    setDeleteConfirmInput('')
+    setDeleteTransferTo('')
+    setDeleteCardCount(null)
+    setDeleteActiveUsers([])
+
+    try {
+      const [statsRes, usersRes] = await Promise.all([
+        fetch(`/api/admin/users/${user.id}`, { credentials: 'include' }),
+        fetch('/api/users/active', { credentials: 'include' }),
+      ])
+
+      if (statsRes.ok) {
+        const data = await statsRes.json()
+        setDeleteCardCount(data.stats?.assigned_card_count ?? 0)
+      }
+
+      if (usersRes.ok) {
+        const data = await usersRes.json()
+        // 排除被刪除的使用者自己
+        setDeleteActiveUsers(
+          (data.users || []).filter((u: { id: string }) => u.id !== user.id)
+        )
+      }
+    } catch {
+      // 查詢失敗不阻擋刪除流程
+    }
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!pendingDelete) return
+
+    const expectedName = pendingDelete.name || pendingDelete.email
+    if (deleteConfirmInput !== expectedName) return
+
+    setDeleteLoading(true)
+    try {
+      const body: { transfer_to?: string } = {}
+      if (deleteTransferTo) body.transfer_to = deleteTransferTo
+
+      const res = await fetch(`/api/admin/users/${pendingDelete.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '刪除失敗')
+      }
+
+      const result = await res.json()
+      const transferMsg = result.transferred_count > 0
+        ? `（已將 ${result.transferred_count} 張卡片轉移給代理人）`
+        : ''
+      setToast({ type: 'success', message: `已刪除「${expectedName}」${transferMsg}` })
+      setPendingDelete(null)
+      setDeleteConfirmInput('')
+      setDeleteTransferTo('')
+      await fetchUsers()
+    } catch (err) {
+      setToast({ type: 'error', message: err instanceof Error ? err.message : '刪除失敗' })
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   // Reset password handlers
   function handleOpenResetPassword(user: User) {
     setPendingResetPassword(user)
@@ -497,13 +574,13 @@ function UsersContent() {
   }
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div id="main-content" className="p-6 max-w-6xl">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
+        <h1 className="text-2xl font-bold text-balance text-brand-primary">
           使用者管理
         </h1>
-        <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+        <p className="text-sm mt-1 text-text-secondary">
           管理系統中的所有使用者帳號
         </p>
       </div>
@@ -528,10 +605,10 @@ function UsersContent() {
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="搜尋名稱或 Email..."
+            placeholder="搜尋名稱或 Email…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
           />
         </div>
 
@@ -539,7 +616,7 @@ function UsersContent() {
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-slate-200"
+          className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="">所有角色</option>
           <option value="admin">管理員</option>
@@ -550,7 +627,7 @@ function UsersContent() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 dark:bg-slate-800 dark:text-slate-200"
+          className="px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 dark:bg-slate-800 dark:text-slate-200"
         >
           <option value="">所有狀態</option>
           <option value="active">啟用</option>
@@ -571,7 +648,7 @@ function UsersContent() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b" style={{ backgroundColor: '#FAFAFA' }}>
+              <tr className="border-b bg-muted">
                 <SortableHeader label="使用者" sortKey="name" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="Email" sortKey="email" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="角色" sortKey="role" currentSort={sort} onSort={handleSort} />
@@ -585,7 +662,7 @@ function UsersContent() {
               {loading ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400">
-                    載入中...
+                    載入中…
                   </td>
                 </tr>
               ) : sortedUsers.length === 0 ? (
@@ -659,6 +736,13 @@ function UsersContent() {
                             重設密碼
                           </button>
                         )}
+                        <button
+                          onClick={() => handleOpenDelete(user)}
+                          disabled={actionLoading === user.id}
+                          className="px-2.5 py-1.5 text-xs rounded-md border border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-50"
+                        >
+                          刪除
+                        </button>
                         <Link
                           href={`/admin/users/${user.id}`}
                           className="px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
@@ -676,7 +760,7 @@ function UsersContent() {
 
         {/* Pagination */}
         {!loading && total > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t" style={{ backgroundColor: '#FAFAFA' }}>
+          <div className="flex items-center justify-between px-4 py-3 border-t bg-muted">
             <span className="text-sm text-slate-500 dark:text-slate-400">
               第 {startIndex}-{endIndex} 筆，共 {total} 筆
             </span>
@@ -725,6 +809,96 @@ function UsersContent() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete User Confirmation Dialog */}
+      <Dialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDelete(null)
+            setDeleteConfirmInput('')
+            setDeleteTransferTo('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>刪除使用者</DialogTitle>
+            <DialogDescription>
+              此操作無法復原。將永久刪除「<strong className="text-red-600">{pendingDelete?.name || pendingDelete?.email}</strong>」的帳號及所有相關資料。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* 卡片轉移區塊 */}
+            {deleteCardCount === null ? (
+              <div className="text-sm text-slate-400">查詢卡片指派中...</div>
+            ) : deleteCardCount > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  此使用者目前被指派了 <strong className="text-red-600">{deleteCardCount}</strong> 張卡片。
+                  您可以選擇一位代理人來接手這些卡片：
+                </p>
+                <select
+                  value={deleteTransferTo}
+                  onChange={(e) => setDeleteTransferTo(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <option value="">不指定代理人（卡片將變為無人指派）</option>
+                  {deleteActiveUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.id}
+                    </option>
+                  ))}
+                </select>
+                {!deleteTransferTo && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    未選擇代理人，刪除後 {deleteCardCount} 張卡片將變為無人指派。
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                此使用者沒有被指派任何卡片。
+              </p>
+            )}
+
+            {/* 名稱確認 */}
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                請輸入「<strong>{pendingDelete?.name || pendingDelete?.email}</strong>」以確認刪除：
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                placeholder="輸入使用者名稱確認"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+              disabled={deleteLoading}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirmed}
+              disabled={
+                deleteLoading ||
+                deleteConfirmInput !== (pendingDelete?.name || pendingDelete?.email)
+              }
+            >
+              {deleteLoading ? '刪除中...' : '確認刪除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Reset Password Dialog */}
       <Dialog
         open={pendingResetPassword !== null}
@@ -758,7 +932,7 @@ function UsersContent() {
                     setResetError(null)
                   }}
                   placeholder="輸入新密碼"
-                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
                 />
                 <button
                   type="button"
@@ -793,7 +967,7 @@ function UsersContent() {
                   setResetError(null)
                 }}
                 placeholder="再次輸入新密碼"
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
               />
             </div>
 
@@ -843,8 +1017,8 @@ export default function AdminUsersPage() {
   return (
     <Suspense fallback={
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-6" style={{ color: '#0B1A14' }}>使用者管理</h1>
-        <div className="text-slate-400">載入中...</div>
+        <h1 className="text-2xl font-bold text-balance mb-6 text-brand-primary">使用者管理</h1>
+        <div className="text-slate-400">載入中…</div>
       </div>
     }>
       <UsersContent />

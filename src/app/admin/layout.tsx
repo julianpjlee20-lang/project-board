@@ -86,9 +86,9 @@ function CloseIcon({ className }: { className?: string }) {
   )
 }
 
-function ShieldIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+function ShieldIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286ZM12 15.75h.008v.008H12v-.008Z" />
     </svg>
   )
@@ -142,13 +142,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // 載入中
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F9F8F5' }}>
+      <div className="min-h-screen flex items-center justify-center bg-brand-bg">
         <div className="text-center">
-          <div
-            className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-3"
-            style={{ borderColor: '#0B1A14', borderTopColor: 'transparent' }}
-          />
-          <p className="text-sm" style={{ color: '#6B7280' }}>驗證權限中...</p>
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-text-secondary">驗證權限中...</p>
         </div>
       </div>
     )
@@ -157,13 +154,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // 未登入或非 admin
   if (!session?.user || session.user.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F9F8F5' }}>
+      <div className="min-h-screen flex items-center justify-center bg-brand-bg">
         <div className="text-center max-w-sm mx-auto px-4">
-          <ShieldIcon className="w-16 h-16 mx-auto mb-4" style={{ color: '#EF4444' }} />
-          <h1 className="text-2xl font-bold mb-2" style={{ color: '#0B1A14' }}>
+          <ShieldIcon className="w-16 h-16 mx-auto mb-4 text-priority-high" />
+          <h1 className="text-2xl font-bold mb-2 text-brand-primary">
             無存取權限
           </h1>
-          <p className="text-sm mb-6" style={{ color: '#6B7280' }}>
+          <p className="text-sm mb-6 text-text-secondary">
             {!session?.user
               ? '請先登入才能存取管理後台。'
               : '您的帳號不具備管理員權限。'}
@@ -172,16 +169,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {!session?.user ? (
               <Link
                 href="/login"
-                className="px-6 py-2.5 text-white rounded-lg font-medium hover:opacity-90 transition-opacity text-sm"
-                style={{ backgroundColor: '#0B1A14' }}
+                className="px-6 py-2.5 text-white rounded-lg font-medium hover:opacity-90 transition-opacity text-sm bg-brand-primary"
               >
                 前往登入
               </Link>
             ) : (
               <Link
                 href="/projects"
-                className="px-6 py-2.5 text-white rounded-lg font-medium hover:opacity-90 transition-opacity text-sm"
-                style={{ backgroundColor: '#0B1A14' }}
+                className="px-6 py-2.5 text-white rounded-lg font-medium hover:opacity-90 transition-opacity text-sm bg-brand-primary"
               >
                 回到看板
               </Link>
@@ -195,24 +190,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarContent = (
     <>
       {/* Sidebar Header */}
-      <div className="px-5 py-6 border-b" style={{ borderColor: '#E5E5E5' }}>
+      <div className="px-5 py-6 border-b border-border-default">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold" style={{ color: '#0B1A14' }}>
+          <h2 className="text-lg font-bold text-brand-primary">
             管理後台
           </h2>
           <div className="flex items-center gap-1">
             <Link
               href="/projects"
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors text-text-secondary"
               title="返回看板"
-              style={{ color: '#6B7280' }}
             >
               <BackIcon className="w-4.5 h-4.5" />
             </Link>
             {/* Mobile close button */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              className="md:hidden p-1 rounded-lg hover:bg-muted transition-colors"
               aria-label="關閉選單"
             >
               <CloseIcon className="w-5 h-5" />
@@ -229,21 +223,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                backgroundColor: active ? '#EEF6FF' : 'transparent',
-                color: active ? '#4EA7FC' : '#374151',
-              }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = '#F3F4F6'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }
-              }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                active
+                  ? 'bg-blue-50 text-blue-500 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-surface-subtle'
+              }`}
             >
               <item.icon className="w-5 h-5" />
               {item.label}
@@ -254,7 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Bottom section: user info + back link */}
       <div className="px-3 pb-4">
-        <div className="h-px mb-3" style={{ backgroundColor: '#E5E5E5' }} />
+        <div className="h-px mb-3 bg-border-default" />
 
         {/* Logged-in user */}
         {session.user.name && (
@@ -268,18 +252,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white"
-                  style={{ backgroundColor: '#4EA7FC' }}
-                >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium text-white bg-blue-400">
                   {session.user.name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: '#374151' }}>
+                <p className="text-sm font-medium truncate text-gray-700 dark:text-gray-300">
                   {session.user.name}
                 </p>
-                <p className="text-xs truncate" style={{ color: '#9CA3AF' }}>
+                <p className="text-xs truncate text-text-tertiary">
                   管理員
                 </p>
               </div>
@@ -289,14 +270,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <Link
           href="/projects"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          style={{ color: '#6B7280' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F3F4F6'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent'
-          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:bg-surface-subtle"
         >
           <BackIcon className="w-5 h-5" />
           返回看板
@@ -306,20 +280,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   )
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#F9F8F5' }}>
+    <div className="min-h-screen flex bg-brand-bg">
       {/* Mobile top bar */}
       <div className="fixed top-4 left-4 right-4 z-40 md:hidden flex items-center justify-between">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="p-2 rounded-lg bg-white shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          className="p-2 rounded-lg bg-surface-elevated shadow-md hover:bg-muted transition-colors"
           aria-label="開啟選單"
         >
           <MenuIcon className="w-5 h-5" />
         </button>
         <Link
           href="/projects"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white shadow-md text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          style={{ color: '#374151' }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-elevated shadow-md text-sm font-medium hover:bg-muted transition-colors text-gray-700 dark:text-gray-300"
         >
           <BackIcon className="w-4 h-4" />
           返回看板
@@ -336,18 +309,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar - Desktop */}
       <aside
-        className="hidden md:flex w-60 flex-shrink-0 flex-col border-r"
-        style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}
+        className="hidden md:flex w-60 flex-shrink-0 flex-col border-r bg-surface-elevated border-border-default"
       >
         {sidebarContent}
       </aside>
 
       {/* Sidebar - Mobile (slide-in) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col border-r shadow-xl transition-transform duration-200 ease-in-out md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col border-r border-border-default bg-surface-elevated shadow-xl transition-transform duration-200 ease-in-out md:hidden ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}
       >
         {sidebarContent}
       </aside>

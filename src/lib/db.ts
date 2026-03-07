@@ -22,6 +22,11 @@ function getPool() {
   return pool
 }
 
+/** 取得獨立 client（用於 transaction） - 呼叫者必須自行 release */
+export async function getClient() {
+  return getPool().connect()
+}
+
 export async function query(text: string, params?: (string | number | boolean | null | undefined)[]) {
   try {
     const p = getPool()

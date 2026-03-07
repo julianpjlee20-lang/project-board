@@ -29,27 +29,16 @@ interface NotificationPreferences {
   quiet_hours_end: number | null
 }
 
-// ─── Styles (aligned with existing pages) ──────────────────────────────────────
-
-const COLORS = {
-  bg: '#F9F8F5',
-  primary: '#0B1A14',
-  headerBg: '#0B1A14',
-  headerBorder: '#316745',
-  headerText: '#F9F8F5',
-  accent: '#F8B500',
-  green: '#316745',
-  white: '#FFFFFF',
-}
+// ─── Styles (Tailwind class strings) ─────────────────────────────────────────
 
 const inputClassName =
-  'w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm bg-white dark:bg-slate-800 dark:text-slate-200'
+  'w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm bg-white dark:bg-slate-800 dark:text-slate-200'
 
 const inputDisabledClassName =
   'w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed'
 
 const buttonPrimaryClassName =
-  'px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50'
+  'px-6 py-3 text-white rounded-lg font-medium bg-brand-primary hover:opacity-90 transition-opacity disabled:opacity-50'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,7 +72,7 @@ function FieldError({ message }: { message?: string }) {
 
 function SkeletonCard() {
   return (
-    <section className="rounded-xl border shadow-sm p-6 animate-pulse" style={{ backgroundColor: COLORS.white }}>
+    <section className="rounded-xl border shadow-sm p-6 animate-pulse bg-card">
       <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-24 mb-6" />
       <div className="space-y-4">
         <div>
@@ -101,8 +90,8 @@ function SkeletonCard() {
 }
 
 /** Password strength: 0=weak, 1=fair, 2=good, 3=strong */
-function getPasswordStrength(password: string): { score: number; label: string; color: string } {
-  if (!password) return { score: 0, label: '', color: '' }
+function getPasswordStrength(password: string): { score: number; label: string; colorClass: string } {
+  if (!password) return { score: 0, label: '', colorClass: '' }
 
   let score = 0
   if (password.length >= 6) score++
@@ -111,15 +100,18 @@ function getPasswordStrength(password: string): { score: number; label: string; 
   if (/[0-9]/.test(password)) score++
   if (/[^A-Za-z0-9]/.test(password)) score++
 
-  if (score <= 1) return { score: 1, label: '弱', color: '#EF4444' }
-  if (score <= 2) return { score: 2, label: '普通', color: '#F59E0B' }
-  if (score <= 3) return { score: 3, label: '良好', color: '#3B82F6' }
-  return { score: 4, label: '強', color: '#10B981' }
+  if (score <= 1) return { score: 1, label: '弱', colorClass: 'text-red-500 bg-red-500' }
+  if (score <= 2) return { score: 2, label: '普通', colorClass: 'text-amber-500 bg-amber-500' }
+  if (score <= 3) return { score: 3, label: '良好', colorClass: 'text-blue-500 bg-blue-500' }
+  return { score: 4, label: '強', colorClass: 'text-emerald-500 bg-emerald-500' }
 }
 
 function PasswordStrengthBar({ password }: { password: string }) {
-  const { score, label, color } = getPasswordStrength(password)
+  const { score, label, colorClass } = getPasswordStrength(password)
   if (!password) return null
+
+  // Extract text color only (first class)
+  const textColor = colorClass.split(' ')[0]
 
   return (
     <div className="mt-2">
@@ -127,14 +119,13 @@ function PasswordStrengthBar({ password }: { password: string }) {
         {[1, 2, 3, 4].map((level) => (
           <div
             key={level}
-            className="h-1.5 flex-1 rounded-full transition-colors duration-200"
-            style={{
-              backgroundColor: level <= score ? color : '#E2E8F0',
-            }}
+            className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${
+              level <= score ? colorClass.split(' ')[1] : 'bg-slate-200'
+            }`}
           />
         ))}
       </div>
-      <p className="text-xs" style={{ color }}>
+      <p className={`text-xs ${textColor}`}>
         密碼強度：{label}
       </p>
     </div>
@@ -165,27 +156,27 @@ function roleLabel(role: string): string {
 
 function AccountInfoCard({ profile }: { profile: UserProfile }) {
   return (
-    <section className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
-      <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
+    <section className="rounded-xl border shadow-sm p-6 bg-card">
+      <h2 className="text-lg font-semibold mb-4 text-brand-primary">
         帳號資訊
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-800">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Email</p>
-          <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+          <p className="text-sm font-medium text-brand-primary">
             {profile.email}
           </p>
         </div>
         <div className="px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-800">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">角色</p>
-          <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+          <p className="text-sm font-medium text-brand-primary">
             <span
-              className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{
-                backgroundColor: profile.role === 'admin' ? '#FEF3C7' : '#F1F5F9',
-                color: profile.role === 'admin' ? '#92400E' : '#64748B',
-              }}
+              className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium ${
+                profile.role === 'admin'
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+              }`}
             >
               {profile.role === 'admin' && (
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -198,13 +189,13 @@ function AccountInfoCard({ profile }: { profile: UserProfile }) {
         </div>
         <div className="px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-800">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">登入方式</p>
-          <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+          <p className="text-sm font-medium text-brand-primary">
             {profile.provider === 'discord' ? 'Discord' : profile.provider === 'line' ? 'LINE' : '帳號密碼'}
           </p>
         </div>
         <div className="px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-800">
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">加入日期</p>
-          <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+          <p className="text-sm font-medium text-brand-primary">
             {formatDate(profile.created_at)}
           </p>
         </div>
@@ -284,8 +275,8 @@ function ProfileCard({
   }
 
   return (
-    <section className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
-      <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
+    <section className="rounded-xl border shadow-sm p-6 bg-card">
+      <h2 className="text-lg font-semibold mb-4 text-brand-primary">
         個人資料
       </h2>
 
@@ -324,8 +315,7 @@ function ProfileCard({
             <div>
               <label
                 htmlFor="profile-name"
-                className="block text-sm font-medium mb-1"
-                style={{ color: COLORS.primary }}
+                className="block text-sm font-medium mb-1 text-brand-primary"
               >
                 顯示名稱
               </label>
@@ -346,8 +336,7 @@ function ProfileCard({
             <div>
               <label
                 htmlFor="profile-email"
-                className="block text-sm font-medium mb-1"
-                style={{ color: COLORS.primary }}
+                className="block text-sm font-medium mb-1 text-brand-primary"
               >
                 Email
               </label>
@@ -360,7 +349,7 @@ function ProfileCard({
                 className={inputDisabledClassName}
                 aria-label="Email（不可修改）"
               />
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500 dark:text-slate-500">Email 無法更改</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Email 無法更改</p>
             </div>
           </div>
         </div>
@@ -369,8 +358,7 @@ function ProfileCard({
         <div>
           <label
             htmlFor="profile-avatar"
-            className="block text-sm font-medium mb-1"
-            style={{ color: COLORS.primary }}
+            className="block text-sm font-medium mb-1 text-brand-primary"
           >
             頭像 URL
           </label>
@@ -391,7 +379,6 @@ function ProfileCard({
           type="submit"
           disabled={saving}
           className={buttonPrimaryClassName}
-          style={{ backgroundColor: COLORS.primary }}
         >
           {saving ? '儲存中...' : '儲存變更'}
         </button>
@@ -463,8 +450,8 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' | 'lin
   }
 
   return (
-    <section id="password" className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
-      <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
+    <section id="password" className="rounded-xl border shadow-sm p-6 bg-card">
+      <h2 className="text-lg font-semibold mb-4 text-brand-primary">
         更改密碼
       </h2>
 
@@ -489,8 +476,7 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' | 'lin
           <div>
             <label
               htmlFor="current-password"
-              className="block text-sm font-medium mb-1"
-              style={{ color: COLORS.primary }}
+              className="block text-sm font-medium mb-1 text-brand-primary"
             >
               目前密碼
             </label>
@@ -511,8 +497,7 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' | 'lin
           <div>
             <label
               htmlFor="new-password"
-              className="block text-sm font-medium mb-1"
-              style={{ color: COLORS.primary }}
+              className="block text-sm font-medium mb-1 text-brand-primary"
             >
               新密碼
             </label>
@@ -536,8 +521,7 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' | 'lin
           <div>
             <label
               htmlFor="confirm-password"
-              className="block text-sm font-medium mb-1"
-              style={{ color: COLORS.primary }}
+              className="block text-sm font-medium mb-1 text-brand-primary"
             >
               確認新密碼
             </label>
@@ -566,7 +550,6 @@ function PasswordCard({ provider }: { provider: 'credentials' | 'discord' | 'lin
             type="submit"
             disabled={saving}
             className={buttonPrimaryClassName}
-            style={{ backgroundColor: COLORS.primary }}
           >
             {saving ? '更新中...' : '更改密碼'}
           </button>
@@ -622,8 +605,8 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
   }
 
   return (
-    <section className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
-      <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
+    <section className="rounded-xl border shadow-sm p-6 bg-card">
+      <h2 className="text-lg font-semibold mb-4 text-brand-primary">
         已連結帳號
       </h2>
 
@@ -645,16 +628,13 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
               />
             </svg>
             <div>
-              <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+              <p className="text-sm font-medium text-brand-primary">
                 Email 帳號
               </p>
               <p className="text-xs text-slate-500">{profile.email}</p>
             </div>
           </div>
-          <span
-            className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0"
-            style={{ backgroundColor: '#dcfce7', color: '#166534' }}
-          >
+          <span className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
             已連結
           </span>
         </div>
@@ -666,7 +646,7 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
               <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
             </svg>
             <div>
-              <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+              <p className="text-sm font-medium text-brand-primary">
                 Discord
               </p>
               {profile.discord_connected && (
@@ -675,17 +655,11 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
             </div>
           </div>
           {profile.discord_connected ? (
-            <span
-              className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0"
-              style={{ backgroundColor: '#dcfce7', color: '#166534' }}
-            >
+            <span className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
               已連結
             </span>
           ) : (
-            <span
-              className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0"
-              style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}
-            >
+            <span className="text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               未連結
             </span>
           )}
@@ -698,7 +672,7 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
               <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
             </svg>
             <div>
-              <p className="text-sm font-medium" style={{ color: COLORS.primary }}>
+              <p className="text-sm font-medium text-brand-primary">
                 LINE
               </p>
               {profile.line_connected && profile.line_display_name && (
@@ -708,17 +682,13 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
           </div>
           {profile.line_connected ? (
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span
-                className="text-xs px-2 py-1 rounded-full font-medium"
-                style={{ backgroundColor: '#dcfce7', color: '#166534' }}
-              >
+              <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                 已連結
               </span>
               <button
                 onClick={handleUnbindLine}
                 disabled={unbinding}
-                className="text-xs px-2 py-1 rounded-full font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
-                style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+                className="text-xs px-2 py-1 rounded-full font-medium bg-red-100 text-red-800 hover:bg-red-200 transition-colors disabled:opacity-50"
               >
                 {unbinding ? '解除中...' : '解除綁定'}
               </button>
@@ -726,8 +696,7 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
           ) : (
             <a
               href="/api/auth/line-bind"
-              className="text-xs px-3 py-1.5 rounded-full font-medium text-white hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: '#06C755' }}
+              className="text-xs px-3 py-1.5 rounded-full font-medium text-white bg-[#06C755] hover:opacity-80 transition-opacity"
             >
               連結 LINE
             </a>
@@ -820,8 +789,8 @@ function NotificationCard() {
   }
 
   return (
-    <section className="rounded-xl border shadow-sm p-6" style={{ backgroundColor: COLORS.white }}>
-      <h2 className="text-lg font-semibold mb-4" style={{ color: COLORS.primary }}>
+    <section className="rounded-xl border shadow-sm p-6 bg-card">
+      <h2 className="text-lg font-semibold mb-4 text-brand-primary">
         通知偏好
       </h2>
 
@@ -830,7 +799,7 @@ function NotificationCard() {
         {toggleOptions.map(({ key, label, description }) => (
           <div key={key} className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <span className="text-sm font-medium block" style={{ color: COLORS.primary }}>
+              <span className="text-sm font-medium block text-brand-primary">
                 {label}
               </span>
               <span className="text-xs text-slate-400 dark:text-slate-500">{description}</span>
@@ -841,7 +810,7 @@ function NotificationCard() {
               aria-checked={prefs[key]}
               aria-label={label}
               onClick={() => handleToggle(key)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 ${
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ${
                 prefs[key] ? 'bg-green-600' : 'bg-slate-300'
               }`}
             >
@@ -856,7 +825,7 @@ function NotificationCard() {
 
         {/* Quiet hours */}
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
-          <p className="text-sm font-medium mb-1" style={{ color: COLORS.primary }}>
+          <p className="text-sm font-medium mb-1 text-brand-primary">
             靜音時段
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
@@ -876,7 +845,7 @@ function NotificationCard() {
                     quiet_hours_start: e.target.value === '' ? null : Number(e.target.value),
                   }))
                 }
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm bg-white dark:bg-slate-800 dark:text-slate-200"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm bg-white dark:bg-slate-800 dark:text-slate-200"
               >
                 <option value="">未設定</option>
                 {hoursOptions.map((h) => (
@@ -900,7 +869,7 @@ function NotificationCard() {
                     quiet_hours_end: e.target.value === '' ? null : Number(e.target.value),
                   }))
                 }
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm bg-white dark:bg-slate-800 dark:text-slate-200"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm bg-white dark:bg-slate-800 dark:text-slate-200"
               >
                 <option value="">未設定</option>
                 {hoursOptions.map((h) => (
@@ -918,7 +887,6 @@ function NotificationCard() {
           onClick={handleSave}
           disabled={saving}
           className={buttonPrimaryClassName}
-          style={{ backgroundColor: COLORS.primary }}
         >
           {saving ? '儲存中...' : '儲存'}
         </button>
@@ -963,20 +931,13 @@ export default function SettingsPage() {
   }, [fetchProfile])
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: COLORS.bg }}>
+    <div id="main-content" className="min-h-screen bg-brand-bg">
       {/* Header */}
-      <header
-        className="border-b"
-        style={{
-          backgroundColor: COLORS.headerBg,
-          borderColor: COLORS.headerBorder,
-        }}
-      >
+      <header className="border-b bg-brand-primary border-brand-green">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <Link
             href="/projects"
-            className="inline-flex items-center gap-1 text-sm mb-4 hover:opacity-80 transition-opacity"
-            style={{ color: COLORS.headerText, opacity: 0.7 }}
+            className="inline-flex items-center gap-1 text-sm mb-4 text-brand-bg/70 hover:text-brand-bg/90 transition-colors"
           >
             <svg
               className="w-4 h-4"
@@ -989,19 +950,10 @@ export default function SettingsPage() {
             </svg>
             返回專案列表
           </Link>
-          <h1
-            className="text-2xl sm:text-3xl font-bold"
-            style={{
-              color: COLORS.headerText,
-              letterSpacing: '-0.03em',
-            }}
-          >
+          <h1 className="text-2xl sm:text-3xl font-bold text-brand-bg tracking-tight">
             帳號設定
           </h1>
-          <p
-            className="mt-1 sm:mt-2 text-sm sm:text-base"
-            style={{ color: COLORS.headerText, opacity: 0.7 }}
-          >
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-brand-bg/70">
             管理你的個人資料和偏好設定
           </p>
         </div>

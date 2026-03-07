@@ -164,6 +164,23 @@ export async function PUT(
       subtask.assignee_name = null
     }
 
+    // 滾動截止日：當子任務完成狀態改變時，更新母卡截止日
+    if (is_completed !== undefined) {
+      const cardResult = await query(
+        'SELECT rolling_due_date FROM cards WHERE id = $1',
+        [cardId]
+      )
+
+      if (cardResult[0]?.rolling_due_date) {
+        await query(`
+          UPDATE cards SET due_date = (
+            SELECT MIN(due_date) FROM subtasks
+            WHERE card_id = $1 AND is_completed = false AND due_date IS NOT NULL
+          ) WHERE id = $1
+        `, [cardId])
+      }
+    }
+
     // 自動狀態轉換
     let autoTransition = null
     if (is_completed === true) {

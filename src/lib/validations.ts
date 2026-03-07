@@ -328,6 +328,49 @@ export const notificationSettingsSchema = z.object({
 })
 
 // ========================================
+// Template (Recurring Task) API
+// ========================================
+
+/** POST /api/templates - 建立定期任務模板 */
+export const createTemplateSchema = z.object({
+  name: nonEmptyString.max(200),
+  title_pattern: nonEmptyString.max(200),
+  description: z.union([z.string().max(5000), z.literal(''), z.null()]).optional(),
+  priority: prioritySchema,
+  target_column_id: z.union([uuidSchema, z.null()]).optional(),
+  rolling_due_date: z.boolean().optional(),
+  subtasks: z.array(z.object({
+    title: nonEmptyString.max(200),
+    position: z.number().int().min(0),
+    day_of_month: z.number().int().min(1).max(31).nullable().optional(),
+    assignee_id: z.union([uuidSchema, z.null()]).optional(),
+  })).optional(),
+})
+
+/** PUT /api/templates/[id] - 更新定期任務模板 */
+export const updateTemplateSchema = z.object({
+  name: nonEmptyString.max(200).optional(),
+  title_pattern: nonEmptyString.max(200).optional(),
+  description: z.union([z.string().max(5000), z.literal(''), z.null()]).optional(),
+  priority: prioritySchema,
+  target_column_id: uuidSchema.optional(),
+  rolling_due_date: z.boolean().optional(),
+  subtasks: z.array(z.object({
+    id: uuidSchema.optional(),
+    title: nonEmptyString.max(200),
+    position: z.number().int().min(0),
+    day_of_month: z.number().int().min(1).max(31).nullable().optional(),
+    assignee_id: z.union([uuidSchema, z.null()]).optional(),
+  })).optional(),
+})
+
+/** POST /api/templates/[id]/generate - 從模板產生任務 */
+export const generateFromTemplateSchema = z.object({
+  start_month: z.string().regex(/^\d{4}-\d{2}$/, { message: '月份格式必須為 YYYY-MM' }),
+  count: z.number().int().min(1).max(24, { message: '產生數量必須在 1-24 之間' }),
+})
+
+// ========================================
 // 通用驗證輔助函數
 // ========================================
 

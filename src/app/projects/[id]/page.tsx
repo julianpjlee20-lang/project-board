@@ -12,12 +12,13 @@ import type { Card, Column, Project, ViewType, Phase } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { CardModal, SlideInPane } from './card-detail'
+import { RecurringTasksPanel } from './recurring-tasks'
 
-// Priority color mapping
-const PRIORITY_COLORS: Record<Card['priority'], string> = {
-  high: '#EF4444',
-  medium: '#F59E0B',
-  low: '#10B981',
+// Priority color mapping (Tailwind border-left classes)
+const PRIORITY_BORDER_CLASSES: Record<Card['priority'], string> = {
+  high: 'border-l-priority-high',
+  medium: 'border-l-priority-medium',
+  low: 'border-l-emerald-500',
 }
 
 const PRIORITY_LABELS: Record<Card['priority'], string> = {
@@ -30,9 +31,10 @@ const PRIORITY_LABELS: Record<Card['priority'], string> = {
 // Kept for potential reuse in Gantt/other views — currently unused in Board CardItem
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MiniTimelineBar({ card }: { card: Card }) {
-  const dueDate = card.due_date ? new Date(card.due_date.split('T')[0] + 'T00:00:00') : null
-  const plannedDate = card.planned_completion_date ? new Date(card.planned_completion_date.split('T')[0] + 'T00:00:00') : null
-  const actualDate = card.actual_completion_date ? new Date(card.actual_completion_date.split('T')[0] + 'T00:00:00') : null
+  const parseLocal = (s: string) => { const d = new Date(s); d.setHours(0, 0, 0, 0); return d }
+  const dueDate = card.due_date ? parseLocal(card.due_date) : null
+  const plannedDate = card.planned_completion_date ? parseLocal(card.planned_completion_date) : null
+  const actualDate = card.actual_completion_date ? parseLocal(card.actual_completion_date) : null
 
   // Need at least 2 dates to display
   const dateCount = [dueDate, plannedDate, actualDate].filter(Boolean).length
@@ -54,25 +56,25 @@ function MiniTimelineBar({ card }: { card: Card }) {
   if (actualDate && dueDate) {
     if (actualDate <= dueDate) {
       // On time
-      segments.push({ left: toPercent(startDate), width: toPercent(actualDate) - toPercent(startDate), color: '#60A5FA' })
-      segments.push({ left: toPercent(actualDate), width: toPercent(dueDate) - toPercent(actualDate), color: '#34D399' })
+      segments.push({ left: toPercent(startDate), width: toPercent(actualDate) - toPercent(startDate), color: 'bg-blue-400' })
+      segments.push({ left: toPercent(actualDate), width: toPercent(dueDate) - toPercent(actualDate), color: 'bg-emerald-400' })
     } else {
       // Late
-      segments.push({ left: toPercent(startDate), width: toPercent(dueDate) - toPercent(startDate), color: '#60A5FA' })
-      segments.push({ left: toPercent(dueDate), width: toPercent(actualDate) - toPercent(dueDate), color: '#F87171' })
+      segments.push({ left: toPercent(startDate), width: toPercent(dueDate) - toPercent(startDate), color: 'bg-blue-400' })
+      segments.push({ left: toPercent(dueDate), width: toPercent(actualDate) - toPercent(dueDate), color: 'bg-red-400' })
     }
   } else if (plannedDate && dueDate) {
     const progressEnd = Math.min(toPercent(today), toPercent(plannedDate))
-    segments.push({ left: toPercent(startDate), width: progressEnd - toPercent(startDate), color: '#60A5FA' })
+    segments.push({ left: toPercent(startDate), width: progressEnd - toPercent(startDate), color: 'bg-blue-400' })
     if (today < plannedDate) {
-      segments.push({ left: toPercent(today), width: toPercent(plannedDate) - toPercent(today), color: '#E2E8F0' })
+      segments.push({ left: toPercent(today), width: toPercent(plannedDate) - toPercent(today), color: 'bg-slate-200' })
     }
   } else if (plannedDate && actualDate) {
     if (actualDate <= plannedDate) {
-      segments.push({ left: toPercent(startDate), width: toPercent(actualDate) - toPercent(startDate), color: '#34D399' })
+      segments.push({ left: toPercent(startDate), width: toPercent(actualDate) - toPercent(startDate), color: 'bg-emerald-400' })
     } else {
-      segments.push({ left: toPercent(startDate), width: toPercent(plannedDate) - toPercent(startDate), color: '#60A5FA' })
-      segments.push({ left: toPercent(plannedDate), width: toPercent(actualDate) - toPercent(plannedDate), color: '#F87171' })
+      segments.push({ left: toPercent(startDate), width: toPercent(plannedDate) - toPercent(startDate), color: 'bg-blue-400' })
+      segments.push({ left: toPercent(plannedDate), width: toPercent(actualDate) - toPercent(plannedDate), color: 'bg-red-400' })
     }
   }
 
@@ -84,18 +86,18 @@ function MiniTimelineBar({ card }: { card: Card }) {
 
   return (
     <div
-      className="mt-1.5 relative w-full h-1 hover:h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden transition-all cursor-default"
+      className="mt-1.5 relative w-full h-1 hover:h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden transition-[height] cursor-default"
       title={tooltipParts.join(' | ')}
     >
       {segments.map((seg, i) => (
         <div
           key={i}
-          className="absolute top-0 h-full"
+          className={`absolute top-0 h-full ${seg.color} ${
+            i === 0 ? 'rounded-l-full' : ''
+          } ${i === segments.length - 1 ? 'rounded-r-full' : ''}`}
           style={{
             left: `${seg.left}%`,
             width: `${Math.max(seg.width, 1)}%`,
-            backgroundColor: seg.color,
-            borderRadius: i === 0 ? '9999px 0 0 9999px' : i === segments.length - 1 ? '0 9999px 9999px 0' : '0',
           }}
         />
       ))}
@@ -112,7 +114,7 @@ function MiniTimelineBar({ card }: { card: Card }) {
 
 // Draggable Card Component
 function CardItem({ card, index, onClick, phases }: { card: Card, index: number, onClick: () => void, phases: Phase[] }) {
-  const priorityColor = PRIORITY_COLORS[card.priority] || PRIORITY_COLORS.medium
+  const priorityBorderClass = PRIORITY_BORDER_CLASSES[card.priority] || PRIORITY_BORDER_CLASSES.medium
   const phase = card.phase_id ? phases.find(p => p.id === card.phase_id) : null
   const completedSubtasks = card.subtasks?.filter(s => s.is_completed).length || 0
   const totalSubtasks = card.subtasks?.length || 0
@@ -130,20 +132,19 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
             e.stopPropagation()
             onClick()
           }}
-          className={`bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 cursor-pointer ${
+          className={`bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 cursor-pointer ${priorityBorderClass} ${
             snapshot.isDragging ? 'shadow-lg rotate-2' : ''
           }`}
           style={{
             ...provided.draggableProps.style,
             opacity: snapshot.isDragging ? 0.9 : 1,
-            borderLeftColor: priorityColor,
           }}
         >
           {/* Phase badge */}
           {phase && (
             <div className="mb-1.5">
               <span
-                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
+                className="text-xs px-1.5 py-0.5 rounded-full font-medium text-white"
                 style={{ backgroundColor: phase.color }}
               >
                 {phase.name}
@@ -154,9 +155,9 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
           {/* Card number + Title */}
           <div className="flex items-start gap-1.5">
             {card.card_number != null && (
-              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-[2px] flex-shrink-0">#{card.card_number}</span>
+              <span className="text-xs font-mono text-slate-400 dark:text-slate-500 mt-[2px] flex-shrink-0">#{card.card_number}</span>
             )}
-            <p className="font-medium text-sm leading-snug">{card.title}</p>
+            <p className="font-medium text-sm leading-snug line-clamp-2">{card.title}</p>
           </div>
 
           {/* Bottom row: assignee avatar (left) + subtask count (right) */}
@@ -187,11 +188,12 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
   )
 }
 
-function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
+function ColumnDroppable({ column, phases, onCardClick, onAddCard, selectedPhase }: {
   column: Column,
   phases: Phase[],
   onCardClick: (card: Card) => void,
-  onAddCard: (columnId: string, title: string) => void,
+  onAddCard: (columnId: string, title: string, phaseId?: string | null) => void,
+  selectedPhase?: string | null,
 }) {
   const [newCardTitle, setNewCardTitle] = useState('')
   const [showAddCard, setShowAddCard] = useState(false)
@@ -199,7 +201,7 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
   const handleAddCard = (e: React.FormEvent) => {
     e.preventDefault()
     if (newCardTitle.trim()) {
-      onAddCard(column.id, newCardTitle.trim())
+      onAddCard(column.id, newCardTitle.trim(), selectedPhase)
       setNewCardTitle('')
       setShowAddCard(false)
     }
@@ -251,8 +253,8 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard }: {
               <input
                 value={newCardTitle}
                 onChange={e => setNewCardTitle(e.target.value)}
-                placeholder="卡片標題..."
-                className="w-full px-3 py-2.5 max-sm:py-3 text-base border rounded mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
+                placeholder="卡片標題…"
+                className="w-full px-3 py-2.5 max-sm:py-3 text-base border rounded mb-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 bg-white dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
                 autoFocus
               />
               <div className="flex gap-2">
@@ -298,7 +300,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
       {/* "All" button */}
       <button
         onClick={() => onSelect(null)}
-        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 min-h-[36px] ${
+        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 min-h-[36px] ${
           selectedPhase === null
             ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-sm'
             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -312,7 +314,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
         <div key={phase.id} className="relative group flex items-center flex-shrink-0">
           <button
             onClick={() => onSelect(phase.id)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 min-h-[36px] ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 min-h-[36px] ${
               selectedPhase === phase.id
                 ? 'text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-300 hover:opacity-80'
@@ -348,7 +350,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
           <input
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            placeholder="階段名稱..."
+            placeholder="階段名稱…"
             className="px-2 py-1 text-sm border rounded w-28 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100"
             autoFocus
           />
@@ -358,7 +360,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
                 key={c}
                 type="button"
                 onClick={() => setNewColor(c)}
-                className={`w-5 h-5 rounded-full border-2 transition-all ${newColor === c ? 'border-slate-800 dark:border-slate-200 scale-110' : 'border-transparent'}`}
+                className={`w-5 h-5 rounded-full border-2 transition-transform ${newColor === c ? 'border-slate-800 dark:border-slate-200 scale-110' : 'border-transparent'}`}
                 style={{ backgroundColor: c }}
               />
             ))}
@@ -369,7 +371,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
       ) : (
         <button
           onClick={() => setShowAdd(true)}
-          className="px-3 py-1.5 rounded-full text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+          className="px-3 py-1.5 rounded-full text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
         >
           + 新增階段
         </button>
@@ -390,7 +392,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
               <select
                 value={targetPhaseId}
                 onChange={(e) => setTargetPhaseId(e.target.value)}
-                className="mt-2 w-full rounded-md border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-2 w-full rounded-md border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus-visible:border-blue-500 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
               >
                 <option value="">不指定階段（移除標記）</option>
                 {phases.filter(p => p.id !== pendingDeletePhase.id).map(p => (
@@ -435,6 +437,9 @@ export default function BoardPage() {
   // Phase state
   const [phases, setPhases] = useState<Phase[]>([])
   const [selectedPhase, setSelectedPhase] = useState<string | null>(null)
+
+  // Recurring tasks panel
+  const [showRecurringPanel, setShowRecurringPanel] = useState(false)
 
   const viewTabs = [
     { id: 'board' as ViewType, label: '看板', icon: '📋' },
@@ -531,12 +536,12 @@ export default function BoardPage() {
     }
   }
 
-  async function addCard(columnId: string, title: string) {
+  async function addCard(columnId: string, title: string, phaseId?: string | null) {
     try {
       const res = await fetch('/api/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ column_id: columnId, title })
+        body: JSON.stringify({ column_id: columnId, title, phase_id: phaseId || undefined })
       })
 
       if (!res.ok) {
@@ -620,7 +625,7 @@ export default function BoardPage() {
     // Auto-fill actual_completion_date when dragging to last column (Done)
     const isLastColumn = columns[columns.length - 1]?.id === destination.droppableId
     const wasLastColumn = columns[columns.length - 1]?.id === source.droppableId
-    const todayStr = new Date().toISOString().split('T')[0]
+    const now = new Date(); const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
     if (source.droppableId !== destination.droppableId) {
       if (isLastColumn && !movedCard.actual_completion_date) {
@@ -687,7 +692,7 @@ export default function BoardPage() {
   }
 
   if (loading) {
-    return <div className="p-8">載入中...</div>
+    return <div className="p-8">載入中…</div>
   }
 
   if (!project) {
@@ -696,7 +701,7 @@ export default function BoardPage() {
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="h-screen flex flex-col">
+      <div id="main-content" className="h-screen flex flex-col">
         <header className="border-b dark:border-slate-700 px-6 max-sm:px-3 py-4 max-sm:py-3 flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900">
           <h1 className="text-xl max-sm:text-lg font-bold truncate max-w-[50vw]">{project.name}</h1>
           <div className="flex items-center gap-2 max-sm:gap-1">
@@ -710,7 +715,7 @@ export default function BoardPage() {
               <button
                 key={tab.id}
                 onClick={() => setCurrentView(tab.id)}
-                className={`px-3 py-1.5 max-sm:px-2 max-sm:py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap max-sm:flex-1 min-h-[36px] ${
+                className={`px-3 py-1.5 max-sm:px-2 max-sm:py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap max-sm:flex-1 min-h-[36px] ${
                   currentView === tab.id
                     ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-slate-100'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -722,6 +727,13 @@ export default function BoardPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setShowRecurringPanel(true)}
+            className="px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors min-h-[36px] whitespace-nowrap flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <span className="max-sm:hidden">定期任務</span>
+          </button>
         </header>
 
         {/* Phase Filter Bar */}
@@ -733,7 +745,7 @@ export default function BoardPage() {
           onDeletePhase={deletePhase}
         />
 
-        <div className={`flex-1 overflow-auto p-6 max-sm:p-3 bg-slate-50 dark:bg-slate-800 transition-all duration-300 ${
+        <div className={`flex-1 overflow-auto p-6 max-sm:p-3 bg-slate-50 dark:bg-slate-800 transition-[padding] duration-300 ${
           selectedCard && currentView === 'board' ? 'md:mr-[420px]' : ''
         }`}>
           {currentView === 'board' && (
@@ -745,6 +757,7 @@ export default function BoardPage() {
                     phases={phases}
                     onCardClick={setSelectedCard}
                     onAddCard={addCard}
+                    selectedPhase={selectedPhase}
                   />
                 </div>
               ))}
@@ -783,6 +796,14 @@ export default function BoardPage() {
           />
         )}
       </div>
+
+      <RecurringTasksPanel
+        projectId={projectId}
+        columns={columns}
+        isOpen={showRecurringPanel}
+        onClose={() => setShowRecurringPanel(false)}
+        onRefreshBoard={fetchBoard}
+      />
     </DragDropContext>
   )
 }
@@ -801,7 +822,7 @@ function AddColumnForm({ onAdd }: { onAdd: (name: string) => void }) {
   return (
     <div className="w-72 max-sm:w-full flex-shrink-0">
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="新欄位名稱..." className="flex h-10 max-sm:h-12 w-full rounded-md border dark:border-slate-700 px-3 py-2 text-base bg-white dark:bg-slate-900 dark:text-slate-100" />
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="新欄位名稱…" className="flex h-10 max-sm:h-12 w-full rounded-md border dark:border-slate-700 px-3 py-2 text-base bg-white dark:bg-slate-900 dark:text-slate-100" />
         <button type="submit" className="px-4 py-2 bg-slate-100 dark:bg-slate-700 dark:text-slate-200 rounded min-h-[44px] min-w-[44px]">+</button>
       </form>
     </div>

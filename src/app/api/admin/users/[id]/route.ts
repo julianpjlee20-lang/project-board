@@ -77,6 +77,118 @@ export async function GET(
   }
 }
 
+// DELETE /api/admin/users/[id]
+// Body (optional): { transfer_to?: string } — 將卡片轉移給代理人
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const currentUser = await requireAdmin()
+    const { id: targetId } = await params
+
+    // 安全約束 1：不可刪除自己
+    if (targetId === currentUser.id) {
+      return NextResponse.json(
+        { error: "無法刪除自己的帳號" },
+        { status: 403 }
+      )
+    }
+
+    // 確認目標使用者存在
+    const targetRows = await query(
+      "SELECT id, role, is_active, name, email FROM profiles WHERE id = $1",
+      [targetId]
+    )
+    if (targetRows.length === 0) {
+      return NextResponse.json({ error: "使用者不存在" }, { status: 404 })
+    }
+
+    const target = targetRows[0]
+
+    // 安全約束 2：不可刪除最後一個 admin
+    if (target.role === "admin" && target.is_active) {
+      const adminCountRows = await query(
+        "SELECT COUNT(*) FROM profiles WHERE role = $1 AND is_active = true AND id != $2",
+        ["admin", targetId]
+      )
+      if (Number(adminCountRows[0].count) === 0) {
+        return NextResponse.json(
+          { error: "無法刪除最後一個管理員" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // 解析 body（可能為空）
+    let transferTo: string | undefined
+    try {
+      const body = await request.json()
+      transferTo = body.transfer_to
+    } catch {
+      // body 為空或非 JSON，不轉移
+    }
+
+    // 若指定代理人，驗證代理人存在且為 active
+    let transferredCount = 0
+    if (transferTo) {
+      if (transferTo === targetId) {
+        return NextResponse.json(
+          { error: "代理人不可為被刪除的使用者" },
+          { status: 400 }
+        )
+      }
+
+      const agentRows = await query(
+        "SELECT id, name FROM profiles WHERE id = $1 AND is_active = true",
+        [transferTo]
+      )
+      if (agentRows.length === 0) {
+        return NextResponse.json(
+          { error: "代理人不存在或已停用" },
+          { status: 400 }
+        )
+      }
+
+      // 計算要轉移的卡片數量
+      const countRows = await query(
+        "SELECT COUNT(*) FROM card_assignees WHERE user_id = $1",
+        [targetId]
+      )
+      transferredCount = Number(countRows[0].count)
+
+      // 轉移卡片指派（避免重複：若代理人已指派同卡片則刪除舊的）
+      await query(
+        `DELETE FROM card_assignees
+         WHERE user_id = $1
+           AND card_id IN (SELECT card_id FROM card_assignees WHERE user_id = $2)`,
+        [transferTo, targetId]
+      )
+      await query(
+        "UPDATE card_assignees SET user_id = $1 WHERE user_id = $2",
+        [transferTo, targetId]
+      )
+    } else {
+      await query("DELETE FROM card_assignees WHERE user_id = $1", [targetId])
+    }
+
+    // 刪除其餘關聯資料，再刪除使用者
+    await query("DELETE FROM notification_dismissed WHERE user_id = $1", [targetId])
+    await query("DELETE FROM profiles WHERE id = $1", [targetId])
+
+    return NextResponse.json({
+      message: `已刪除使用者「${target.name || target.email}」`,
+      transferred_count: transferredCount,
+    })
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    console.error("[Admin Users/:id] DELETE error:", error)
+    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 })
+  }
+}
+
 // PATCH /api/admin/users/[id]
 export async function PATCH(
   request: NextRequest,

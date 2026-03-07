@@ -51,7 +51,7 @@ const DATE_TYPE_STYLES: Record<DateEntryType, { label: string }> = {
 // ──────────────────────────────────────────────
 
 function parseDueDate(due: string): Date {
-  return new Date(due.split('T')[0] + 'T00:00:00')
+  const d = new Date(due); d.setHours(0, 0, 0, 0); return d
 }
 
 function getMonthData(year: number, month: number) {
@@ -122,16 +122,19 @@ function MonthView({ year, month, cards, onCardClick }: {
         return (
           <div
             key={day}
-            className={`h-28 border rounded p-1 overflow-hidden ${isToday ? 'bg-blue-50 border-blue-200' : ''}`}
+            className={`h-28 border dark:border-slate-700 rounded p-1 overflow-hidden ${isToday ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700' : ''}`}
           >
-            <div className={`text-sm mb-1 ${isToday ? 'font-bold text-blue-600' : 'text-slate-500'}`}>
+            <div className={`text-sm mb-1 ${isToday ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
               {day}
             </div>
             {cardGroups.slice(0, 3).map(({ card, types }) => (
               <div
                 key={`${card.id}-${types.join('-')}`}
+                tabIndex={0}
+                role="button"
                 onClick={() => onCardClick(card)}
-                className="text-xs p-0.5 mb-0.5 rounded truncate cursor-pointer hover:opacity-80 flex items-center gap-1"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardClick(card); } }}
+                className="text-xs p-0.5 mb-0.5 rounded truncate cursor-pointer hover:opacity-80 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{ backgroundColor: card.columnColor + '20' }}
               >
                 <span className="flex items-center gap-0.5 flex-shrink-0">
@@ -152,7 +155,7 @@ function MonthView({ year, month, cards, onCardClick }: {
               </div>
             ))}
             {cardGroups.length > 3 && (
-              <div className="text-[10px] text-slate-400 text-center">+{cardGroups.length - 3}</div>
+              <div className="text-xs text-slate-400 text-center">+{cardGroups.length - 3}</div>
             )}
           </div>
         )
@@ -205,7 +208,7 @@ function MiniMonth({ year, month, cards, onCardClick }: {
       <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">{month + 1}月</h4>
       <div className="grid grid-cols-7 gap-0.5 text-center">
         {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-          <div key={d} className="text-[10px] font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
+          <div key={d} className="text-xs font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
         ))}
         {blanks.map(i => <div key={`b-${i}`} className="h-8" />)}
         {days.map(day => {
@@ -230,7 +233,7 @@ function MiniMonth({ year, month, cards, onCardClick }: {
               onMouseLeave={() => setHoveredDay(null)}
             >
               <span className={`text-xs leading-none ${
-                isToday ? 'bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold' : 'text-slate-600'
+                isToday ? 'bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center font-bold' : 'text-slate-600 dark:text-slate-300'
               }`}>
                 {day}
               </span>
@@ -275,10 +278,10 @@ function MiniMonth({ year, month, cards, onCardClick }: {
 // ──────────────────────────────────────────────
 
 function heatColor(count: number): string {
-  if (count === 0) return 'bg-slate-100'
-  if (count === 1) return 'bg-blue-200'
-  if (count === 2) return 'bg-blue-300'
-  return 'bg-blue-500'
+  if (count === 0) return 'bg-slate-100 dark:bg-slate-800'
+  if (count === 1) return 'bg-blue-200 dark:bg-blue-900/60'
+  if (count === 2) return 'bg-blue-300 dark:bg-blue-800/70'
+  return 'bg-blue-500 dark:bg-blue-600'
 }
 
 function YearView({ year, cards, onCardClick, onMonthClick }: {
@@ -502,7 +505,7 @@ export function GlobalCalendarView({
             onClick={navigateToday}
             aria-label="回到今天"
             className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              isCurrentPeriod ? 'text-slate-300 cursor-default' : 'text-slate-600 hover:bg-slate-100'
+              isCurrentPeriod ? 'text-slate-300 dark:text-slate-600 cursor-default' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
             disabled={isCurrentPeriod}
           >
@@ -569,7 +572,7 @@ export function GlobalCalendarView({
               <button
                 key={opt.id}
                 onClick={() => setCalendarMode(opt.id)}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                   calendarMode === opt.id ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >

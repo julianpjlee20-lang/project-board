@@ -72,8 +72,7 @@ export default function UserNav() {
     return (
       <Link
         href="/login"
-        className="px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:opacity-90"
-        style={{ backgroundColor: '#F8B500', color: '#0B1A14' }}
+        className="px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:opacity-90 bg-brand-accent text-brand-primary"
       >
         登入
       </Link>
@@ -109,8 +108,7 @@ export default function UserNav() {
         </svg>
         {notificationCount > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1"
-            style={{ backgroundColor: '#DC2626' }}
+            className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white px-1 bg-destructive"
           >
             {notificationCount > 99 ? '99+' : notificationCount}
           </span>
@@ -122,7 +120,7 @@ export default function UserNav() {
         {/* 頭像按鈕 */}
         <button
           onClick={() => setOpen(!open)}
-          className="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 transition-all"
+          className="flex items-center gap-2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 transition-shadow"
           aria-expanded={open}
           aria-haspopup="true"
           aria-label="使用者選單"
@@ -135,8 +133,7 @@ export default function UserNav() {
             />
           ) : (
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white shadow-sm"
-              style={{ backgroundColor: '#316745' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold text-white shadow-sm bg-brand-green"
             >
               {initial}
             </div>

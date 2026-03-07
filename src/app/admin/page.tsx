@@ -82,24 +82,31 @@ interface StatCardProps {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
   color: string
   bgColor: string
+  darkBgColor: string
   href?: string
 }
 
-function StatCard({ title, value, icon: Icon, color, bgColor, href }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, color, bgColor, darkBgColor, href }: StatCardProps) {
   const content = (
     <div className="flex items-start justify-between">
       <div>
-        <p className="text-sm font-medium" style={{ color: '#6B7280' }}>
+        <p className="text-sm font-medium text-text-secondary">
           {title}
         </p>
-        <p className="text-3xl font-bold mt-1" style={{ color: '#0B1A14' }}>
+        <p className="text-3xl font-bold mt-1 text-brand-primary font-[tabular-nums]">
           {value.toLocaleString()}
         </p>
       </div>
       <div className="flex flex-col items-end gap-1 flex-shrink-0">
         <div
-          className="w-11 h-11 rounded-lg flex items-center justify-center"
+          className="w-11 h-11 rounded-lg flex items-center justify-center dark:hidden"
           style={{ backgroundColor: bgColor }}
+        >
+          <Icon className="w-6 h-6" style={{ color }} />
+        </div>
+        <div
+          className="w-11 h-11 rounded-lg items-center justify-center hidden dark:flex"
+          style={{ backgroundColor: darkBgColor }}
         >
           <Icon className="w-6 h-6" style={{ color }} />
         </div>
@@ -114,10 +121,9 @@ function StatCard({ title, value, icon: Icon, color, bgColor, href }: StatCardPr
     return (
       <Link
         href={href}
-        className="group block bg-white rounded-xl border p-5 transition-all hover:shadow-md cursor-pointer"
-        style={{ borderColor: '#E5E5E5' }}
+        className="group block bg-surface-elevated rounded-xl border border-border-default p-5 transition-shadow hover:shadow-md cursor-pointer"
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = color }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E5E5E5' }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
       >
         {content}
       </Link>
@@ -125,7 +131,7 @@ function StatCard({ title, value, icon: Icon, color, bgColor, href }: StatCardPr
   }
 
   return (
-    <div className="bg-white rounded-xl border p-5 transition-shadow hover:shadow-md" style={{ borderColor: '#E5E5E5' }}>
+    <div className="bg-surface-elevated rounded-xl border border-border-default p-5 transition-shadow hover:shadow-md">
       {content}
     </div>
   )
@@ -135,7 +141,7 @@ function StatCard({ title, value, icon: Icon, color, bgColor, href }: StatCardPr
 
 function StatCardSkeleton() {
   return (
-    <div className="bg-white rounded-xl border p-5 animate-pulse" style={{ borderColor: '#E5E5E5' }}>
+    <div className="bg-surface-elevated rounded-xl border border-border-default p-5 animate-pulse">
       <div className="flex items-start justify-between">
         <div>
           <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
@@ -182,6 +188,7 @@ export default function AdminDashboardPage() {
           icon: UsersIcon,
           color: '#4EA7FC',
           bgColor: '#EEF6FF',
+          darkBgColor: 'rgba(78,167,252,0.15)',
           href: '/admin/users',
         },
         {
@@ -191,6 +198,7 @@ export default function AdminDashboardPage() {
           icon: ActiveUserIcon,
           color: '#10B981',
           bgColor: '#ECFDF5',
+          darkBgColor: 'rgba(16,185,129,0.15)',
           href: '/admin/users?status=active',
         },
         {
@@ -200,6 +208,7 @@ export default function AdminDashboardPage() {
           icon: PendingUserIcon,
           color: '#F59E0B',
           bgColor: '#FFFBEB',
+          darkBgColor: 'rgba(245,158,11,0.15)',
           href: '/admin/users?status=inactive',
         },
         {
@@ -209,6 +218,7 @@ export default function AdminDashboardPage() {
           icon: ProjectIcon,
           color: '#8B5CF6',
           bgColor: '#F5F3FF',
+          darkBgColor: 'rgba(139,92,246,0.15)',
           href: '/admin/projects',
         },
         {
@@ -218,6 +228,7 @@ export default function AdminDashboardPage() {
           icon: CardsIcon,
           color: '#EC4899',
           bgColor: '#FDF2F8',
+          darkBgColor: 'rgba(236,72,153,0.15)',
           href: '/admin/projects',
         },
         {
@@ -227,33 +238,34 @@ export default function AdminDashboardPage() {
           icon: NewUserIcon,
           color: '#06B6D4',
           bgColor: '#ECFEFF',
+          darkBgColor: 'rgba(6,182,212,0.15)',
           href: '/admin/users',
         },
       ]
     : []
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto">
+    <div id="main-content" className="p-6 md:p-8 max-w-6xl mx-auto">
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
+        <h1 className="text-2xl font-bold text-brand-primary">
           管理後台總覽
         </h1>
-        <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+        <p className="text-sm mt-1 text-text-secondary">
           系統總覽與快速操作
         </p>
       </div>
 
       {/* Error State */}
       {error && (
-        <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+        <div className="mb-6 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-600 dark:bg-red-950/30 dark:border-red-800/50 dark:text-red-400 text-sm">
           {error}
         </div>
       )}
 
       {/* Stats Grid */}
       <section className="mb-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9CA3AF' }}>
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 text-text-tertiary">
           系統統計
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -267,6 +279,7 @@ export default function AdminDashboardPage() {
                   icon={card.icon}
                   color={card.color}
                   bgColor={card.bgColor}
+                  darkBgColor={card.darkBgColor}
                   href={card.href}
                 />
               ))}
@@ -276,32 +289,26 @@ export default function AdminDashboardPage() {
       {/* Login Methods Summary */}
       {stats && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9CA3AF' }}>
+          <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 text-text-tertiary">
             登入方式統計
           </h2>
-          <div className="bg-white rounded-xl border p-5" style={{ borderColor: '#E5E5E5' }}>
+          <div className="bg-surface-elevated rounded-xl border border-border-default p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: '#0B1A14' }}
-                />
-                <span className="text-sm" style={{ color: '#374151' }}>
+                <div className="w-3 h-3 rounded-full flex-shrink-0 bg-brand-primary" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
                   帳號密碼登入
                 </span>
-                <span className="text-sm font-semibold ml-auto" style={{ color: '#0B1A14' }}>
+                <span className="text-sm font-semibold ml-auto text-brand-primary">
                   {stats.credentials_users}
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: '#5865F2' }}
-                />
-                <span className="text-sm" style={{ color: '#374151' }}>
+                <div className="w-3 h-3 rounded-full flex-shrink-0 bg-brand-discord" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
                   Discord 登入
                 </span>
-                <span className="text-sm font-semibold ml-auto" style={{ color: '#0B1A14' }}>
+                <span className="text-sm font-semibold ml-auto text-brand-primary">
                   {stats.discord_users}
                 </span>
               </div>
@@ -312,29 +319,25 @@ export default function AdminDashboardPage() {
 
       {/* Quick Actions */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: '#9CA3AF' }}>
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 text-text-tertiary">
           快速操作
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Review Users */}
           <Link
             href="/admin/users?is_active=false"
-            className="group bg-white rounded-xl border p-5 transition-all hover:shadow-md hover:border-amber-300"
-            style={{ borderColor: '#E5E5E5' }}
+            className="group bg-surface-elevated rounded-xl border border-border-default p-5 transition-shadow hover:shadow-md hover:border-amber-300"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-sm" style={{ color: '#0B1A14' }}>
+                <h3 className="font-semibold text-sm text-brand-primary">
                   審核使用者
                 </h3>
-                <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
+                <p className="text-xs mt-1 text-text-secondary">
                   查看待審核的使用者帳號
                 </p>
                 {stats && stats.disabled_users > 0 && (
-                  <span
-                    className="inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded-full"
-                    style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
-                  >
+                  <span className="inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                     {stats.disabled_users} 人待處理
                   </span>
                 )}
@@ -346,22 +349,18 @@ export default function AdminDashboardPage() {
           {/* View All Projects */}
           <Link
             href="/admin/projects"
-            className="group bg-white rounded-xl border p-5 transition-all hover:shadow-md hover:border-violet-300"
-            style={{ borderColor: '#E5E5E5' }}
+            className="group bg-surface-elevated rounded-xl border border-border-default p-5 transition-shadow hover:shadow-md hover:border-violet-300"
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-sm" style={{ color: '#0B1A14' }}>
+                <h3 className="font-semibold text-sm text-brand-primary">
                   查看所有專案
                 </h3>
-                <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
+                <p className="text-xs mt-1 text-text-secondary">
                   瀏覽所有專案的狀態與統計
                 </p>
                 {stats && (
-                  <span
-                    className="inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded-full"
-                    style={{ backgroundColor: '#F5F3FF', color: '#6D28D9' }}
-                  >
+                  <span className="inline-block mt-2 px-2 py-0.5 text-xs font-medium rounded-full bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
                     共 {stats.total_projects} 個專案
                   </span>
                 )}

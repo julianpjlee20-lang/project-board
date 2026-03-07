@@ -69,9 +69,9 @@ function XMarkIcon({ className }: { className?: string }) {
   )
 }
 
-function BellAlertIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+function BellAlertIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
     </svg>
   )
@@ -97,40 +97,14 @@ function ToggleSwitch({
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      style={{
-        position: 'relative',
-        display: 'inline-flex',
-        height: '24px',
-        width: '44px',
-        alignItems: 'center',
-        borderRadius: '12px',
-        border: 'none',
-        padding: 0,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        backgroundColor: checked ? '#4EA7FC' : '#D1D5DB',
-        transition: 'background-color 200ms ease',
-        opacity: disabled ? 0.5 : 1,
-        outline: 'none',
-        flexShrink: 0,
-      }}
-      onFocus={(e) => {
-        e.currentTarget.style.boxShadow = '0 0 0 2px #fff, 0 0 0 4px #4EA7FC'
-      }}
-      onBlur={(e) => {
-        e.currentTarget.style.boxShadow = 'none'
-      }}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full border-none p-0 shrink-0 transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
+        checked ? 'bg-blue-400' : 'bg-gray-300 dark:bg-gray-600'
+      } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
       <span
-        style={{
-          display: 'inline-block',
-          height: '18px',
-          width: '18px',
-          borderRadius: '50%',
-          backgroundColor: '#FFFFFF',
-          transition: 'transform 200ms ease',
-          transform: checked ? 'translateX(23px)' : 'translateX(3px)',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        }}
+        className={`inline-block h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? 'translate-x-[23px]' : 'translate-x-[3px]'
+        }`}
       />
     </button>
   )
@@ -209,44 +183,23 @@ function BossUserSelector({
   }
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative' }}>
+    <div ref={dropdownRef} className="relative">
       {/* Selected Tags + Input */}
       <div
         onClick={() => {
           setIsOpen(true)
           setTimeout(() => inputRef.current?.focus(), 0)
         }}
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px',
-          padding: '8px 12px',
-          minHeight: '44px',
-          border: '1px solid #E5E5E5',
-          borderRadius: '8px',
-          backgroundColor: '#FFFFFF',
-          cursor: 'text',
-          alignItems: 'center',
-          transition: 'border-color 200ms',
-          borderColor: isOpen ? '#4EA7FC' : '#E5E5E5',
-          boxShadow: isOpen ? '0 0 0 2px rgba(78, 167, 252, 0.15)' : 'none',
-        }}
+        className={`flex flex-wrap gap-1.5 px-3 py-2 min-h-[44px] border rounded-lg bg-surface-elevated cursor-text items-center transition-colors duration-200 ${
+          isOpen
+            ? 'border-blue-400 ring-2 ring-blue-400/15'
+            : 'border-border-default'
+        }`}
       >
         {selectedUsers.map((user) => (
           <span
             key={user.id}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px 2px 10px',
-              borderRadius: '16px',
-              backgroundColor: '#EEF6FF',
-              color: '#1D4ED8',
-              fontSize: '13px',
-              fontWeight: 500,
-              lineHeight: '20px',
-            }}
+            className="inline-flex items-center gap-1 py-0.5 pl-2.5 pr-2 rounded-full bg-blue-50 text-blue-700 text-[13px] font-medium leading-5 dark:bg-blue-900/30 dark:text-blue-300"
           >
             {user.name || user.email}
             <button
@@ -255,25 +208,7 @@ function BossUserSelector({
                 e.stopPropagation()
                 handleRemove(user.id)
               }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '16px',
-                height: '16px',
-                borderRadius: '50%',
-                border: 'none',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-                padding: 0,
-                color: '#1D4ED8',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#DBEAFE'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-              }}
+              className="inline-flex items-center justify-center w-4 h-4 rounded-full border-none bg-transparent cursor-pointer p-0 text-blue-700 hover:bg-blue-200 dark:text-blue-300 dark:hover:bg-blue-800/50"
               aria-label={`移除 ${user.name || user.email}`}
             >
               <XMarkIcon className="w-3 h-3" />
@@ -290,46 +225,22 @@ function BossUserSelector({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={selectedUsers.length === 0 ? '搜尋並選擇使用者...' : ''}
-          style={{
-            flex: 1,
-            minWidth: '120px',
-            border: 'none',
-            outline: 'none',
-            fontSize: '14px',
-            color: '#374151',
-            backgroundColor: 'transparent',
-            padding: '2px 0',
-          }}
+          className="flex-1 min-w-[120px] border-none outline-none text-sm text-foreground bg-transparent py-0.5"
         />
         <ChevronDownIcon
-          className="w-4 h-4"
+          className="w-4 h-4 text-text-secondary"
         />
       </div>
 
       {/* Dropdown */}
       {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            marginTop: '4px',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E5E5',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            zIndex: 50,
-            maxHeight: '240px',
-            overflowY: 'auto',
-          }}
-        >
+        <div className="absolute top-full left-0 right-0 mt-1 bg-surface-elevated border border-border-default rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
           {loading ? (
-            <div style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280', textAlign: 'center' }}>
+            <div className="px-4 py-3 text-sm text-text-secondary text-center">
               載入使用者中...
             </div>
           ) : filteredUsers.length === 0 ? (
-            <div style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280', textAlign: 'center' }}>
+            <div className="px-4 py-3 text-sm text-text-secondary text-center">
               {searchText ? '沒有符合的使用者' : '沒有可選擇的使用者'}
             </div>
           ) : (
@@ -338,50 +249,17 @@ function BossUserSelector({
                 key={user.id}
                 type="button"
                 onClick={() => handleSelect(user.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  width: '100%',
-                  padding: '10px 16px',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                  color: '#374151',
-                  transition: 'background-color 150ms',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F9FAFB'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }}
+                className="flex items-center gap-2.5 w-full px-4 py-2.5 border-none bg-transparent cursor-pointer text-left text-sm text-foreground transition-colors duration-150 hover:bg-muted"
               >
                 {/* Avatar */}
-                <div
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    backgroundColor: '#94A3B8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#FFFFFF',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="w-7 h-7 rounded-full bg-slate-400 flex items-center justify-center text-white text-xs font-semibold shrink-0">
                   {(user.name || user.email)[0].toUpperCase()}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
                     {user.name || '(未設定名稱)'}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="text-xs text-text-secondary overflow-hidden text-ellipsis whitespace-nowrap">
                     {user.email}
                   </div>
                 </div>
@@ -408,19 +286,12 @@ function SectionCard({
   children: React.ReactNode
 }) {
   return (
-    <div
-      style={{
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E5E5E5',
-        borderRadius: '12px',
-        padding: '24px',
-      }}
-    >
-      <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#0B1A14', marginBottom: description ? '4px' : '16px' }}>
+    <div className="bg-surface-elevated border border-border-default rounded-xl p-6">
+      <h2 className={`text-base font-semibold text-brand-primary ${description ? 'mb-1' : 'mb-4'}`}>
         {title}
       </h2>
       {description && (
-        <p style={{ fontSize: '13px', color: '#6B7280', marginBottom: '16px', lineHeight: '1.5' }}>
+        <p className="text-[13px] text-text-secondary mb-4 leading-relaxed">
           {description}
         </p>
       )}
@@ -447,20 +318,11 @@ function ToggleRow({
   disabled?: boolean
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 0',
-        borderBottom: '1px solid #F3F4F6',
-        gap: '16px',
-      }}
-    >
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>{label}</div>
+    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-white/5 gap-4">
+      <div className="flex-1">
+        <div className="text-sm font-medium text-foreground">{label}</div>
         {description && (
-          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>{description}</div>
+          <div className="text-xs text-text-secondary mt-0.5">{description}</div>
         )}
       </div>
       <ToggleSwitch checked={checked} onChange={onChange} disabled={disabled} />
@@ -645,25 +507,15 @@ export default function AdminNotificationsPage() {
   // Loading state
   if (loading) {
     return (
-      <div style={{ padding: '24px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0B1A14' }}>通知管理</h1>
-          <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '4px' }}>
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-balance text-brand-primary">通知管理</h1>
+          <p className="text-sm text-text-secondary mt-1">
             管理每日摘要推播與通知偏好設定
           </p>
         </div>
-        <div style={{ textAlign: 'center', padding: '48px 0', color: '#6B7280', fontSize: '14px' }}>
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              border: '2px solid #0B1A14',
-              borderTopColor: 'transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 12px',
-            }}
-          />
+        <div className="text-center py-12 text-text-secondary text-sm">
+          <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           載入設定中...
         </div>
       </div>
@@ -673,34 +525,16 @@ export default function AdminNotificationsPage() {
   // Error state
   if (error) {
     return (
-      <div style={{ padding: '24px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0B1A14' }}>通知管理</h1>
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-balance text-brand-primary">通知管理</h1>
         </div>
-        <div
-          style={{
-            padding: '12px 16px',
-            borderRadius: '8px',
-            backgroundColor: '#FEF2F2',
-            color: '#DC2626',
-            fontSize: '14px',
-            border: '1px solid #FECACA',
-          }}
-        >
+        <div className="px-4 py-3 rounded-lg bg-red-50 text-red-600 text-sm border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/50">
           {error}
         </div>
         <button
           onClick={fetchSettings}
-          style={{
-            marginTop: '12px',
-            padding: '8px 16px',
-            fontSize: '14px',
-            borderRadius: '8px',
-            border: '1px solid #E5E5E5',
-            backgroundColor: '#FFFFFF',
-            color: '#374151',
-            cursor: 'pointer',
-          }}
+          className="mt-3 px-4 py-2 text-sm rounded-lg border border-border-default bg-surface-elevated text-foreground cursor-pointer hover:bg-muted transition-colors"
         >
           重試
         </button>
@@ -709,13 +543,13 @@ export default function AdminNotificationsPage() {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '960px' }}>
+    <div id="main-content" className="p-6 max-w-[960px]">
       {/* Page Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0B1A14' }}>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-balance text-brand-primary">
           通知管理
         </h1>
-        <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '4px' }}>
+        <p className="text-sm text-text-secondary mt-1">
           管理每日摘要推播與通知偏好設定
         </p>
       </div>
@@ -723,18 +557,11 @@ export default function AdminNotificationsPage() {
       {/* Toast */}
       {toast && (
         <div
-          style={{
-            marginBottom: '16px',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            fontSize: '14px',
-            backgroundColor: toast.type === 'success' ? '#F0FDF4' : '#FEF2F2',
-            color: toast.type === 'success' ? '#15803D' : '#DC2626',
-            border: `1px solid ${toast.type === 'success' ? '#BBF7D0' : '#FECACA'}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
+          className={`mb-4 px-4 py-3 rounded-lg text-sm flex items-center gap-2 ${
+            toast.type === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/50'
+              : 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/50'
+          }`}
         >
           <span>{toast.type === 'success' ? '\u2713' : '\u2717'}</span>
           {toast.message}
@@ -742,13 +569,7 @@ export default function AdminNotificationsPage() {
       )}
 
       {/* Content Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '20px',
-        }}
-      >
+      <div className="grid grid-cols-1 gap-5">
         {/* Section 1: Boss Users */}
         <SectionCard
           title="老闆名單"
@@ -762,7 +583,7 @@ export default function AdminNotificationsPage() {
             loading={usersLoading}
           />
           {settings.boss_user_ids.length > 0 && (
-            <div style={{ marginTop: '8px', fontSize: '12px', color: '#6B7280' }}>
+            <div className="mt-2 text-xs text-text-secondary">
               已選擇 {settings.boss_user_ids.length} 位老闆
             </div>
           )}
@@ -775,23 +596,17 @@ export default function AdminNotificationsPage() {
         >
           {/* Master Toggle */}
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 16px',
-              borderRadius: '8px',
-              backgroundColor: settings.daily_digest_enabled ? '#EEF6FF' : '#F9FAFB',
-              border: `1px solid ${settings.daily_digest_enabled ? '#BFDBFE' : '#E5E5E5'}`,
-              marginBottom: '8px',
-              gap: '16px',
-            }}
+            className={`flex items-center justify-between px-4 py-3.5 rounded-lg mb-2 gap-4 border ${
+              settings.daily_digest_enabled
+                ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/50'
+                : 'bg-muted border-border-default'
+            }`}
           >
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0B1A14' }}>
+              <div className="text-sm font-semibold text-brand-primary">
                 啟用每日摘要
               </div>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+              <div className="text-xs text-text-secondary mt-0.5">
                 開啟後系統將於指定時間自動推播每日摘要給相關使用者
               </div>
             </div>
@@ -803,11 +618,9 @@ export default function AdminNotificationsPage() {
 
           {/* Content toggles */}
           <div
-            style={{
-              opacity: settings.daily_digest_enabled ? 1 : 0.5,
-              pointerEvents: settings.daily_digest_enabled ? 'auto' : 'none',
-              transition: 'opacity 200ms',
-            }}
+            className={`transition-opacity duration-200 ${
+              settings.daily_digest_enabled ? 'opacity-100' : 'opacity-50 pointer-events-none'
+            }`}
           >
             <ToggleRow
               label="即將到期提醒"
@@ -839,46 +652,21 @@ export default function AdminNotificationsPage() {
             />
 
             {/* Send Hour */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 0',
-                gap: '16px',
-              }}
-            >
+            <div className="flex items-center justify-between py-3.5 gap-4">
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>推播時間</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                <div className="text-sm font-medium text-foreground">推播時間</div>
+                <div className="text-xs text-text-secondary mt-0.5">
                   每天於指定時間發送摘要（台灣時間 UTC+8）
                 </div>
               </div>
-              <div style={{ position: 'relative' }}>
+              <div className="relative">
                 <select
                   value={settings.digest_send_hour}
                   onChange={(e) => updateSetting('digest_send_hour', parseInt(e.target.value, 10))}
                   disabled={!settings.daily_digest_enabled}
-                  style={{
-                    padding: '8px 32px 8px 12px',
-                    fontSize: '14px',
-                    border: '1px solid #E5E5E5',
-                    borderRadius: '8px',
-                    backgroundColor: '#FFFFFF',
-                    color: '#374151',
-                    cursor: settings.daily_digest_enabled ? 'pointer' : 'not-allowed',
-                    appearance: 'none',
-                    minWidth: '100px',
-                    outline: 'none',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#4EA7FC'
-                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(78, 167, 252, 0.15)'
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#E5E5E5'
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
+                  className={`py-2 pl-3 pr-8 text-sm border border-border-default rounded-lg bg-surface-elevated text-foreground appearance-none min-w-[100px] outline-none focus-visible:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-400/15 ${
+                    settings.daily_digest_enabled ? 'cursor-pointer' : 'cursor-not-allowed'
+                  }`}
                 >
                   {HOURS.map((h) => (
                     <option key={h} value={h}>
@@ -887,7 +675,7 @@ export default function AdminNotificationsPage() {
                   ))}
                 </select>
                 <ChevronDownIcon
-                  className="w-4 h-4"
+                  className="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary"
                 />
               </div>
             </div>
@@ -899,18 +687,10 @@ export default function AdminNotificationsPage() {
           title="手動觸發"
           description="立即發送一次測試摘要，確認推播內容與格式是否正確。"
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '16px',
-              flexWrap: 'wrap',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BellAlertIcon className="w-5 h-5" style={{ color: '#6B7280' }} />
-              <span style={{ fontSize: '14px', color: '#374151' }}>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <BellAlertIcon className="w-5 h-5 text-text-secondary" />
+              <span className="text-sm text-foreground">
                 手動發送一次每日摘要
               </span>
             </div>
@@ -918,45 +698,15 @@ export default function AdminNotificationsPage() {
               type="button"
               onClick={handleTriggerDigest}
               disabled={triggerLoading}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: 500,
-                borderRadius: '8px',
-                border: '1px solid #E5E5E5',
-                backgroundColor: '#FFFFFF',
-                color: '#374151',
-                cursor: triggerLoading ? 'not-allowed' : 'pointer',
-                opacity: triggerLoading ? 0.6 : 1,
-                transition: 'all 150ms',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-              onMouseEnter={(e) => {
-                if (!triggerLoading) {
-                  e.currentTarget.style.backgroundColor = '#F9FAFB'
-                  e.currentTarget.style.borderColor = '#D1D5DB'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFFFFF'
-                e.currentTarget.style.borderColor = '#E5E5E5'
-              }}
+              className={`px-5 py-2.5 text-sm font-medium rounded-lg border border-border-default bg-surface-elevated text-foreground transition-colors duration-150 flex items-center gap-1.5 ${
+                triggerLoading
+                  ? 'cursor-not-allowed opacity-60'
+                  : 'cursor-pointer hover:bg-muted hover:border-gray-300 dark:hover:border-white/20'
+              }`}
             >
               {triggerLoading ? (
                 <>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '14px',
-                      height: '14px',
-                      border: '2px solid #9CA3AF',
-                      borderTopColor: 'transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite',
-                    }}
-                  />
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                   發送中...
                 </>
               ) : (
@@ -968,19 +718,9 @@ export default function AdminNotificationsPage() {
       </div>
 
       {/* Save Button Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-          gap: '12px',
-          marginTop: '24px',
-          paddingTop: '20px',
-          borderTop: '1px solid #E5E5E5',
-        }}
-      >
+      <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border-default">
         {isDirty && (
-          <span style={{ fontSize: '13px', color: '#6B7280', marginRight: 'auto' }}>
+          <span className="text-[13px] text-text-secondary mr-auto">
             有未儲存的變更
           </span>
         )}
@@ -999,26 +739,11 @@ export default function AdminNotificationsPage() {
             setBossUsers(restoredBossUsers)
           }}
           disabled={!isDirty || saving}
-          style={{
-            padding: '10px 20px',
-            fontSize: '14px',
-            fontWeight: 500,
-            borderRadius: '8px',
-            border: '1px solid #E5E5E5',
-            backgroundColor: '#FFFFFF',
-            color: '#374151',
-            cursor: !isDirty || saving ? 'not-allowed' : 'pointer',
-            opacity: !isDirty || saving ? 0.5 : 1,
-            transition: 'all 150ms',
-          }}
-          onMouseEnter={(e) => {
-            if (isDirty && !saving) {
-              e.currentTarget.style.backgroundColor = '#F9FAFB'
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#FFFFFF'
-          }}
+          className={`px-5 py-2.5 text-sm font-medium rounded-lg border border-border-default bg-surface-elevated text-foreground transition-colors duration-150 ${
+            !isDirty || saving
+              ? 'cursor-not-allowed opacity-50'
+              : 'cursor-pointer hover:bg-muted'
+          }`}
         >
           重設
         </button>
@@ -1026,46 +751,15 @@ export default function AdminNotificationsPage() {
           type="button"
           onClick={handleSave}
           disabled={!isDirty || saving}
-          style={{
-            padding: '10px 24px',
-            fontSize: '14px',
-            fontWeight: 600,
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: isDirty && !saving ? '#4EA7FC' : '#93C5FD',
-            color: '#FFFFFF',
-            cursor: !isDirty || saving ? 'not-allowed' : 'pointer',
-            transition: 'all 150ms',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-          onMouseEnter={(e) => {
-            if (isDirty && !saving) {
-              e.currentTarget.style.backgroundColor = '#3B95EA'
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (isDirty && !saving) {
-              e.currentTarget.style.backgroundColor = '#4EA7FC'
-            } else {
-              e.currentTarget.style.backgroundColor = '#93C5FD'
-            }
-          }}
+          className={`px-6 py-2.5 text-sm font-semibold rounded-lg border-none text-white transition-colors duration-150 flex items-center gap-1.5 ${
+            isDirty && !saving
+              ? 'bg-blue-400 cursor-pointer hover:bg-blue-500'
+              : 'bg-blue-300 cursor-not-allowed'
+          }`}
         >
           {saving ? (
             <>
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '14px',
-                  height: '14px',
-                  border: '2px solid rgba(255,255,255,0.4)',
-                  borderTopColor: '#FFFFFF',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                }}
-              />
+              <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               儲存中...
             </>
           ) : (
@@ -1073,14 +767,6 @@ export default function AdminNotificationsPage() {
           )}
         </button>
       </div>
-
-      {/* Spinner animation keyframes */}
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   )
 }

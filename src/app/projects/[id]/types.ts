@@ -19,6 +19,7 @@ export interface Card {
   created_at?: string
   assignees: { id: string; name: string }[]
   tags: { id: string; name: string; color: string }[]
+  rolling_due_date: boolean
   subtasks: Subtask[]
 }
 
@@ -73,4 +74,26 @@ export interface ActiveUser {
   id: string
   name: string
   avatar_url: string | null
+}
+
+export interface CardTemplate {
+  id: string
+  project_id: string
+  name: string
+  title_pattern: string
+  description: string | null
+  priority: 'low' | 'medium' | 'high'
+  target_column_id: string | null
+  rolling_due_date: boolean
+  created_at: string
+  subtasks: TemplateSubtask[]
+}
+
+export interface TemplateSubtask {
+  id: string
+  title: string
+  position: number
+  day_of_month: number | null
+  assignee_id: string | null
+  assignee_name: string | null
 }

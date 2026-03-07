@@ -62,8 +62,11 @@ function SortableHeader({
 
   return (
     <th
-      className="text-left px-4 py-3 font-medium text-slate-500 dark:text-slate-400 select-none cursor-pointer group"
+      className="text-left px-4 py-3 font-medium text-slate-500 dark:text-slate-400 select-none cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500"
+      tabIndex={0}
+      role="button"
       onClick={() => onSort(sortKey)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSort(sortKey); } }}
       aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
     >
       <span className="inline-flex items-center gap-1">
@@ -202,6 +205,10 @@ export default function ApiKeysPage() {
   // Revoke confirmation state
   const [pendingRevoke, setPendingRevoke] = useState<ApiKey | null>(null)
   const [revokeLoading, setRevokeLoading] = useState(false)
+
+  // Delete confirmation state
+  const [pendingDelete, setPendingDelete] = useState<ApiKey | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Toast state
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -377,6 +384,40 @@ export default function ApiKeysPage() {
   }
 
   // ========================================
+  // Delete Key (hard delete)
+  // ========================================
+
+  async function handleDeleteConfirmed() {
+    if (!pendingDelete) return
+
+    setDeleteLoading(true)
+
+    try {
+      const res = await fetch('/api/ai/keys', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ key_id: pendingDelete.id, action: 'delete' }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '刪除 API Key 失敗')
+      }
+
+      setToast({ type: 'success', message: `已永久刪除 API Key「${pendingDelete.name}」` })
+      setPendingDelete(null)
+
+      await fetchKeys()
+    } catch (err) {
+      setToast({ type: 'error', message: err instanceof Error ? err.message : '刪除 API Key 失敗' })
+      setPendingDelete(null)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  // ========================================
   // Helpers
   // ========================================
 
@@ -448,21 +489,20 @@ export default function ApiKeysPage() {
   // ========================================
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div id="main-content" className="p-6 max-w-6xl">
       {/* Page Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
+          <h1 className="text-2xl font-bold text-balance text-brand-primary">
             API Key 管理
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+          <p className="text-sm mt-1 text-text-secondary">
             管理 AI 功能的 API 存取金鑰
           </p>
         </div>
         <button
           onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: '#0B1A14' }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition-opacity bg-brand-primary"
         >
           <PlusIcon className="w-4 h-4" />
           生成新 Key
@@ -490,7 +530,7 @@ export default function ApiKeysPage() {
               <KeyIcon className="w-5 h-5 text-slate-600 dark:text-slate-300" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: '#0B1A14' }}>{keys.length}</p>
+              <p className="text-2xl font-bold text-brand-primary">{keys.length}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">全部金鑰</p>
             </div>
           </div>
@@ -501,7 +541,7 @@ export default function ApiKeysPage() {
               <ShieldCheckIcon className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: '#0B1A14' }}>{activeCount}</p>
+              <p className="text-2xl font-bold text-brand-primary">{activeCount}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">啟用中</p>
             </div>
           </div>
@@ -512,7 +552,7 @@ export default function ApiKeysPage() {
               <WarningIcon className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold" style={{ color: '#0B1A14' }}>{revokedCount}</p>
+              <p className="text-2xl font-bold text-brand-primary">{revokedCount}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">已撤銷</p>
             </div>
           </div>
@@ -531,7 +571,7 @@ export default function ApiKeysPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b" style={{ backgroundColor: '#FAFAFA' }}>
+              <tr className="border-b bg-muted">
                 <SortableHeader label="名稱" sortKey="name" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="Key 前綴" sortKey="key_prefix" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="權限" sortKey="permissions" currentSort={sort} onSort={handleSort} />
@@ -546,7 +586,7 @@ export default function ApiKeysPage() {
               {loading ? (
                 <tr>
                   <td colSpan={8} className="text-center py-12 text-slate-400 dark:text-slate-500">
-                    載入中...
+                    載入中…
                   </td>
                 </tr>
               ) : sortedKeys.length === 0 ? (
@@ -604,7 +644,12 @@ export default function ApiKeysPage() {
                             撤銷
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-400 dark:text-slate-500">-</span>
+                          <button
+                            onClick={() => setPendingDelete(apiKey)}
+                            className="px-2.5 py-1.5 text-xs rounded-md border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                          >
+                            刪除
+                          </button>
                         )}
                       </div>
                     </td>
@@ -663,7 +708,7 @@ export default function ApiKeysPage() {
                 }}
                 placeholder="例如：Production Bot、Development Testing"
                 maxLength={100}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm"
               />
             </div>
 
@@ -726,7 +771,7 @@ export default function ApiKeysPage() {
                 value={createExpiresAt}
                 onChange={(e) => setCreateExpiresAt(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm"
               />
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">不設定則永不過期</p>
             </div>
@@ -864,6 +909,42 @@ export default function ApiKeysPage() {
               disabled={revokeLoading}
             >
               {revokeLoading ? '撤銷中...' : '確認撤銷'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================
+          Delete Confirmation Dialog
+          ======================================== */}
+      <Dialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>永久刪除 API Key</DialogTitle>
+            <DialogDescription>
+              確定要永久刪除「{pendingDelete?.name}」嗎？
+              刪除後此金鑰的所有記錄將從系統中移除，此操作無法復原。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingDelete(null)}
+              disabled={deleteLoading}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirmed}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? '刪除中...' : '確認刪除'}
             </Button>
           </DialogFooter>
         </DialogContent>

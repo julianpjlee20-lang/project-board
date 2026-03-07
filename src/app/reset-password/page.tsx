@@ -33,8 +33,8 @@ function PasswordStrengthBar({ password }: { password: string }) {
         {[1, 2, 3, 4].map((level) => (
           <div
             key={level}
-            className="h-1.5 flex-1 rounded-full transition-colors duration-200"
-            style={{ backgroundColor: level <= score ? color : '#E2E8F0' }}
+            className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${level <= score ? '' : 'bg-slate-200 dark:bg-slate-700'}`}
+            style={level <= score ? { backgroundColor: color } : undefined}
           />
         ))}
       </div>
@@ -140,7 +140,7 @@ function ResetPasswordContent() {
     return (
       <div className="flex flex-col items-center gap-3 py-4">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500" />
-        <p className="text-slate-500 dark:text-slate-400 text-sm">驗證連結中...</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm">驗證連結中…</p>
       </div>
     )
   }
@@ -152,15 +152,14 @@ function ResetPasswordContent() {
           <Check className="w-7 h-7 text-green-600" />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-1" style={{ color: '#0B1A14' }}>
+          <h2 className="text-xl font-semibold mb-1 text-brand-primary">
             密碼已重設成功
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">請使用新密碼登入</p>
         </div>
         <Link
           href="/login"
-          className="mt-2 w-full inline-flex items-center justify-center px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 transition-opacity text-sm"
-          style={{ backgroundColor: '#0B1A14' }}
+          className="mt-2 w-full inline-flex items-center justify-center px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 transition-opacity text-sm bg-brand-primary"
         >
           前往登入
         </Link>
@@ -175,7 +174,7 @@ function ResetPasswordContent() {
           <X className="w-7 h-7 text-red-600" />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-1" style={{ color: '#0B1A14' }}>
+          <h2 className="text-xl font-semibold mb-1 text-brand-primary">
             連結已失效
           </h2>
           <p className="text-red-500 text-sm mb-1">{invalidMessage}</p>
@@ -200,7 +199,7 @@ function ResetPasswordContent() {
         <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
           <KeyRound className="w-6 h-6 text-slate-600 dark:text-slate-300" />
         </div>
-        <h2 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
+        <h2 className="text-2xl font-bold text-brand-primary">
           設定新密碼
         </h2>
         {maskedEmail && (
@@ -211,7 +210,7 @@ function ResetPasswordContent() {
       </div>
 
       {submitError && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 text-red-600 text-sm">
+        <div role="alert" className="mb-4 px-4 py-3 rounded-lg bg-red-50 text-red-600 text-sm">
           {submitError}
         </div>
       )}
@@ -222,12 +221,14 @@ function ResetPasswordContent() {
           <div className="relative">
             <input
               type={showNewPassword ? 'text' : 'password'}
+              name="newPassword"
+              autoComplete="new-password"
               placeholder="新密碼（至少 6 字元）"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-3 pr-11 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm"
+              className="w-full px-4 py-3 pr-11 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm"
             />
             <button
               type="button"
@@ -246,14 +247,16 @@ function ResetPasswordContent() {
           <div className="relative">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
+              name="confirmPassword"
+              autoComplete="new-password"
               placeholder="確認新密碼"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className={`w-full px-4 py-3 pr-11 rounded-lg border focus:outline-none focus:ring-2 text-sm dark:bg-slate-800 dark:text-slate-200 ${
+              className={`w-full px-4 py-3 pr-11 rounded-lg border focus:outline-none focus-visible:ring-2 text-sm dark:bg-slate-800 dark:text-slate-200 ${
                 passwordMismatch
-                  ? 'border-red-300 focus:ring-red-300'
-                  : 'border-slate-300 dark:border-slate-600 focus:ring-slate-400'
+                  ? 'border-red-300 focus-visible:ring-red-300'
+                  : 'border-slate-300 dark:border-slate-600 focus-visible:ring-slate-400'
               }`}
             />
             <button
@@ -273,10 +276,9 @@ function ResetPasswordContent() {
         <button
           type="submit"
           disabled={submitLoading}
-          className="w-full px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 text-sm"
-          style={{ backgroundColor: '#0B1A14' }}
+          className="w-full px-6 py-3 text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 text-sm bg-brand-primary"
         >
-          {submitLoading ? '處理中...' : '設定新密碼'}
+          {submitLoading ? (<><svg className="animate-spin -ml-1 mr-2 h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>處理中…</>) : '設定新密碼'}
         </button>
       </form>
 
@@ -297,15 +299,15 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: '#F9F8F5' }}
+      id="main-content"
+      className="min-h-screen flex items-center justify-center px-4 bg-brand-bg"
     >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm">
         <Suspense
           fallback={
             <div className="flex flex-col items-center gap-3 py-4">
               <Loader2 className="w-8 h-8 animate-spin text-slate-400 dark:text-slate-500" />
-              <p className="text-slate-500 dark:text-slate-400 text-sm">載入中...</p>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">載入中…</p>
             </div>
           }
         >

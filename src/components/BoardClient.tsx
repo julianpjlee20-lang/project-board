@@ -21,7 +21,11 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || '')
   const [assignee, setAssignee] = useState(card.assignees?.[0]?.name || '')
-  const [dueDate, setDueDate] = useState(card.due_date ? card.due_date.split('T')[0] : '')
+  const [dueDate, setDueDate] = useState(() => {
+    if (!card.due_date) return ''
+    const d = new Date(card.due_date)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
 
 
   useEffect(() => {
@@ -53,24 +57,24 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
       <div className="bg-white dark:bg-slate-900 rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">卡片詳情</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">✕</button>
         </div>
 
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">標題</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border rounded px-3 py-2" />
+            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full border rounded px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-white" />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">描述</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2" placeholder="輸入描述..." />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full border rounded px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-white" placeholder="輸入描述…" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">指派</label>
-              <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="名字" />
+              <input value={assignee} onChange={e => setAssignee(e.target.value)} className="w-full border rounded px-3 py-2 dark:bg-slate-800 dark:border-slate-600 dark:text-white" placeholder="名字" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">截止日</label>
@@ -81,7 +85,7 @@ function CardModal({ card, onClose, onUpdate }: { card: CardData, onClose: () =>
         </div>
 
         <div className="p-4 border-t flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 border rounded">取消</button>
+          <button onClick={onClose} className="px-4 py-2 border rounded dark:border-slate-600 dark:text-slate-300">取消</button>
           <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded">儲存</button>
         </div>
       </div>
@@ -142,13 +146,13 @@ function Column({ column, onCardClick, onAddCard }: {
           <input
             value={newCardTitle}
             onChange={e => setNewCardTitle(e.target.value)}
-            placeholder="卡片標題..."
-            className="w-full px-3 py-2 text-sm border rounded mb-2"
+            placeholder="卡片標題…"
+            className="w-full px-3 py-2 text-sm border rounded mb-2 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
             autoFocus
           />
           <div className="flex gap-2">
             <button type="submit" className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded">新增</button>
-            <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded">取消</button>
+            <button type="button" onClick={() => setShowAddCard(false)} className="flex-1 px-3 py-2 text-sm border rounded dark:border-slate-600 dark:text-slate-300">取消</button>
           </div>
         </form>
       ) : (
@@ -199,12 +203,12 @@ export default function BoardClient({
                 <input
                   value={newColumnName}
                   onChange={e => setNewColumnName(e.target.value)}
-                  placeholder="欄位名稱..."
-                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm"
+                  placeholder="欄位名稱…"
+                  className="flex h-10 w-full rounded-md border px-3 py-2 text-sm dark:bg-slate-800 dark:border-slate-600 dark:text-white"
                   autoFocus
                 />
-                <button type="submit" className="px-4 py-2 bg-slate-100 rounded">+</button>
-                <button type="button" onClick={() => setNewColumnName('')} className="px-4 py-2 border rounded">✕</button>
+                <button type="submit" className="px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded">+</button>
+                <button type="button" onClick={() => setNewColumnName('')} className="px-4 py-2 border rounded dark:border-slate-600 dark:text-slate-300">✕</button>
               </form>
             ) : (
               <button onClick={() => setNewColumnName('新欄位')} className="w-full px-3 py-2 text-sm text-left text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">

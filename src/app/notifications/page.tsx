@@ -57,19 +57,6 @@ interface NotificationData {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const COLORS = {
-  bg: '#F9F8F5',
-  primary: '#0B1A14',
-  headerBg: '#0B1A14',
-  headerBorder: '#316745',
-  headerText: '#F9F8F5',
-  accent: '#F8B500',
-  green: '#316745',
-  white: '#FFFFFF',
-  danger: '#DC2626',
-  warning: '#F59E0B',
-}
-
 const PRIORITY_COLORS: Record<string, string> = {
   high: '#DC2626',
   medium: '#F59E0B',
@@ -86,10 +73,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 function formatDate(dateStr: string): string {
   try {
-    const d = new Date(dateStr)
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${month}/${day}`
+    return new Intl.DateTimeFormat('zh-TW', { month: '2-digit', day: '2-digit' }).format(new Date(dateStr))
   } catch {
     return dateStr
   }
@@ -174,8 +158,7 @@ function SummaryCardsSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="rounded-xl border shadow-sm p-5 animate-pulse border-l-4"
-          style={{ backgroundColor: COLORS.white, borderLeftColor: '#E2E8F0' }}
+          className="rounded-xl border shadow-sm p-5 animate-pulse border-l-4 bg-surface-elevated border-l-slate-200"
         >
           <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-20 mb-3" />
           <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-16 mb-1" />
@@ -192,8 +175,7 @@ function CardListSkeleton() {
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="rounded-lg border shadow-sm p-4 animate-pulse border-l-4"
-          style={{ backgroundColor: COLORS.white, borderLeftColor: '#E2E8F0' }}
+          className="rounded-lg border shadow-sm p-4 animate-pulse border-l-4 bg-surface-elevated border-l-slate-200"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -233,8 +215,7 @@ function ProjectGridSkeleton() {
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="rounded-xl border shadow-sm p-5 animate-pulse"
-          style={{ backgroundColor: COLORS.white }}
+          className="rounded-xl border shadow-sm p-5 animate-pulse bg-surface-elevated"
         >
           <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-32 mb-4" />
           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full w-full mb-3" />
@@ -261,7 +242,7 @@ interface SummaryCardsProps {
 }
 
 function truncateTitle(title: string, maxLen = 18): string {
-  return title.length > maxLen ? title.slice(0, maxLen) + '...' : title
+  return title.length > maxLen ? title.slice(0, maxLen) + '…' : title
 }
 
 function SummaryCards({
@@ -278,17 +259,13 @@ function SummaryCards({
       <button
         type="button"
         onClick={() => onTabChange?.('overdue')}
-        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-        style={{
-          backgroundColor: COLORS.white,
-          borderLeftColor: COLORS.danger,
-        }}
+        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-[shadow,transform] duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] bg-surface-elevated border-l-red-600"
       >
         <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">逾期任務</p>
         {counts.overdue === 0 ? (
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
+              <p className="text-3xl font-bold text-emerald-500">
                 0
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">太好了，全數完成</p>
@@ -300,14 +277,14 @@ function SummaryCards({
         ) : (
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-3xl font-bold" style={{ color: COLORS.danger }}>
+              <p className="text-3xl font-bold text-red-600">
                 {counts.overdue}
               </p>
               {topOverdue && (
                 <>
                   <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 truncate" title={topOverdue.title}>
                     {truncateTitle(topOverdue.title)}
-                    <span className="text-xs ml-1" style={{ color: COLORS.danger }}>
+                    <span className="text-xs ml-1 text-red-600">
                       逾期 {Math.abs(Math.floor(topOverdue.days_overdue ?? 0))} 天
                     </span>
                   </p>
@@ -337,17 +314,13 @@ function SummaryCards({
       <button
         type="button"
         onClick={() => onTabChange?.('due_soon')}
-        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-        style={{
-          backgroundColor: COLORS.white,
-          borderLeftColor: COLORS.accent,
-        }}
+        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-[shadow,transform] duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] bg-surface-elevated border-l-brand-accent"
       >
         <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">即將到期</p>
         {counts.due_soon === 0 ? (
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-3xl font-bold" style={{ color: '#10B981' }}>
+              <p className="text-3xl font-bold text-emerald-500">
                 0
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">近 7 天無到期任務</p>
@@ -359,14 +332,14 @@ function SummaryCards({
         ) : (
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-3xl font-bold" style={{ color: COLORS.warning }}>
+              <p className="text-3xl font-bold text-amber-500">
                 {counts.due_soon}
               </p>
               {topDueSoon && (
                 <>
                   <p className="text-sm text-slate-700 dark:text-slate-200 mt-1 truncate" title={topDueSoon.title}>
                     {truncateTitle(topDueSoon.title)}
-                    <span className="text-xs ml-1" style={{ color: COLORS.warning }}>
+                    <span className="text-xs ml-1 text-amber-500">
                       {getDaysRemaining(topDueSoon.due_date)} 天後截止
                     </span>
                   </p>
@@ -396,16 +369,12 @@ function SummaryCards({
       <button
         type="button"
         onClick={() => onTabChange?.('recent_changes')}
-        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-        style={{
-          backgroundColor: COLORS.white,
-          borderLeftColor: COLORS.green,
-        }}
+        className="rounded-xl border shadow-sm p-5 border-l-4 text-left cursor-pointer transition-[shadow,transform] duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] bg-surface-elevated border-l-brand-green"
       >
         <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">近期變更</p>
         <div className="flex items-end justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-3xl font-bold" style={{ color: COLORS.green }}>
+            <p className="text-3xl font-bold text-brand-green">
               {counts.recent_changes}
             </p>
             {todayChangeCount > 0 ? (
@@ -436,7 +405,7 @@ function SummaryCards({
 interface TabDef {
   id: TabKey
   label: string
-  dotColor?: string
+  dotClassName?: string
   showDot?: boolean
 }
 
@@ -453,13 +422,13 @@ function TabBar({
     {
       id: 'overdue',
       label: '已逾期',
-      dotColor: COLORS.danger,
+      dotClassName: 'bg-red-600',
       showDot: counts.overdue > 0,
     },
     {
       id: 'due_soon',
       label: '即將到期',
-      dotColor: COLORS.accent,
+      dotClassName: 'bg-brand-accent',
       showDot: counts.due_soon > 0,
     },
   ]
@@ -481,7 +450,7 @@ function TabBar({
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
             activeTab === tab.id
               ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-slate-100'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
@@ -489,8 +458,7 @@ function TabBar({
         >
           {tab.showDot && (
             <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: tab.dotColor }}
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${tab.dotClassName}`}
             />
           )}
           {tab.label}
@@ -504,7 +472,7 @@ function TabBar({
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
             activeTab === tab.id
               ? 'bg-white dark:bg-slate-900 shadow text-slate-900 dark:text-slate-100'
               : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
@@ -528,7 +496,7 @@ function CardListItem({
   variant: 'overdue' | 'due_soon'
   onDismiss?: (cardId: string, type: 'overdue' | 'due_soon') => void
 }) {
-  const borderColor = variant === 'overdue' ? COLORS.danger : COLORS.accent
+  const borderClass = variant === 'overdue' ? 'border-l-red-600' : 'border-l-brand-accent'
   const priorityColor = PRIORITY_COLORS[card.priority] || '#6B7280'
 
   const badgeContent =
@@ -536,8 +504,9 @@ function CardListItem({
       ? `逾期 ${Math.abs(Math.floor(card.days_overdue ?? 0))} 天`
       : `剩餘 ${getDaysRemaining(card.due_date)} 天`
 
-  const badgeBg = variant === 'overdue' ? COLORS.danger : COLORS.accent
-  const badgeText = variant === 'overdue' ? '#FFFFFF' : '#0B1A14'
+  const badgeClass = variant === 'overdue'
+    ? 'bg-red-600 text-white'
+    : 'bg-brand-accent text-brand-primary'
 
   const assigneeText = card.assignees.length > 0
     ? card.assignees.map((a) => a.name).join(', ')
@@ -546,11 +515,7 @@ function CardListItem({
   return (
     <Link
       href={`/projects/${card.project_id}?cardId=${card.id}`}
-      className="group block rounded-lg border shadow-sm border-l-4 hover:shadow-md transition-shadow"
-      style={{
-        backgroundColor: COLORS.white,
-        borderLeftColor: borderColor,
-      }}
+      className={`group block rounded-lg border shadow-sm border-l-4 hover:shadow-md transition-shadow bg-surface-elevated ${borderClass}`}
     >
       <div className="p-4">
         {/* Row 1: Priority dot + Title + Badge */}
@@ -561,14 +526,13 @@ function CardListItem({
               style={{ backgroundColor: priorityColor }}
               title={`優先度: ${PRIORITY_LABELS[card.priority] || card.priority}`}
             />
-            <h3 className="font-semibold text-sm truncate" style={{ color: COLORS.primary }}>
+            <h3 className="font-semibold text-sm truncate text-brand-primary">
               {card.title}
             </h3>
           </div>
           <div className="flex items-center flex-shrink-0">
             <span
-              className="ml-2 flex-shrink-0 text-xs font-medium px-2.5 py-0.5 rounded-full"
-              style={{ backgroundColor: badgeBg, color: badgeText }}
+              className={`ml-2 flex-shrink-0 text-xs font-medium px-2.5 py-0.5 rounded-full ${badgeClass}`}
             >
               {badgeContent}
             </span>
@@ -613,14 +577,13 @@ function CardListItem({
         <div className="flex items-center gap-2">
           <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all"
+              className={`h-full rounded-full transition-[width] ${card.progress >= 100 ? 'bg-emerald-500' : 'bg-brand-green'}`}
               style={{
                 width: `${Math.min(card.progress, 100)}%`,
-                backgroundColor: card.progress >= 100 ? '#10B981' : COLORS.green,
               }}
             />
           </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 w-8 text-right">
+          <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 w-8 text-right font-[tabular-nums]">
             {card.progress}%
           </span>
         </div>
@@ -753,7 +716,7 @@ function RecentChangesTimeline({ changes }: { changes: RecentChange[] }) {
               {items.map((change) => (
                 <div
                   key={change.id}
-                  className="flex gap-3 rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="flex gap-3 rounded-lg p-3 hover:bg-muted transition-colors"
                 >
                   <span className="text-xs text-slate-400 mt-0.5 flex-shrink-0 w-12 text-right font-mono">
                     {formatTime(change.created_at)}
@@ -790,10 +753,9 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
         <Link
           key={project.id}
           href={`/projects/${project.id}`}
-          className="block rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow"
-          style={{ backgroundColor: COLORS.white }}
+          className="block rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow bg-surface-elevated"
         >
-          <h3 className="font-semibold text-base mb-3" style={{ color: COLORS.primary }}>
+          <h3 className="font-semibold text-base mb-3 text-brand-primary">
             {project.name}
           </h3>
 
@@ -801,14 +763,13 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
           <div className="flex items-center gap-2 mb-3">
             <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
+                className={`h-full rounded-full transition-[width] ${project.completion_rate >= 100 ? 'bg-emerald-500' : 'bg-brand-green'}`}
                 style={{
                   width: `${Math.min(project.completion_rate, 100)}%`,
-                  backgroundColor: project.completion_rate >= 100 ? '#10B981' : COLORS.green,
                 }}
               />
             </div>
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 flex-shrink-0">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 flex-shrink-0 font-[tabular-nums]">
               {Math.round(project.completion_rate)}%
             </span>
           </div>
@@ -824,12 +785,12 @@ function ProjectSummaryGrid({ projects }: { projects: ProjectSummary[] }) {
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-1.5">
             {project.overdue_count > 0 && (
-              <span className="inline-flex items-center gap-1" style={{ color: COLORS.danger }}>
+              <span className="inline-flex items-center gap-1 text-red-600">
                 🔴 {project.overdue_count} 逾期
               </span>
             )}
             {project.due_soon_count > 0 && (
-              <span className="inline-flex items-center gap-1" style={{ color: COLORS.warning }}>
+              <span className="inline-flex items-center gap-1 text-amber-500">
                 🟡 {project.due_soon_count} 即將到期
               </span>
             )}
@@ -953,22 +914,15 @@ export default function NotificationsPage() {
   const counts = data?.counts ?? { due_soon: 0, overdue: 0, recent_changes: 0 }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: COLORS.bg }}>
+    <div id="main-content" className="min-h-screen bg-brand-bg">
       {/* ─── Header ─────────────────────────────────────────── */}
-      <header
-        className="border-b"
-        style={{
-          backgroundColor: COLORS.headerBg,
-          borderColor: COLORS.headerBorder,
-        }}
-      >
+      <header className="border-b bg-brand-primary border-brand-green">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <div className="flex items-start justify-between">
             <div>
               <Link
                 href="/projects"
-                className="inline-flex items-center gap-1 text-sm mb-4 hover:opacity-80 transition-opacity"
-                style={{ color: COLORS.headerText, opacity: 0.7 }}
+                className="inline-flex items-center gap-1 text-sm mb-4 text-brand-bg/70 hover:text-brand-bg/90 transition-colors"
               >
                 <svg
                   className="w-4 h-4"
@@ -981,19 +935,10 @@ export default function NotificationsPage() {
                 </svg>
                 返回專案列表
               </Link>
-              <h1
-                className="text-2xl sm:text-3xl font-bold"
-                style={{
-                  color: COLORS.headerText,
-                  letterSpacing: '-0.03em',
-                }}
-              >
+              <h1 className="text-2xl sm:text-3xl font-bold text-brand-bg tracking-tight">
                 通知中心
               </h1>
-              <p
-                className="mt-1 sm:mt-2 text-sm sm:text-base"
-                style={{ color: COLORS.headerText, opacity: 0.7 }}
-              >
+              <p className="mt-1 sm:mt-2 text-sm sm:text-base text-brand-bg/70">
                 跨專案即時狀態總覽
               </p>
             </div>

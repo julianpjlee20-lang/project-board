@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useParams } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DateInput } from '@/components/ui/DateInput'
 import { AssigneeCombobox } from '@/components/ui/AssigneeCombobox'
@@ -11,9 +12,9 @@ import type { Card, Phase, Subtask, ActivityLog, CardDetailProps, ActiveUser } f
 // ---------------------------------------------------------------------------
 
 const PRIORITY_COLORS: Record<Card['priority'], string> = {
-  high: '#EF4444',
-  medium: '#F59E0B',
-  low: '#10B981',
+  high: 'bg-priority-high',
+  medium: 'bg-priority-medium',
+  low: 'bg-emerald-500',
 }
 
 const PRIORITY_LABELS: Record<Card['priority'], string> = {
@@ -49,7 +50,11 @@ function translateAction(action: string): string {
 // ---------------------------------------------------------------------------
 
 function toDateOnly(dateStr: string): string {
-  return dateStr.split('T')[0]
+  const d = new Date(dateStr)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function getDaysUntilDue(dateStr: string): number {
@@ -80,10 +85,10 @@ function formatDueDateLabel(dateStr: string, days: number): string {
 
 function getScheduleSummary(dueDate: string, plannedDate: string, actualDate: string): string | null {
   if (!dueDate) return null
-  const due = new Date(dueDate.split('T')[0] + 'T00:00:00')
+  const due = new Date(dueDate); due.setHours(0, 0, 0, 0)
 
   if (actualDate) {
-    const actual = new Date(actualDate.split('T')[0] + 'T00:00:00')
+    const actual = new Date(actualDate); actual.setHours(0, 0, 0, 0)
     const diffMs = due.getTime() - actual.getTime()
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
     if (diffDays > 0) return `比截止日提前 ${diffDays} 天完成`
@@ -92,7 +97,7 @@ function getScheduleSummary(dueDate: string, plannedDate: string, actualDate: st
   }
 
   if (plannedDate) {
-    const planned = new Date(plannedDate.split('T')[0] + 'T00:00:00')
+    const planned = new Date(plannedDate); planned.setHours(0, 0, 0, 0)
     const diffMs = due.getTime() - planned.getTime()
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
     if (diffDays > 0) return `預計比截止日提前 ${diffDays} 天完成`
@@ -163,10 +168,10 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
   createdAt?: string
 }) {
   const dates: { label: string; value: Date }[] = []
-  const dueDateParsed = dueDate ? new Date(dueDate.split('T')[0] + 'T00:00:00') : null
-  const plannedParsed = plannedDate ? new Date(plannedDate.split('T')[0] + 'T00:00:00') : null
-  const actualParsed = actualDate ? new Date(actualDate.split('T')[0] + 'T00:00:00') : null
-  const createdParsed = createdAt ? new Date(createdAt.split('T')[0] + 'T00:00:00') : null
+  const dueDateParsed = dueDate ? (() => { const d = new Date(dueDate); d.setHours(0,0,0,0); return d })() : null
+  const plannedParsed = plannedDate ? (() => { const d = new Date(plannedDate); d.setHours(0,0,0,0); return d })() : null
+  const actualParsed = actualDate ? (() => { const d = new Date(actualDate); d.setHours(0,0,0,0); return d })() : null
+  const createdParsed = createdAt ? (() => { const d = new Date(createdAt); d.setHours(0,0,0,0); return d })() : null
 
   if (dueDateParsed) dates.push({ label: '截止', value: dueDateParsed })
   if (plannedParsed) dates.push({ label: '預計', value: plannedParsed })
@@ -199,23 +204,23 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
       segments.push({
         left: toPercent(startTime),
         width: toPercent(actualParsed) - toPercent(startTime),
-        color: '#60A5FA',
+        color: 'bg-blue-400',
       })
       segments.push({
         left: toPercent(actualParsed),
         width: toPercent(dueDateParsed) - toPercent(actualParsed),
-        color: '#34D399',
+        color: 'bg-emerald-400',
       })
     } else {
       segments.push({
         left: toPercent(startTime),
         width: toPercent(dueDateParsed) - toPercent(startTime),
-        color: '#60A5FA',
+        color: 'bg-blue-400',
       })
       segments.push({
         left: toPercent(dueDateParsed),
         width: toPercent(actualParsed) - toPercent(dueDateParsed),
-        color: '#F87171',
+        color: 'bg-red-400',
       })
     }
   } else if (plannedParsed) {
@@ -223,26 +228,26 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
     segments.push({
       left: toPercent(startTime),
       width: Math.min(toPercent(today), toPercent(endPoint)) - toPercent(startTime),
-      color: '#60A5FA',
+      color: 'bg-blue-400',
     })
     if (today < endPoint) {
       segments.push({
         left: toPercent(today),
         width: toPercent(endPoint) - toPercent(today),
-        color: '#E2E8F0',
+        color: 'bg-slate-200',
       })
     }
   } else if (dueDateParsed) {
     segments.push({
       left: toPercent(startTime),
       width: Math.min(toPercent(today), toPercent(dueDateParsed)) - toPercent(startTime),
-      color: '#60A5FA',
+      color: 'bg-blue-400',
     })
     if (today < dueDateParsed) {
       segments.push({
         left: toPercent(today),
         width: toPercent(dueDateParsed) - toPercent(today),
-        color: '#E2E8F0',
+        color: 'bg-slate-200',
       })
     }
   }
@@ -256,7 +261,7 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
   return (
     <div className="mt-3">
       {/* Marker labels */}
-      <div className="relative h-4 text-[10px] text-slate-500 dark:text-slate-400 mb-1">
+      <div className="relative h-4 text-xs text-slate-500 dark:text-slate-400 mb-1">
         {markers.map((m, i) => (
           <span
             key={i}
@@ -272,12 +277,12 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
         {segments.map((seg, i) => (
           <div
             key={i}
-            className="absolute top-0 h-full"
+            className={`absolute top-0 h-full ${seg.color} ${
+              i === 0 ? 'rounded-l-full' : ''
+            } ${i === segments.length - 1 ? 'rounded-r-full' : ''}`}
             style={{
               left: `${seg.left}%`,
               width: `${Math.max(seg.width, 0.5)}%`,
-              backgroundColor: seg.color,
-              borderRadius: i === 0 ? '9999px 0 0 9999px' : i === segments.length - 1 ? '0 9999px 9999px 0' : '0',
             }}
           />
         ))}
@@ -290,7 +295,7 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
         )}
       </div>
       {/* Legend labels */}
-      <div className="relative h-4 text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+      <div className="relative h-4 text-xs text-slate-400 dark:text-slate-500 mt-0.5">
         {markers.map((m, i) => (
           <span
             key={i}
@@ -453,13 +458,12 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
         <div className="mb-2">
           <div className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${progressPercent}%`,
-                backgroundColor: progressPercent === 100 ? '#10B981'
-                  : subtasks.some(s => !s.is_completed && s.due_date && getDaysUntilDue(s.due_date) < 0) ? '#EF4444'
-                  : '#3B82F6'
-              }}
+              className={`h-full rounded-full transition-[width] duration-300 ${
+                progressPercent === 100 ? 'bg-emerald-500'
+                  : subtasks.some(s => !s.is_completed && s.due_date && getDaysUntilDue(s.due_date) < 0) ? 'bg-priority-high'
+                  : 'bg-blue-500'
+              }`}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
@@ -594,7 +598,7 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
         <input
           value={newTitle}
           onChange={e => setNewTitle(e.target.value)}
-          placeholder="新增子任務..."
+          placeholder="新增子任務…"
           className="flex-1 text-sm border rounded px-2 py-1.5 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
         />
         <button
@@ -678,6 +682,8 @@ interface UseCardDetailReturn {
 }
 
 function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => void): UseCardDetailReturn {
+  const onCloseFnRef = useRef(onCloseFn)
+  onCloseFnRef.current = onCloseFn
   const [isFormReady, setIsFormReady] = useState(false)
   const [originalData, setOriginalData] = useState({
     title: '',
@@ -737,10 +743,10 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
         title: cardData.title,
         description: cardData.description || '',
         assigneeId: cardData.assignees?.[0]?.id || '',
-        startDate: cardData.start_date ? cardData.start_date.split('T')[0] : '',
-        dueDate: cardData.due_date ? cardData.due_date.split('T')[0] : '',
-        plannedDate: cardData.planned_completion_date ? cardData.planned_completion_date.split('T')[0] : '',
-        actualDate: cardData.actual_completion_date ? cardData.actual_completion_date.split('T')[0] : '',
+        startDate: cardData.start_date ? toDateOnly(cardData.start_date) : '',
+        dueDate: cardData.due_date ? toDateOnly(cardData.due_date) : '',
+        plannedDate: cardData.planned_completion_date ? toDateOnly(cardData.planned_completion_date) : '',
+        actualDate: cardData.actual_completion_date ? toDateOnly(cardData.actual_completion_date) : '',
         priority: (cardData.priority || 'medium') as Card['priority'],
         phase_id: cardData.phase_id || null,
       }
@@ -762,12 +768,12 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
       console.error('載入卡片錯誤:', err)
       if (!cancelled) {
         alert('無法載入卡片資料，請重新整理頁面')
-        onCloseFn()
+        onCloseFnRef.current()
       }
     })
 
     return () => { cancelled = true }
-  }, [cardId, onCloseFn])
+  }, [cardId])
 
   const saveCard = useCallback(async () => {
     if (isSaving) return
@@ -928,15 +934,15 @@ function CardDetailContent({ card, phases, detail }: {
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          className="w-full text-lg max-sm:text-base font-semibold bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 dark:focus:border-slate-600 focus:ring-0 focus:outline-none transition-colors dark:text-slate-100"
-          placeholder="輸入標題..."
+          className="w-full text-lg max-sm:text-base font-semibold bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus-visible:border-slate-300 dark:focus-visible:border-slate-600 focus:ring-0 focus:outline-none transition-colors dark:text-slate-100"
+          placeholder="輸入標題…"
         />
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
           rows={3}
-          className="w-full text-base max-sm:text-base text-slate-600 dark:text-slate-300 bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus:border-slate-300 dark:focus:border-slate-600 focus:ring-0 focus:outline-none transition-colors resize-none"
-          placeholder="新增描述..."
+          className="w-full text-base max-sm:text-base text-slate-600 dark:text-slate-300 bg-transparent border border-transparent rounded-md px-2 py-2 max-sm:py-2.5 -mx-2 max-sm:mx-0 focus-visible:border-slate-300 dark:focus-visible:border-slate-600 focus:ring-0 focus:outline-none transition-colors resize-none"
+          placeholder="新增描述…"
         />
       </div>
 
@@ -952,7 +958,7 @@ function CardDetailContent({ card, phases, detail }: {
               <SelectTrigger className="w-auto h-9 max-sm:h-10 border-0 shadow-none px-2 hover:bg-slate-100 dark:hover:bg-slate-700 focus:ring-0">
                 <SelectValue>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PRIORITY_COLORS[priority] }} />
+                    <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${PRIORITY_COLORS[priority]}`} />
                     <span className="text-sm">{PRIORITY_LABELS[priority]}</span>
                   </span>
                 </SelectValue>
@@ -961,7 +967,7 @@ function CardDetailContent({ card, phases, detail }: {
                 {(['high', 'medium', 'low'] as const).map(level => (
                   <SelectItem key={level} value={level}>
                     <span className="flex items-center gap-1.5">
-                      <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PRIORITY_COLORS[level] }} />
+                      <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${PRIORITY_COLORS[level]}`} />
                       <span>{PRIORITY_LABELS[level]}</span>
                     </span>
                   </SelectItem>
@@ -1029,7 +1035,7 @@ function CardDetailContent({ card, phases, detail }: {
               <>
                 <span className="text-sm text-slate-700 dark:text-slate-200">{dueDateDisplay.dateText}</span>
                 {dueDateDisplay.badge && (
-                  <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${dueDateDisplay.badge.className}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${dueDateDisplay.badge.className}`}>
                     {dueDateDisplay.badge.text}
                   </span>
                 )}
@@ -1247,7 +1253,7 @@ function CardDetailContent({ card, phases, detail }: {
                   ) : (
                     <span className="text-slate-500 dark:text-slate-400"> {log.new_value}</span>
                   )}
-                  <span className="text-slate-400 text-[11px] block mt-0.5">
+                  <span className="text-slate-400 text-xs block mt-0.5">
                     {new Date(log.created_at).toLocaleString('zh-TW')}
                   </span>
                 </div>
@@ -1295,6 +1301,58 @@ function DeleteConfirmDialog({ cardTitle, isDeleting, onConfirm, onCancel }: {
 }
 
 // ---------------------------------------------------------------------------
+// SaveAsRecurringButton — save current card as a recurring task template
+// ---------------------------------------------------------------------------
+
+function SaveAsRecurringButton({ cardId }: { cardId: string }) {
+  const params = useParams()
+  const projectId = params.id as string
+  const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      // Use source_card_id mode — the API will copy card data into the template
+      const body = { source_card_id: cardId }
+
+      const res = await fetch(`/api/projects/${projectId}/templates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || '建立定期任務失敗')
+      }
+
+      setDone(true)
+      setTimeout(() => setDone(false), 2000)
+    } catch (error) {
+      console.error('Save as recurring error:', error)
+      alert(error instanceof Error ? error.message : '建立定期任務失敗')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleSave}
+      disabled={saving || done}
+      className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg min-h-[44px] flex items-center gap-1.5 disabled:opacity-50"
+      title="設為定期任務"
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      {done ? '已建立' : saving ? '建立中...' : '設為定期任務'}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // CardModal — thin container (~40 lines)
 // ---------------------------------------------------------------------------
 
@@ -1317,29 +1375,32 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
           <span className="text-sm font-mono text-slate-400 dark:text-slate-500">
             {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
           </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+          <button onClick={onClose} aria-label="關閉" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
         {!detail.isFormReady ? (
-          <div className="p-8 text-center text-slate-400 dark:text-slate-500">載入中...</div>
+          <div className="p-8 text-center text-slate-400 dark:text-slate-500">載入中…</div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto overscroll-contain">
               <CardDetailContent card={card} phases={phases} detail={detail} />
             </div>
             <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
-              <button
-                onClick={() => detail.setShowDeleteConfirm(true)}
-                className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                刪除
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => detail.setShowDeleteConfirm(true)}
+                  className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  刪除
+                </button>
+                <SaveAsRecurringButton cardId={card.id} />
+              </div>
               <div className="flex gap-2">
                 <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
                 <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
-                  {detail.isSaving ? '儲存中...' : '儲存'}
+                  {detail.isSaving ? '儲存中…' : '儲存'}
                 </button>
               </div>
             </div>
@@ -1399,17 +1460,17 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
         <span className="text-sm font-mono text-slate-400 dark:text-slate-500">
           {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
         </span>
-        <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+        <button onClick={handleClose} aria-label="關閉" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
 
       {/* Content */}
       {!detail.isFormReady ? (
-        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">載入中...</div>
+        <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">載入中…</div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
             <CardDetailContent card={card} phases={phases} detail={detail} />
           </div>
           <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
@@ -1423,7 +1484,7 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
             <div className="flex gap-2">
               <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
               <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">
-                {detail.isSaving ? '儲存中...' : '儲存'}
+                {detail.isSaving ? '儲存中…' : '儲存'}
               </button>
             </div>
           </div>

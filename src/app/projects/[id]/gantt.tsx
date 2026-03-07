@@ -24,6 +24,13 @@ const PRIORITY_BORDER_COLORS: Record<string, string> = {
   low: '#22C55E',    // green-500
 }
 
+const PRIORITY_BG_CLASSES: Record<string, string> = {
+  urgent: 'bg-red-500',
+  high: 'bg-orange-500',
+  medium: 'bg-yellow-500',
+  low: 'bg-green-500',
+}
+
 const BAR_HEIGHT = 28
 const ROW_HEIGHT = 36
 const HEADER_HEIGHT = 52
@@ -37,7 +44,7 @@ const UNPHASED_GROUP_ID = '__unphased__'
 // ──────────────────────────────────────────────
 
 function parseDate(dateStr: string): Date {
-  return new Date(dateStr.split('T')[0] + 'T00:00:00')
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0); return d
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -264,7 +271,7 @@ function GanttToolbar({
           <button
             key={s}
             onClick={() => onScaleChange(s)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
               scale === s
                 ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-slate-100'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -338,7 +345,7 @@ function GanttHeader({
             return (
               <div
                 key={i}
-                className={`text-[10px] flex items-center justify-center border-r border-slate-100 dark:border-slate-800 flex-shrink-0 ${
+                className={`text-xs flex items-center justify-center border-r border-slate-100 dark:border-slate-800 flex-shrink-0 ${
                   isToday_ ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold' : isWkend ? 'text-slate-400 bg-slate-50 dark:bg-slate-800' : 'text-slate-500 dark:text-slate-400'
                 }`}
                 style={{ width: dayWidth, minWidth: dayWidth }}
@@ -407,7 +414,7 @@ function GanttHeader({
         {weeks.map((w, i) => (
           <div
             key={i}
-            className="text-[10px] text-slate-400 flex items-center justify-center border-r border-slate-100 dark:border-slate-800"
+            className="text-xs text-slate-400 flex items-center justify-center border-r border-slate-100 dark:border-slate-800"
             style={{ width: w.span * dayWidth, minWidth: w.span * dayWidth }}
           >
             {w.label}
@@ -481,20 +488,21 @@ function GanttBar({
       {/* Task label on the left sidebar is handled by PhaseGroup */}
       <div
         ref={barRef}
-        className={`absolute top-1 rounded cursor-pointer transition-opacity hover:opacity-90 ${
+        className={`absolute top-1 cursor-pointer transition-opacity hover:opacity-90 border-l-solid ${
           isDashed ? 'border-dashed border' : ''
-        } ${isDot ? 'rounded-full' : 'rounded'}`}
+        } ${isDot ? 'rounded-full' : 'rounded'} ${isDot ? '' : 'border-l-[3px]'}`}
         style={{
           left,
           width: isDot ? BAR_HEIGHT : Math.max(width, dayWidth),
           height: BAR_HEIGHT,
           backgroundColor: isDot ? 'transparent' : phaseColor + '33',
           borderColor: isDashed ? phaseColor : 'transparent',
-          borderLeftWidth: isDot ? 0 : 3,
           borderLeftColor: priorityColor,
-          borderLeftStyle: 'solid',
         }}
+        tabIndex={0}
+        role="button"
         onClick={() => onCardClick(card)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardClick(card); } }}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
@@ -568,10 +576,10 @@ function GanttBar({
                 <div className="flex items-center gap-1.5">
                   <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full"
+                      className={`h-full rounded-full ${progress === 100 ? 'bg-emerald-500' : ''}`}
                       style={{
                         width: `${progress}%`,
-                        backgroundColor: progress === 100 ? '#10B981' : phaseColor,
+                        ...(progress !== 100 ? { backgroundColor: phaseColor } : {}),
                       }}
                     />
                   </div>
@@ -649,7 +657,7 @@ function PhaseGroup({
               }}
             />
           </div>
-          <span className="text-[10px] text-slate-400">{group.phaseProgress}%</span>
+          <span className="text-xs text-slate-400">{group.phaseProgress}%</span>
         </div>
 
         {/* Card count */}
@@ -668,8 +676,7 @@ function PhaseGroup({
               style={{ width: 220, height: ROW_HEIGHT }}
             >
               <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: PRIORITY_BORDER_COLORS[card.priority] || PRIORITY_BORDER_COLORS.medium }}
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${PRIORITY_BG_CLASSES[card.priority] || PRIORITY_BG_CLASSES.medium}`}
               />
               <span
                 className="text-xs text-slate-600 dark:text-slate-300 truncate cursor-pointer hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
@@ -769,7 +776,7 @@ function WeekendStripes({
       {stripes.map(i => (
         <div
           key={i}
-          className="absolute top-0 bg-slate-50/60 pointer-events-none"
+          className="absolute top-0 bg-slate-50/60 dark:bg-slate-800/40 pointer-events-none"
           style={{
             left: i * dayWidth + 220, // account for sidebar width
             width: dayWidth,
@@ -827,12 +834,16 @@ function UnscheduledPanel({
           {cards.map(card => {
             const phase = card.phase_id ? phaseMap.get(card.phase_id) : null
             const priorityColor = PRIORITY_BORDER_COLORS[card.priority] || PRIORITY_BORDER_COLORS.medium
+            const priorityBgClass = PRIORITY_BG_CLASSES[card.priority] || PRIORITY_BG_CLASSES.medium
             return (
               <div
                 key={card.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-slate-100 dark:border-slate-800"
-                style={{ borderLeftWidth: 3, borderLeftColor: priorityColor }}
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-slate-100 dark:border-slate-800 border-l-[3px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ borderLeftColor: priorityColor }}
+                tabIndex={0}
+                role="button"
                 onClick={() => onCardClick(card)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardClick(card); } }}
               >
                 <span className="text-sm text-slate-700 dark:text-slate-200 flex-1 truncate">
                   {card.card_number != null && <span className="font-mono text-slate-400 mr-1">#{card.card_number}</span>}
@@ -840,14 +851,14 @@ function UnscheduledPanel({
                 </span>
                 {phase && (
                   <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
+                    className="text-xs px-1.5 py-0.5 rounded-full text-white flex-shrink-0"
                     style={{ backgroundColor: phase.color }}
                   >
                     {phase.name}
                   </span>
                 )}
                 <span className="flex items-center gap-1 flex-shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: priorityColor }} />
+                  <span className={`w-1.5 h-1.5 rounded-full ${priorityBgClass}`} />
                 </span>
               </div>
             )
@@ -1054,9 +1065,9 @@ export function GanttView({
           今天
         </span>
         <span className="ml-auto flex items-center gap-3">
-          {Object.entries(PRIORITY_BORDER_COLORS).map(([key, color]) => (
+          {Object.entries(PRIORITY_BG_CLASSES).map(([key, bgClass]) => (
             <span key={key} className="flex items-center gap-1">
-              <span className="w-1 h-3 rounded-full" style={{ backgroundColor: color }} />
+              <span className={`w-1 h-3 rounded-full ${bgClass}`} />
               <span className="text-slate-400">
                 {key === 'urgent' ? '緊急' : key === 'high' ? '高' : key === 'medium' ? '中' : '低'}
               </span>

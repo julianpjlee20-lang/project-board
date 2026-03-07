@@ -15,7 +15,7 @@ const PRIORITY_CONFIG = {
 
 /** Normalise a date string to a local Date (timezone-safe) */
 function parseDueDate(due: string): Date {
-  return new Date(due.split('T')[0] + 'T00:00:00')
+  const d = new Date(due); d.setHours(0, 0, 0, 0); return d
 }
 
 /** Format date for display in zh-TW locale */
@@ -343,14 +343,11 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
                 <div className="flex items-center gap-2">
                   <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${card.progress || 0}%`,
-                        backgroundColor: card.progress === 100 ? '#10B981' : '#3B82F6'
-                      }}
+                      className={`h-full rounded-full ${card.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                      style={{ width: `${card.progress || 0}%` }}
                     />
                   </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{card.progress || 0}%</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-[tabular-nums]">{card.progress || 0}%</span>
                 </div>
               </td>
             </tr>
@@ -559,7 +556,7 @@ function MonthView({ year, month, cards, onCardClick }: {
               </div>
             ))}
             {cardGroups.length > 3 && (
-              <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center">+{cardGroups.length - 3}</div>
+              <div className="text-xs text-slate-400 dark:text-slate-500 text-center">+{cardGroups.length - 3}</div>
             )}
           </div>
         )
@@ -619,7 +616,7 @@ function MiniMonth({ year, month, cards, onCardClick }: {
       <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">{month + 1}月</h4>
       <div className="grid grid-cols-7 gap-0.5 text-center">
         {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-          <div key={d} className="text-[10px] font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
+          <div key={d} className="text-xs font-medium text-slate-400 dark:text-slate-500 py-1">{d}</div>
         ))}
         {blanks.map(i => <div key={`b-${i}`} className="h-8" />)}
         {days.map(day => {
@@ -642,10 +639,10 @@ function MiniMonth({ year, month, cards, onCardClick }: {
             dueCards.slice(0, 1).forEach(e => dots.push({ key: `due-${e.card.id}`, type: 'due', color: e.card.columnColor }))
           }
           if (typesInDay.has('planned')) {
-            dots.push({ key: 'planned', type: 'planned', color: '#60A5FA' })
+            dots.push({ key: 'planned', type: 'planned', color: 'blue-400' })
           }
           if (typesInDay.has('actual')) {
-            dots.push({ key: 'actual', type: 'actual', color: '#34D399' })
+            dots.push({ key: 'actual', type: 'actual', color: 'emerald-400' })
           }
           const overflow = dayCards.length - 3
 
@@ -984,7 +981,7 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
             <button
               key={opt.id}
               onClick={() => setCalendarMode(opt.id)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                 calendarMode === opt.id
                   ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-slate-100'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -1125,8 +1122,6 @@ function ProgressStatsModal({
                   ? Math.round((card.subtasks.filter(s => s.is_completed).length / card.subtasks.length) * 100)
                   : (card.progress || 0)
                 const priorityStyle = PRIORITY_LABEL[card.priority || 'medium']
-                const progressColor = progress === 100 ? '#10B981' : '#3B82F6'
-
                 return (
                   <div
                     key={card.id}
@@ -1148,11 +1143,11 @@ function ProgressStatsModal({
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${progress}%`, backgroundColor: progressColor }}
+                          className={`h-full rounded-full transition-[width] ${progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                          style={{ width: `${progress}%` }}
                         />
                       </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 w-8 text-right">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 w-8 text-right font-[tabular-nums]">
                         {progress}%
                       </span>
                     </div>
@@ -1235,11 +1230,8 @@ export function ProgressView({ columns }: { columns: Column[] }) {
         </div>
         <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${overallProgress}%`,
-              backgroundColor: overallProgress === 100 ? '#10B981' : '#3B82F6'
-            }}
+            className={`h-full rounded-full transition-[width] ${overallProgress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+            style={{ width: `${overallProgress}%` }}
           />
         </div>
       </div>
@@ -1279,7 +1271,7 @@ export function ProgressView({ columns }: { columns: Column[] }) {
         <button
           type="button"
           onClick={() => setModalType('all')}
-          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-100"
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-100"
         >
           <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalCards}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">總任務</div>
@@ -1287,7 +1279,7 @@ export function ProgressView({ columns }: { columns: Column[] }) {
         <button
           type="button"
           onClick={() => setModalType('in-progress')}
-          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:scale-105 active:scale-100"
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:scale-105 active:scale-100"
         >
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalCards - completedCards}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">進行中</div>
@@ -1295,7 +1287,7 @@ export function ProgressView({ columns }: { columns: Column[] }) {
         <button
           type="button"
           onClick={() => setModalType('completed')}
-          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-all hover:bg-green-50 dark:hover:bg-green-900/30 hover:scale-105 active:scale-100"
+          className="text-center cursor-pointer rounded-lg py-3 px-2 transition-colors hover:bg-green-50 dark:hover:bg-green-900/30 hover:scale-105 active:scale-100"
         >
           <div className="text-2xl font-bold text-green-600 dark:text-green-400">{completedCards}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">已完成</div>

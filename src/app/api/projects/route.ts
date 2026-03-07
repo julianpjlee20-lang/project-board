@@ -174,6 +174,36 @@ export async function PUT() {
       )
     `)
 
+    // Create card_templates table
+    await query(`
+      CREATE TABLE IF NOT EXISTS card_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id UUID REFERENCES projects ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        title_pattern TEXT NOT NULL,
+        description TEXT,
+        priority TEXT DEFAULT 'medium',
+        target_column_id UUID REFERENCES columns(id) ON DELETE SET NULL,
+        rolling_due_date BOOLEAN DEFAULT FALSE,
+        created_by UUID REFERENCES profiles(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `)
+
+    // Create template_subtasks table
+    await query(`
+      CREATE TABLE IF NOT EXISTS template_subtasks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        template_id UUID REFERENCES card_templates ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        day_of_month INTEGER,
+        assignee_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `)
+
     // Drop comments table (feature removed)
     await query(`DROP TABLE IF EXISTS comments`)
 
@@ -295,6 +325,7 @@ export async function PUT() {
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS actual_completion_date DATE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS card_number INTEGER")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS rolling_due_date BOOLEAN DEFAULT FALSE")
     } catch (_e) {
       // Ignore if columns already exist
     }

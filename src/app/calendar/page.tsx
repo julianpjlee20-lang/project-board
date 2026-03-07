@@ -29,31 +29,24 @@ export default function CalendarPage() {
   }, [])
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F9F8F5' }}>
+    <div id="main-content" className="min-h-screen bg-brand-bg">
       {/* Header */}
-      <header
-        className="border-b"
-        style={{ backgroundColor: '#0B1A14', borderColor: '#316745' }}
-      >
+      <header className="border-b bg-brand-primary border-brand-green">
         <div className="container mx-auto px-6 py-8">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <Link
                   href="/projects"
-                  className="text-sm px-3 py-1 rounded-md transition-colors"
-                  style={{ color: '#F9F8F5', opacity: 0.7 }}
+                  className="text-sm px-3 py-1 rounded-md transition-colors text-brand-bg/70"
                 >
                   ← 專案列表
                 </Link>
               </div>
-              <h1
-                className="text-3xl font-bold"
-                style={{ color: '#F9F8F5', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.03em' }}
-              >
+              <h1 className="text-3xl font-bold text-brand-bg font-[Inter,sans-serif] tracking-[-0.03em]">
                 全域行事曆
               </h1>
-              <p className="mt-2" style={{ color: '#F9F8F5', opacity: 0.7 }}>
+              <p className="mt-2 text-brand-bg/70">
                 跨所有專案的任務時程總覽
               </p>
             </div>
@@ -65,8 +58,8 @@ export default function CalendarPage() {
       <main className="container mx-auto px-6 py-8">
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="animate-pulse text-lg" style={{ color: '#316745' }}>
-              載入中...
+            <div className="animate-pulse text-lg text-brand-green">
+              載入中…
             </div>
           </div>
         )}

@@ -55,8 +55,7 @@ function LargeAvatar({ user }: { user: UserDetail }) {
   const initial = (user.name || user.email || '?')[0].toUpperCase()
   return (
     <div
-      className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white border-2 border-slate-200"
-      style={{ backgroundColor: '#94A3B8' }}
+      className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white border-2 border-slate-200 bg-slate-400"
     >
       {initial}
     </div>
@@ -64,17 +63,16 @@ function LargeAvatar({ user }: { user: UserDetail }) {
 }
 
 function ProviderBadge({ method }: { method: UserDetail['login_method'] }) {
-  const configs: Record<string, { label: string; bg: string; text: string }> = {
-    credentials: { label: '帳號密碼', bg: '#F1F5F9', text: '#475569' },
-    discord: { label: 'Discord', bg: '#EEF2FF', text: '#5865F2' },
-    both: { label: '帳密 + Discord', bg: '#FDF4FF', text: '#7C3AED' },
+  const configs: Record<string, { label: string; className: string }> = {
+    credentials: { label: '帳號密碼', className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
+    discord: { label: 'Discord', className: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
+    both: { label: '帳密 + Discord', className: 'bg-fuchsia-50 text-violet-600 dark:bg-fuchsia-900/30 dark:text-violet-400' },
   }
   const config = configs[method] || configs.credentials
 
   return (
     <span
-      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-      style={{ backgroundColor: config.bg, color: config.text }}
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.className}`}
     >
       {config.label}
     </span>
@@ -84,7 +82,7 @@ function ProviderBadge({ method }: { method: UserDetail['login_method'] }) {
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="bg-slate-50 dark:bg-slate-800 rounded-lg px-4 py-3 text-center">
-      <div className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
+      <div className="text-2xl font-bold text-brand-primary">
         {value}
       </div>
       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{label}</div>
@@ -108,10 +106,9 @@ function ToggleSwitch({
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ${
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-      }`}
-      style={{ backgroundColor: checked ? '#10B981' : '#D1D5DB' }}
+      } ${checked ? 'bg-emerald-500' : 'bg-gray-300'}`}
     >
       <span
         className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
@@ -404,7 +401,7 @@ export default function AdminUserDetailPage() {
             返回使用者列表
           </Link>
         </div>
-        <div className="text-slate-400">載入中...</div>
+        <div className="text-slate-400">載入中…</div>
       </div>
     )
   }
@@ -430,7 +427,7 @@ export default function AdminUserDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div id="main-content" className="p-6 max-w-3xl">
       {/* Back Button */}
       <div className="flex items-center gap-3 mb-6">
         <Link
@@ -460,7 +457,7 @@ export default function AdminUserDetailPage() {
         <div className="flex items-start gap-5">
           <LargeAvatar user={user} />
           <div className="flex-1">
-            <h1 className="text-xl font-bold" style={{ color: '#0B1A14' }}>
+            <h1 className="text-xl font-bold text-brand-primary">
               {user.name || '(未設定名稱)'}
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">{user.email}</p>
@@ -496,7 +493,7 @@ export default function AdminUserDetailPage() {
 
       {/* Edit Form */}
       <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-6">
-        <h2 className="text-lg font-semibold mb-4" style={{ color: '#0B1A14' }}>
+        <h2 className="text-lg font-semibold mb-4 text-brand-primary">
           編輯使用者
         </h2>
 
@@ -511,7 +508,7 @@ export default function AdminUserDetailPage() {
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="輸入顯示名稱"
-              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
             />
           </div>
 
@@ -523,7 +520,7 @@ export default function AdminUserDetailPage() {
             <select
               value={formRole}
               onChange={(e) => setFormRole(e.target.value as 'admin' | 'user')}
-              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
             >
               <option value="user">一般使用者</option>
               <option value="admin">管理員</option>
@@ -559,8 +556,7 @@ export default function AdminUserDetailPage() {
               type="button"
               onClick={handleSave}
               disabled={!isDirty || saving}
-              className="px-6 py-2.5 text-sm rounded-lg text-white font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#0B1A14' }}
+              className="px-6 py-2.5 text-sm rounded-lg text-white font-medium transition-opacity disabled:opacity-50 bg-brand-primary"
             >
               {saving ? '儲存中...' : '儲存變更'}
             </button>
@@ -571,7 +567,7 @@ export default function AdminUserDetailPage() {
       {/* Reset Password Section */}
       {(user.login_method === 'credentials' || user.login_method === 'both') && (
         <div className="bg-white dark:bg-slate-900 rounded-lg border dark:border-slate-700 p-6 mt-6">
-          <h2 className="text-lg font-semibold mb-1" style={{ color: '#0B1A14' }}>
+          <h2 className="text-lg font-semibold mb-1 text-brand-primary">
             重設密碼
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
@@ -594,13 +590,12 @@ export default function AdminUserDetailPage() {
                     type="text"
                     value={resetLink}
                     readOnly
-                    className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-600 font-mono"
+                    className="flex-1 px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300 font-mono"
                   />
                   <button
                     type="button"
                     onClick={handleCopyResetLink}
-                    className="shrink-0 px-4 py-2 text-sm rounded-lg font-medium text-white dark:text-slate-100 transition-colors"
-                    style={{ backgroundColor: resetLinkCopied ? '#10B981' : '#0B1A14' }}
+                    className={`shrink-0 px-4 py-2 text-sm rounded-lg font-medium text-white dark:text-slate-100 transition-colors ${resetLinkCopied ? 'bg-emerald-500' : 'bg-brand-primary'}`}
                   >
                     {resetLinkCopied ? '已複製 ✓' : '複製'}
                   </button>
@@ -612,7 +607,7 @@ export default function AdminUserDetailPage() {
                 type="button"
                 onClick={handleGenerateResetLink}
                 disabled={resetLinkLoading}
-                className="px-4 py-2 text-sm rounded-lg font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm rounded-lg font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-colors disabled:opacity-50 dark:bg-slate-800"
               >
                 {resetLinkLoading ? '產生中...' : '產生重設連結'}
               </button>
@@ -643,7 +638,7 @@ export default function AdminUserDetailPage() {
                       setResetError(null)
                     }}
                     placeholder="輸入新密碼"
-                    className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+                    className="w-full px-3 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
                   />
                   <button
                     type="button"
@@ -678,7 +673,7 @@ export default function AdminUserDetailPage() {
                     setResetError(null)
                   }}
                   placeholder="再次輸入新密碼"
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 text-sm dark:bg-slate-800 dark:text-slate-200"
                 />
               </div>
 

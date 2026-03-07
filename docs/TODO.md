@@ -186,20 +186,61 @@
 
 ---
 
-## Dark Mode 全站修復
-**狀態：待開發 🔲**
+## UI/UX 重設計 — Web Interface Guidelines 合規
+**狀態：批次 1-6 完成 ✅（待視覺驗證）**
+**計畫檔：** `~/.claude/plans/fuzzy-wiggling-tower.md`
 
-### 問題描述
-Dark mode 基礎架構已完成（ThemeProvider + CSS 變數 + ThemeToggle 元件），但前端看不到切換效果。
+### 批次 1：色彩系統統一 + 字體放大（最高優先）✅
+- [x] 1-0. `globals.css` — 全域字體放大（@theme 覆蓋 text-xs/sm/base/lg）
+- [x] 1-1. `globals.css` — 新增品牌色彩 CSS 變數（brand-bg/primary/green/accent 等）+ dark mode 對應值
+- [x] 1-2a. `admin/notifications/page.tsx` — 移除 60 處 inline style + JS hover → Tailwind
+- [x] 1-2b. `settings/page.tsx` — 刪除 COLORS 常數，改用 Tailwind token（43 處）
+- [x] 1-2c. `notifications/page.tsx` — 刪除 COLORS 常數（31 處）
+- [x] 1-2d. `admin/layout.tsx` — 移除 22 處 hardcoded 色彩 + JS hover → CSS
+- [x] 1-2e. `admin/page.tsx` — 統計卡色彩（28 處）
+- [x] 1-2f. `admin/projects/page.tsx` — 表格色彩 + JS hover（32 處）
+- [x] 1-2g. `projects/page.tsx` — header/按鈕色彩（18 處）
+- [x] 1-2h. `login/page.tsx` — 背景/按鈕色彩（6 處）
+- [x] 1-2i. `calendar/page.tsx` + `calendar-views.tsx` — header 色彩（11 處）
+- [x] 1-2j. `admin/users/page.tsx` + `admin/users/[id]/page.tsx` — 表格/詳情（15 處）
+- [x] 1-2k. `admin/api-keys/page.tsx` — 表格/按鈕（7 處）
+- [x] 1-2l. `reset-password/page.tsx` — 背景色彩（8 處）
+- [x] 1-2m. `views.tsx` + `card-detail.tsx` + `gantt.tsx` + `page.tsx (board)` — 剩餘 inline style
+- [x] 1-2n. `UserNav.tsx` — badge 色彩（4 處）
+- [x] 1-3. `layout.tsx` — 加 colorScheme + themeColor meta（viewport export）
+- [x] 1-4. `text-[10px]`/`text-[11px]` 手動升級為 `text-xs`（14 處，UserNav badge 保留）
 
-### 修復項目
-- [ ] 1. ThemeToggle 移至全域位置（layout 或 UserNav），讓所有頁面都能切換
-- [ ] 2. `projects/page.tsx`（專案列表）— 移除 hardcoded `style={{ backgroundColor: '#F9F8F5' }}`，改用 Tailwind dark: 類別
-- [ ] 3. `settings/page.tsx` — 移除 `COLORS` 常數固定色彩，改用 Tailwind dark: 類別
-- [ ] 4. `notifications/page.tsx` — 移除 `COLORS.bg` / `COLORS.white`，改用 Tailwind dark: 類別
-- [ ] 5. `admin/layout.tsx` — 移除 9 處 hardcoded `style={{ backgroundColor: '#F9F8F5' }}`
-- [ ] 6. `admin/page.tsx` + `admin/projects/page.tsx` — `bg-white` 加對應 `dark:bg-*` 類別
-- [ ] 7. Build 驗證 + 全頁面 dark mode 視覺檢查
+### 批次 2：無障礙性修復 ✅
+- [x] 2-1. `layout.tsx` — 加 skip link + 各頁面 `id="main-content"`（12 頁）
+- [x] 2-2. Icon button 補 `aria-label`（card-detail / recurring-tasks / views / gantt）
+- [x] 2-3. 表單 label + autocomplete（login / reset-password）
+- [x] 2-4. `login/page.tsx` — error/success div 加 `role="alert"`
+
+### 批次 3：表單改善 ✅
+- [x] 3-1. `...` → `…`（placeholder + loading 文字全面替換）
+- [x] 3-2. Submit 按鈕加 loading spinner（login / reset-password）
+- [x] 3-3. 登入/註冊表單 input 加 `name` + `autoComplete` 屬性
+
+### 批次 4：Focus State 修復 ✅
+- [x] 4-1. `focus:` → `focus-visible:`（14 檔案 ring/border 視覺狀態）
+- [x] 4-2. 保留 `focus:outline-none` / `focus:ring-0`（reset 用途）
+
+### 批次 5：Typography 與微互動 ✅
+- [x] 5-1. 數字區加 `tabular-nums`（notifications / ProgressView / admin stats）
+- [x] 5-2. 標題加 `text-balance`（h1 頁面標題）
+- [x] 5-3. `formatDate` 改用 `Intl.DateTimeFormat`（notifications/page.tsx）
+- [x] 5-4. 卡片標題 `line-clamp-2`、專案描述 `line-clamp-3`
+
+### 批次 6：動畫與效能 ✅
+- [x] 6-1. `transition-all` → 具體屬性（transition-colors/shadow/transform/[width] 等）
+- [x] 6-2. Modal/Drawer 加 `overscroll-contain`
+- [x] 6-3. 視圖切換 URL 同步（useState → useSearchParams）
+- [x] 6-4. `globals.css` — 加 prefers-reduced-motion + touch-action 全域規則
+
+### 驗證
+- [x] `pnpm run build` 無錯誤 ✅
+- [x] Dark mode 切換 — 所有頁面無白色殘塊 ✅
+- [x] 鍵盤 Tab 導航 — 所有互動元素有 focus ring ✅
 
 ---
 

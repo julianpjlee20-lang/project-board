@@ -61,9 +61,11 @@ function SortableHeader({
 
   return (
     <th
-      className={`${align === 'center' ? 'text-center' : 'text-left'} px-6 py-3 font-medium text-xs uppercase tracking-wide select-none cursor-pointer group text-slate-500 dark:text-slate-400`}
-      style={{ color: '#6B7280' }}
+      className={`${align === 'center' ? 'text-center' : 'text-left'} px-6 py-3 font-medium text-xs uppercase tracking-wide select-none cursor-pointer group text-text-secondary focus:outline-none focus:ring-2 focus:ring-blue-500`}
+      tabIndex={0}
+      role="button"
       onClick={() => onSort(sortKey)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSort(sortKey); } }}
       aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
     >
       <span className={`inline-flex items-center gap-1 ${align === 'center' ? 'justify-center' : ''}`}>
@@ -83,19 +85,19 @@ function TableSkeleton() {
       {/* Stats skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-xl p-5 border" style={{ borderColor: '#E5E5E5' }}>
+          <div key={i} className="bg-surface-elevated rounded-xl p-5 border border-border-default">
             <div className="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700 mb-3" />
             <div className="h-7 w-12 rounded bg-slate-200 dark:bg-slate-700" />
           </div>
         ))}
       </div>
       {/* Table skeleton */}
-      <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E5E5E5' }}>
-        <div className="p-4 border-b" style={{ borderColor: '#E5E5E5' }}>
+      <div className="bg-surface-elevated rounded-xl border border-border-default overflow-hidden">
+        <div className="p-4 border-b border-border-default">
           <div className="h-10 w-64 rounded-lg bg-slate-200" />
         </div>
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex items-center gap-4 px-6 py-4 border-b" style={{ borderColor: '#F3F4F6' }}>
+          <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-surface-subtle">
             <div className="h-4 flex-1 rounded bg-slate-100 dark:bg-slate-800" />
             <div className="h-4 w-20 rounded bg-slate-100 dark:bg-slate-800" />
             <div className="h-4 w-24 rounded bg-slate-100 dark:bg-slate-800" />
@@ -117,10 +119,10 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold mb-1" style={{ color: '#0B1A14' }}>
+      <h3 className="text-lg font-semibold mb-1 text-brand-primary">
         {hasSearch ? '沒有符合的專案' : '尚無專案'}
       </h3>
-      <p className="text-sm" style={{ color: '#6B7280' }}>
+      <p className="text-sm text-text-secondary">
         {hasSearch ? '請嘗試其他搜尋關鍵字' : '系統中尚未建立任何專案'}
       </p>
     </div>
@@ -144,10 +146,9 @@ function StatsCards({ projects }: { projects: Project[] }) {
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="bg-white rounded-xl p-5 border transition-shadow hover:shadow-sm"
-          style={{ borderColor: '#E5E5E5' }}
+          className="bg-surface-elevated rounded-xl p-5 border border-border-default transition-shadow hover:shadow-sm"
         >
-          <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: '#6B7280' }}>
+          <p className="text-xs font-medium uppercase tracking-wide mb-1 text-text-secondary">
             {stat.label}
           </p>
           <p className="text-2xl font-bold" style={{ color: stat.color }}>
@@ -170,8 +171,7 @@ function SearchInput({
   return (
     <div className="relative">
       <svg
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-        style={{ color: '#9CA3AF' }}
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -183,9 +183,8 @@ function SearchInput({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="搜尋專案名稱..."
-        className="w-full sm:w-64 pl-10 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2"
-        style={{ borderColor: '#E5E5E5', color: '#0B1A14' }}
+        placeholder="搜尋專案名稱…"
+        className="w-full sm:w-64 pl-10 pr-4 py-2.5 rounded-lg border border-border-default text-sm text-brand-primary focus:outline-none focus-visible:ring-2"
         aria-label="搜尋專案"
       />
     </div>
@@ -196,24 +195,22 @@ function SearchInput({
 function ProjectCard({ project }: { project: Project }) {
   return (
     <div
-      className="bg-white rounded-xl border p-4 transition-shadow hover:shadow-md"
-      style={{ borderColor: '#E5E5E5' }}
+      className="bg-surface-elevated rounded-xl border border-border-default p-4 transition-shadow hover:shadow-md"
     >
       <div className="flex items-start justify-between mb-3">
         <Link
           href={`/projects/${project.id}`}
-          className="text-sm font-semibold hover:underline"
-          style={{ color: '#4EA7FC' }}
+          className="text-sm font-semibold hover:underline text-blue-400"
         >
           {project.name}
         </Link>
         {project.status && (
           <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium"
-            style={{
-              backgroundColor: project.status === 'active' ? '#ECFDF5' : '#F3F4F6',
-              color: project.status === 'active' ? '#059669' : '#6B7280',
-            }}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              project.status === 'active'
+                ? 'bg-emerald-50 text-emerald-600'
+                : 'bg-surface-subtle text-text-secondary'
+            }`}
           >
             {project.status === 'active' ? '進行中' : project.status === 'completed' ? '已完成' : project.status === 'archived' ? '已封存' : project.status}
           </span>
@@ -221,12 +218,12 @@ function ProjectCard({ project }: { project: Project }) {
       </div>
 
       {project.description && (
-        <p className="text-xs mb-3 line-clamp-2" style={{ color: '#6B7280' }}>
+        <p className="text-xs mb-3 line-clamp-2 text-text-secondary">
           {project.description}
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-y-2 text-xs" style={{ color: '#6B7280' }}>
+      <div className="grid grid-cols-2 gap-y-2 text-xs text-text-secondary">
         <div>
           <span className="font-medium">擁有者：</span>
           {project.creator_name || '未知'}
@@ -262,7 +259,7 @@ function ProjectTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ backgroundColor: '#FAFAFA' }}>
+          <tr className="bg-muted">
             <SortableHeader label="專案名稱" sortKey="name" currentSort={sort} onSort={onSort} />
             <SortableHeader label="擁有者" sortKey="creator_name" currentSort={sort} onSort={onSort} />
             <SortableHeader label="建立日期" sortKey="created_at" currentSort={sort} onSort={onSort} />
@@ -275,56 +272,48 @@ function ProjectTable({
           {projects.map((project) => (
             <tr
               key={project.id}
-              className="border-t transition-colors"
-              style={{ borderColor: '#F3F4F6' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#F9FAFB'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-              }}
+              className="border-t border-surface-subtle transition-colors hover:bg-muted"
             >
               <td className="px-6 py-4">
                 <Link
                   href={`/projects/${project.id}`}
-                  className="font-medium hover:underline"
-                  style={{ color: '#4EA7FC' }}
+                  className="font-medium hover:underline text-blue-400"
                 >
                   {project.name}
                 </Link>
                 {project.description && (
-                  <p className="text-xs mt-0.5 line-clamp-1" style={{ color: '#9CA3AF' }}>
+                  <p className="text-xs mt-0.5 line-clamp-1 text-text-tertiary">
                     {project.description}
                   </p>
                 )}
               </td>
-              <td className="px-6 py-4" style={{ color: '#374151' }}>
+              <td className="px-6 py-4 text-gray-700">
                 {project.creator_name || '—'}
               </td>
-              <td className="px-6 py-4" style={{ color: '#6B7280' }}>
+              <td className="px-6 py-4 text-text-secondary">
                 <span title={formatDateTime(project.created_at)}>
                   {formatDate(project.created_at)}
                 </span>
               </td>
-              <td className="px-6 py-4 text-center" style={{ color: '#374151' }}>
+              <td className="px-6 py-4 text-center text-gray-700">
                 {project.member_count}
               </td>
-              <td className="px-6 py-4 text-center" style={{ color: '#374151' }}>
+              <td className="px-6 py-4 text-center text-gray-700">
                 {project.card_count}
               </td>
               <td className="px-6 py-4">
                 {project.status ? (
                   <span
-                    className="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium"
-                    style={{
-                      backgroundColor: project.status === 'active' ? '#ECFDF5' : '#F3F4F6',
-                      color: project.status === 'active' ? '#059669' : '#6B7280',
-                    }}
+                    className={`inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium ${
+                      project.status === 'active'
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : 'bg-surface-subtle text-text-secondary'
+                    }`}
                   >
                     {project.status === 'active' ? '進行中' : project.status === 'completed' ? '已完成' : project.status === 'archived' ? '已封存' : project.status}
                   </span>
                 ) : (
-                  <span style={{ color: '#9CA3AF' }}>—</span>
+                  <span className="text-text-tertiary">—</span>
                 )}
               </td>
             </tr>
@@ -432,13 +421,13 @@ export default function AdminProjectsPage() {
   }, [filteredProjects, sort.key, sort.direction])
 
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto">
+    <div id="main-content" className="p-6 sm:p-8 max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: '#0B1A14' }}>
+        <h1 className="text-2xl font-bold text-brand-primary">
           專案概覽
         </h1>
-        <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+        <p className="text-sm mt-1 text-text-secondary">
           管理和查看所有專案的狀態
         </p>
       </div>
@@ -466,17 +455,11 @@ export default function AdminProjectsPage() {
           <StatsCards projects={filteredProjects} />
 
           {/* Table / Card Container */}
-          <div
-            className="bg-white rounded-xl border overflow-hidden"
-            style={{ borderColor: '#E5E5E5' }}
-          >
+          <div className="bg-surface-elevated rounded-xl border border-border-default overflow-hidden">
             {/* Search Bar */}
-            <div
-              className="px-6 py-4 border-b flex items-center justify-between gap-4"
-              style={{ borderColor: '#E5E5E5' }}
-            >
+            <div className="px-6 py-4 border-b border-border-default flex items-center justify-between gap-4">
               <SearchInput value={searchInput} onChange={handleSearchChange} />
-              <span className="text-xs whitespace-nowrap" style={{ color: '#9CA3AF' }}>
+              <span className="text-xs whitespace-nowrap text-text-tertiary">
                 共 {filteredProjects.length} 個專案
               </span>
             </div>
