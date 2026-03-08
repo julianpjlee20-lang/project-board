@@ -251,3 +251,33 @@
 - [x] 帳密登入/註冊流程正常 ✅
 - [x] 未登入可瀏覽、寫入操作回 401 ✅
 - [x] Playwright E2E 無回歸 ✅
+
+---
+
+## 效能優化 — Vercel React Best Practices 審查
+**狀態：待開發**
+**審查日期：** 2026-03-07
+**審查規則：** Vercel React Best Practices（57 條規則 / 8 分類）
+
+### Phase 1：立即可做（高投報比，改動小）✅
+- [x] 1. N+1 迴圈 UPDATE → `UNNEST` 批次更新（`cards/move`、`cards/reorder`、`auto-transition`）
+- [x] 2. `filteredColumns` + `allCards` 加 `useMemo`（`page.tsx`、`views.tsx`）
+- [x] 3. `phases.find()` O(n) → `phaseMap` Map O(1)（`page.tsx`、`views.tsx`）
+- [x] 4. 視圖切換 + Phase filter 加 `startTransition`（`page.tsx`）
+- [x] 5. 靜態陣列（viewTabs、weekday labels、modeOptions）提升到模組層級
+
+### Phase 2：中期改進（效益大，需重構）✅
+- [x] 6. 條件式元件改 `next/dynamic` — views/card-detail/recurring-tasks/dnd（預估 -100KB+）
+- [x] 7. API 獨立查詢改 `Promise.all` / JOIN — `cards/[id]` GET/PUT、`columns` GET
+- [x] 8. Activity log + 通知改 `after()` 非阻塞（`cards/[id]` PUT、`notifications.ts`）
+- [x] 9. Loading 狀態改 Skeleton（看板頁、專案列表頁、行事曆頁）
+- [x] 10. 7 個 GET API 補 `requireAuth()`（projects/cards/calendar/columns/activity）
+- [x] 11. 日曆年視圖建立日期索引 Map（372 次 filter → O(1)）
+- [x] 12. `columns` GET API 移除不必要欄位（`SELECT c.*` → 指定欄位）
+
+### Phase 3：長期架構（效益最大，改動最大）✅
+- [x] 13. 頁面改 Server Components + Suspense 串流（影響 LCP 0.5-1.5s）
+- [x] 14. AI batch 端點批次重構（500+ queries → ~20）
+- [x] 15. AI overview 改跨專案批次查詢（N×4 queries → 4）
+- [x] 16. 引入 TanStack Query — 自動 cache/dedup/revalidate
+- [x] 17. DB Pool 調整 + 長列表虛擬化（content-visibility / @tanstack/react-virtual）

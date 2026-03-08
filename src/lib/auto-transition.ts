@@ -71,8 +71,15 @@ async function moveCardToColumnByPosition(
     'SELECT id FROM cards WHERE column_id = $1 AND id != $2 ORDER BY position',
     [sourceColumnId, cardId]
   )
-  for (let i = 0; i < sourceCards.length; i++) {
-    await query('UPDATE cards SET position = $1 WHERE id = $2', [i, sourceCards[i].id])
+  if (sourceCards.length > 0) {
+    const ids = sourceCards.map((c: { id: number }) => c.id)
+    const positions = sourceCards.map((_: unknown, i: number) => i)
+    await query(
+      `UPDATE cards SET position = batch.pos
+       FROM (SELECT unnest($1::int[]) AS id, unnest($2::int[]) AS pos) AS batch
+       WHERE cards.id = batch.id`,
+      [ids, positions]
+    )
   }
 
   // actual_completion_date 處理

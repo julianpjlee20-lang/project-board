@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchAdminProjects } from '@/lib/api'
 
 // ─── Types ───────────────────────────────────────────────
 interface Project {
@@ -326,36 +329,22 @@ function ProjectTable({
 
 // ─── Main Page ───────────────────────────────────────────
 export default function AdminProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Fetch projects
-  const fetchProjects = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/admin/projects', { credentials: 'include' })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: '伺服器錯誤' }))
-        throw new Error(data.error || `請求失敗 (${res.status})`)
-      }
-      const data = await res.json()
-      setProjects(data.projects ?? [])
-    } catch (err) {
-      console.error('[Admin Projects] 載入錯誤:', err)
-      setError(err instanceof Error ? err.message : '載入專案列表失敗')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const {
+    data: projectsData,
+    isLoading: loading,
+    error: queryError,
+    refetch: fetchProjects,
+  } = useQuery({
+    queryKey: queryKeys.admin.projects.list(),
+    queryFn: () => fetchAdminProjects() as Promise<{ projects: Project[] }>,
+  })
 
-  useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
+  const projects = projectsData?.projects ?? []
+  const error = queryError instanceof Error ? queryError.message : null
 
   // Debounced search
   const handleSearchChange = useCallback((value: string) => {
@@ -440,7 +429,7 @@ export default function AdminProjectsPage() {
         <div className="rounded-xl border bg-red-50 border-red-200 p-6 text-center">
           <p className="text-sm text-red-600 mb-3">{error}</p>
           <button
-            onClick={fetchProjects}
+            onClick={() => fetchProjects()}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
           >
             重試

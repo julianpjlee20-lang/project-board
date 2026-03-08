@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchAdminApiKeys } from '@/lib/api'
 
 // ========================================
 // Types
@@ -183,10 +186,20 @@ function WarningIcon({ className }: { className?: string }) {
 // ========================================
 
 export default function ApiKeysPage() {
-  // Key list state
-  const [keys, setKeys] = useState<ApiKey[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  // TanStack Query for key list
+  const {
+    data: keysData,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.admin.apiKeys.list(),
+    queryFn: () => fetchAdminApiKeys() as Promise<{ keys: ApiKey[] }>,
+  })
+
+  const keys = keysData?.keys ?? []
+  const error = queryError instanceof Error ? queryError.message : null
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -224,36 +237,9 @@ export default function ApiKeysPage() {
     })
   }, [])
 
-  // ========================================
-  // Fetch Keys
-  // ========================================
-
-  const fetchKeys = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const res = await fetch('/api/ai/keys', {
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '載入 API Key 列表失敗')
-      }
-
-      const data = await res.json()
-      setKeys(data.keys || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '載入 API Key 列表失敗')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchKeys()
-  }, [fetchKeys])
+  const invalidateKeys = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.admin.apiKeys.all })
+  }, [queryClient])
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -318,7 +304,7 @@ export default function ApiKeysPage() {
       setShowSuccessModal(true)
 
       // Refresh key list
-      await fetchKeys()
+      invalidateKeys()
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : '建立 API Key 失敗')
     } finally {
@@ -374,7 +360,7 @@ export default function ApiKeysPage() {
       setPendingRevoke(null)
 
       // Refresh key list
-      await fetchKeys()
+      invalidateKeys()
     } catch (err) {
       setToast({ type: 'error', message: err instanceof Error ? err.message : '撤銷 API Key 失敗' })
       setPendingRevoke(null)
@@ -408,7 +394,7 @@ export default function ApiKeysPage() {
       setToast({ type: 'success', message: `已永久刪除 API Key「${pendingDelete.name}」` })
       setPendingDelete(null)
 
-      await fetchKeys()
+      invalidateKeys()
     } catch (err) {
       setToast({ type: 'error', message: err instanceof Error ? err.message : '刪除 API Key 失敗' })
       setPendingDelete(null)

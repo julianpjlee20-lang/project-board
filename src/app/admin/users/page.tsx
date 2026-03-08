@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import {
   Dialog,
@@ -12,6 +13,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchAdminUsers, updateAdminUser } from '@/lib/api'
 
 // ========================================
 // Types
@@ -194,8 +197,7 @@ function UsersContent() {
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(initialPage)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // loading and error are derived from useQuery below
 
   // Filters
   const [search, setSearch] = useState(initialSearch)
@@ -279,63 +281,48 @@ function UsersContent() {
     router.replace(newUrl, { scroll: false })
   }, [debouncedSearch, roleFilter, statusFilter, page, router])
 
-  // Fetch users
-  const fetchUsers = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  // Build query params for TanStack Query
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams()
+    if (debouncedSearch) params.set('search', debouncedSearch)
+    if (roleFilter) params.set('role', roleFilter)
+    if (statusFilter === 'active') params.set('is_active', 'true')
+    else if (statusFilter === 'inactive' || statusFilter === 'pending') params.set('is_active', 'false')
+    params.set('page', String(page))
+    params.set('limit', String(PAGE_SIZE))
+    params.set('sort', 'created_at')
+    params.set('order', 'desc')
+    return params
+  }, [debouncedSearch, roleFilter, statusFilter, page])
 
-    // AbortController 防止 race condition
-    const controller = new AbortController()
+  const queryClient = useQueryClient()
 
-    try {
-      const params = new URLSearchParams()
-      if (debouncedSearch) params.set('search', debouncedSearch)
-      if (roleFilter) params.set('role', roleFilter)
-      // pending 與 inactive 都傳 is_active=false；pending 的區分由前端在拿到資料後過濾
-      if (statusFilter === 'active') params.set('is_active', 'true')
-      else if (statusFilter === 'inactive' || statusFilter === 'pending') params.set('is_active', 'false')
-      params.set('page', String(page))
-      params.set('limit', String(PAGE_SIZE))
-      params.set('sort', 'created_at')
-      params.set('order', 'desc')
+  const {
+    data: usersData,
+    isLoading: loading,
+    error: queryError,
+    refetch: fetchUsers,
+  } = useQuery({
+    queryKey: queryKeys.admin.users.list(Object.fromEntries(queryParams)),
+    queryFn: () => fetchAdminUsers(queryParams) as Promise<UsersResponse>,
+  })
 
-      const res = await fetch(`/api/admin/users?${params.toString()}`, {
-        credentials: 'include',
-        signal: controller.signal,
-      })
+  const error = queryError instanceof Error ? queryError.message : null
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '載入使用者列表失敗')
-      }
-
-      const data: UsersResponse = await res.json()
-
-      // 若選擇 pending，在前端做二次過濾（is_active=false 且建立時間在 7 天內）
+  // Process query data into local state
+  useEffect(() => {
+    if (usersData) {
       const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
       const filteredUsers =
         statusFilter === 'pending'
-          ? data.users.filter(
+          ? usersData.users.filter(
               (u) => !u.is_active && Date.now() - new Date(u.created_at).getTime() < SEVEN_DAYS_MS
             )
-          : data.users
-
+          : usersData.users
       setUsers(filteredUsers)
-      // pending 模式下 total 顯示過濾後數量，避免分頁計算錯誤
-      setTotal(statusFilter === 'pending' ? filteredUsers.length : data.total)
-    } catch (err) {
-      if ((err as { name?: string }).name === 'AbortError') return
-      setError(err instanceof Error ? err.message : '載入使用者列表失敗')
-    } finally {
-      setLoading(false)
+      setTotal(statusFilter === 'pending' ? filteredUsers.length : usersData.total)
     }
-
-    return () => controller.abort()
-  }, [debouncedSearch, roleFilter, statusFilter, page])
-
-  useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
+  }, [usersData, statusFilter])
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -346,27 +333,25 @@ function UsersContent() {
   }, [toast])
 
   // Quick actions
+  const userActionMutation = useMutation({
+    mutationFn: ({ userId, data }: { userId: string; data: Record<string, unknown> }) =>
+      updateAdminUser(userId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats })
+    },
+    onSettled: () => {
+      setActionLoading(null)
+    },
+  })
+
   async function handleActivate(user: User) {
     setActionLoading(user.id)
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ is_active: true }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '操作失敗')
-      }
-
+      await userActionMutation.mutateAsync({ userId: user.id, data: { is_active: true } })
       setToast({ type: 'success', message: `已啟用「${user.name || user.email}」` })
-      await fetchUsers()
     } catch (err) {
       setToast({ type: 'error', message: err instanceof Error ? err.message : '操作失敗' })
-    } finally {
-      setActionLoading(null)
     }
   }
 
@@ -377,24 +362,10 @@ function UsersContent() {
     setPendingDeactivate(null)
     setActionLoading(user.id)
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ is_active: false }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '操作失敗')
-      }
-
+      await userActionMutation.mutateAsync({ userId: user.id, data: { is_active: false } })
       setToast({ type: 'success', message: `已停用「${user.name || user.email}」` })
-      await fetchUsers()
     } catch (err) {
       setToast({ type: 'error', message: err instanceof Error ? err.message : '操作失敗' })
-    } finally {
-      setActionLoading(null)
     }
   }
 

@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchAdminStats } from '@/lib/api'
 
 interface AdminStats {
   total_users: number
@@ -156,28 +158,16 @@ function StatCardSkeleton() {
 // --- Main Dashboard Component ---
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<AdminStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data: stats,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.admin.stats,
+    queryFn: () => fetchAdminStats() as Promise<AdminStats>,
+  })
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch('/api/admin/stats')
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.error || '無法載入統計數據')
-        }
-        const data = await res.json()
-        setStats(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '載入失敗')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchStats()
-  }, [])
+  const error = queryError instanceof Error ? queryError.message : null
 
   const statCards: (StatCardProps & { key: string })[] = stats
     ? [

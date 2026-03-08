@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { updateProfileSchema, changePasswordSchema, validateData } from '@/lib/validations'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchUserProfile, fetchNotificationPreferences } from '@/lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -713,36 +716,37 @@ function LinkedAccountsCard({ profile, onRefresh }: { profile: UserProfile; onRe
 // ─── Section: Notification Preferences Card ─────────────────────────────────
 
 function NotificationCard() {
-  const [prefs, setPrefs] = useState<NotificationPreferences>({
+  const defaultPrefs: NotificationPreferences = {
     notify_assigned: true,
     notify_title_changed: false,
     notify_due_soon: true,
     notify_moved: false,
     quiet_hours_start: null,
     quiet_hours_end: null,
-  })
-  const [loadingPrefs, setLoadingPrefs] = useState(true)
+  }
+  const [prefs, setPrefs] = useState<NotificationPreferences>(defaultPrefs)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  const {
+    data: prefsData,
+    isLoading: loadingPrefs,
+    error: prefsError,
+  } = useQuery({
+    queryKey: queryKeys.notifications.preferences(),
+    queryFn: () => fetchNotificationPreferences() as Promise<NotificationPreferences>,
+    retry: false,
+  })
+
   useEffect(() => {
-    async function fetchPrefs() {
-      try {
-        const res = await fetch('/api/notifications/preferences')
-        if (res.ok) {
-          const data = await res.json()
-          setPrefs(data)
-        } else {
-          setMessage({ type: 'error', text: '無法載入通知偏好，目前顯示預設值' })
-        }
-      } catch {
-        setMessage({ type: 'error', text: '連線失敗，無法載入通知偏好' })
-      } finally {
-        setLoadingPrefs(false)
-      }
+    if (prefsData) setPrefs(prefsData)
+  }, [prefsData])
+
+  useEffect(() => {
+    if (prefsError) {
+      setMessage({ type: 'error', text: '無法載入通知偏好，目前顯示預設值' })
     }
-    fetchPrefs()
-  }, [])
+  }, [prefsError])
 
   const handleToggle = (key: keyof Pick<NotificationPreferences, 'notify_assigned' | 'notify_title_changed' | 'notify_due_soon' | 'notify_moved'>) => {
     setPrefs((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -900,35 +904,25 @@ function NotificationCard() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const fetchProfile = useCallback(async () => {
-    try {
-      const res = await fetch('/api/users/me')
-      if (!res.ok) {
-        if (res.status === 401) {
-          setError('請先登入')
-        } else {
-          const data = await res.json()
-          setError(data.error || '無法載入使用者資料')
-        }
-        return
-      }
-      const data: UserProfile = await res.json()
-      setProfile(data)
-      setError(null)
-    } catch {
-      setError('連線失敗，請稍後再試')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const {
+    data: profile,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.settings.profile,
+    queryFn: () => fetchUserProfile() as Promise<UserProfile>,
+    retry: false,
+  })
 
-  useEffect(() => {
-    fetchProfile()
-  }, [fetchProfile])
+  const error = queryError instanceof Error
+    ? (queryError.message.includes('401') ? '請先登入' : queryError.message)
+    : null
+
+  const refetchProfile = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.settings.profile })
+  }
 
   return (
     <div id="main-content" className="min-h-screen bg-brand-bg">
@@ -992,14 +986,14 @@ export default function SettingsPage() {
             <AccountInfoCard profile={profile} />
 
             {/* 2. Profile edit */}
-            <ProfileCard profile={profile} onSaved={fetchProfile} />
+            <ProfileCard profile={profile} onSaved={refetchProfile} />
 
             {/* 3. Change password (hidden for OAuth users) */}
             <PasswordCard provider={profile.provider} />
 
             {/* 4. Linked accounts */}
             <Suspense fallback={<SkeletonCard />}>
-              <LinkedAccountsCard profile={profile} onRefresh={fetchProfile} />
+              <LinkedAccountsCard profile={profile} onRefresh={refetchProfile} />
             </Suspense>
 
             {/* 5. Notification preferences */}

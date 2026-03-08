@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchAdminNotificationSettings, fetchActiveUsers } from '@/lib/api'
 
 // ========================================
 // Types
@@ -340,72 +343,45 @@ export default function AdminNotificationsPage() {
   const [originalSettings, setOriginalSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS)
   const [bossUsers, setBossUsers] = useState<BossUser[]>([])
 
-  // All active users for selector
-  const [allUsers, setAllUsers] = useState<ActiveUser[]>([])
-  const [usersLoading, setUsersLoading] = useState(true)
-
   // Page state
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // Manual trigger state
   const [triggerLoading, setTriggerLoading] = useState(false)
 
-  // Fetch settings
-  const fetchSettings = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  // Fetch settings with TanStack Query
+  const {
+    data: settingsData,
+    isLoading: loading,
+    error: queryError,
+    refetch: fetchSettings,
+  } = useQuery({
+    queryKey: queryKeys.admin.notifications.settings,
+    queryFn: () => fetchAdminNotificationSettings() as Promise<SettingsResponse>,
+  })
 
-    try {
-      const res = await fetch('/api/admin/notifications/settings', {
-        credentials: 'include',
-      })
+  const error = queryError instanceof Error ? queryError.message : null
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '載入通知設定失敗')
-      }
-
-      const data: SettingsResponse = await res.json()
-      setSettings(data.settings)
-      setOriginalSettings(data.settings)
-      setBossUsers(data.boss_users)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '載入通知設定失敗')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // Fetch active users
-  const fetchUsers = useCallback(async () => {
-    setUsersLoading(true)
-
-    try {
-      const res = await fetch('/api/admin/users?is_active=true&limit=100', {
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        throw new Error('載入使用者列表失敗')
-      }
-
-      const data = await res.json()
-      setAllUsers(data.users || [])
-    } catch {
-      // Silently handle - user list is non-critical
-      setAllUsers([])
-    } finally {
-      setUsersLoading(false)
-    }
-  }, [])
-
+  // Sync settings from query data
   useEffect(() => {
-    fetchSettings()
-    fetchUsers()
-  }, [fetchSettings, fetchUsers])
+    if (settingsData) {
+      setSettings(settingsData.settings)
+      setOriginalSettings(settingsData.settings)
+      setBossUsers(settingsData.boss_users)
+    }
+  }, [settingsData])
+
+  // Fetch active users with TanStack Query
+  const {
+    data: usersQueryData,
+    isLoading: usersLoading,
+  } = useQuery({
+    queryKey: queryKeys.admin.notifications.users,
+    queryFn: () => fetchActiveUsers() as Promise<{ users: ActiveUser[] }>,
+  })
+
+  const allUsers = usersQueryData?.users ?? []
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -533,7 +509,7 @@ export default function AdminNotificationsPage() {
           {error}
         </div>
         <button
-          onClick={fetchSettings}
+          onClick={() => fetchSettings()}
           className="mt-3 px-4 py-2 text-sm rounded-lg border border-border-default bg-surface-elevated text-foreground cursor-pointer hover:bg-muted transition-colors"
         >
           重試

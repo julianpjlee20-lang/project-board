@@ -31,10 +31,14 @@ export async function POST(request: NextRequest) {
         [source_column_id, card_id]
       )
       
-      for (let i = 0; i < sourceCards.length; i++) {
+      if (sourceCards.length > 0) {
+        const ids = sourceCards.map((c: { id: number }) => c.id)
+        const positions = sourceCards.map((_: unknown, i: number) => i)
         await query(
-          'UPDATE cards SET position = $1 WHERE id = $2',
-          [i, sourceCards[i].id]
+          `UPDATE cards SET position = batch.pos
+           FROM (SELECT unnest($1::int[]) AS id, unnest($2::int[]) AS pos) AS batch
+           WHERE cards.id = batch.id`,
+          [ids, positions]
         )
       }
     }
@@ -45,10 +49,14 @@ export async function POST(request: NextRequest) {
       [dest_column_id]
     )
 
-    for (let i = 0; i < destCards.length; i++) {
+    if (destCards.length > 0) {
+      const ids = destCards.map((c: { id: number }) => c.id)
+      const positions = destCards.map((_: unknown, i: number) => i)
       await query(
-        'UPDATE cards SET position = $1 WHERE id = $2',
-        [i, destCards[i].id]
+        `UPDATE cards SET position = batch.pos
+         FROM (SELECT unnest($1::int[]) AS id, unnest($2::int[]) AS pos) AS batch
+         WHERE cards.id = batch.id`,
+        [ids, positions]
       )
     }
 

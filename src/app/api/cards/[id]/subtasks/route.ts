@@ -164,8 +164,8 @@ export async function PUT(
       subtask.assignee_name = null
     }
 
-    // 滾動截止日：當子任務完成狀態改變時，更新母卡截止日
-    if (is_completed !== undefined) {
+    // 滾動截止日：當子任務完成狀態或截止日改變時，更新母卡截止日
+    if (is_completed !== undefined || due_date !== undefined) {
       const cardResult = await query(
         'SELECT rolling_due_date FROM cards WHERE id = $1',
         [cardId]

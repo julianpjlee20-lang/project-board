@@ -7,9 +7,14 @@ import { checkWritePermission } from '@/lib/api-key-guard'
 // GET /api/projects
 export async function GET() {
   try {
+    await requireAuth()
+
     const projects = await query("SELECT * FROM projects ORDER BY created_at DESC")
     return NextResponse.json(projects)
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('GET /api/projects error:', error)
     return NextResponse.json({
       error: 'Failed to fetch projects',

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireAuth, AuthError } from '@/lib/auth'
 
 // GET /api/cards/[id]/activity
 export async function GET(
@@ -7,6 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAuth()
+
     const { id } = await params
     
     const activity = await query(`
@@ -20,6 +23,9 @@ export async function GET(
 
     return NextResponse.json(activity)
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to fetch activity' }, { status: 500 })
   }

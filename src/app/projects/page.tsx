@@ -1,222 +1,58 @@
-'use client'
+import { Suspense } from 'react'
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '@/lib/auth'
+import { fetchProjects } from '@/lib/queries'
+import { ProjectsPageClient } from './projects-client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import UserNav from '@/components/UserNav'
-
-interface Project {
-  id: string
-  name: string
-  description: string | null
-  created_at: string
-}
-
-export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [projectName, setProjectName] = useState('')
-  const [initError, setInitError] = useState('')
-
-  async function fetchProjects() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/projects')
-      const data = await res.json()
-      if (data.error && data.detail?.includes('does not exist')) {
-        setInitError(data.detail)
-      } else {
-        setProjects(data)
-        setInitError('')
-      }
-    } catch (_e) {
-      // ignore
-    }
-    setLoading(false)
-  }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    fetchProjects()
-  }, [])
-
-  async function initDatabase() {
-    if (!confirm('確定要初始化資料庫嗎？這會建立所有必要的表格。')) return
-    
-    setCreating(true)
-    try {
-      const res = await fetch('/api/projects', { method: 'PUT' })
-      const data = await res.json()
-      
-      if (data.success) {
-        alert('資料庫初始化成功！')
-        fetchProjects()
-      } else {
-        alert('初始化失敗：' + data.detail)
-      }
-    } catch {
-      alert('初始化失敗')
-    }
-    setCreating(false)
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!projectName.trim()) return
-
-    setCreating(true)
-    try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: projectName })
-      })
-
-      if (res.ok) {
-        setProjectName('')
-        fetchProjects()
-      } else {
-        alert('建立失敗')
-      }
-    } catch (e) {
-      console.error(e)
-      alert('建立失敗')
-    }
-    setCreating(false)
-  }
-
+// Skeleton for Suspense fallback
+function ProjectsSkeleton() {
   return (
     <div id="main-content" className="min-h-screen bg-brand-bg">
-      {/* Header */}
       <header className="border-b bg-brand-primary border-brand-green">
         <div className="container mx-auto px-6 max-sm:px-4 py-8 max-sm:py-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-3xl max-sm:text-2xl font-bold text-balance text-brand-bg font-[Inter,sans-serif] tracking-[-0.03em]">
-                專案列表
-              </h1>
-              <p className="mt-2 max-sm:mt-1 text-sm max-sm:text-xs text-brand-bg/70">
-                建立和管理你的團隊專案
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Link
-                href="/calendar"
-                className="flex items-center gap-2 px-4 max-sm:px-3 py-2 rounded-lg font-medium text-sm transition-opacity hover:opacity-90 min-h-[44px] bg-brand-green text-brand-bg"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="max-sm:hidden">全域行事曆</span>
-                <span className="sm:hidden">行事曆</span>
-              </Link>
-              <UserNav />
+              <div className="h-9 w-36 bg-brand-bg/20 rounded animate-pulse" />
+              <div className="mt-2 h-4 w-48 bg-brand-bg/10 rounded animate-pulse" />
             </div>
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-6 max-sm:px-4 py-8 max-sm:py-5">
-        {/* Create Form - Only show if database is initialized */}
-        {!initError && (
-          <form onSubmit={handleCreate} className="flex max-sm:flex-col gap-3 mb-12 max-sm:mb-8">
-            <input
-              name="name"
-              placeholder="輸入新專案名稱…"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              className="flex h-12 w-full max-w-md max-sm:max-w-full rounded-lg border px-4 text-base transition-colors focus:outline-none focus-visible:ring-2 bg-surface-elevated border-brand-green text-brand-primary"
-              required
-              disabled={creating}
-            />
-            <button
-              type="submit"
-              className="h-12 px-6 rounded-lg font-medium transition-opacity hover:opacity-90 min-h-[48px] bg-brand-accent text-brand-primary"
-              disabled={creating}
-            >
-              {creating ? '建立中...' : '建立'}
-            </button>
-          </form>
-        )}
-
-        {/* Database Init Error */}
-        {initError && (
-          <div className="mb-8 p-6 rounded-lg border bg-red-50 dark:bg-red-900/30 border-red-600 dark:border-red-400">
-            <h3 className="font-semibold mb-2 text-red-600">
-              資料庫需要初始化
-            </h3>
-            <p className="text-sm mb-4 text-brand-primary/70">
-              尚未建立資料表，請點擊下方按鈕初始化資料庫。
-            </p>
-            <button
-              onClick={initDatabase}
-              className="h-12 px-6 rounded-lg font-medium transition-opacity hover:opacity-90 bg-red-600 text-white"
-              disabled={creating}
-            >
-              {creating ? '初始化中...' : '初始化資料庫'}
-            </button>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center py-12">
-            <div className="animate-pulse text-lg text-brand-green">
-              載入中…
+        <div className="flex gap-3 mb-12 max-sm:mb-8">
+          <div className="h-12 w-full max-w-md rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          <div className="h-12 w-20 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3 animate-pulse">
+              <div className="h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="flex gap-2 pt-2">
+                <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && projects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6 bg-brand-green/[0.125]">
-              <svg
-                className="w-12 h-12 text-brand-green"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2 text-brand-primary">
-              尚無專案
-            </h3>
-            <p className="text-center max-w-md text-brand-primary/60">
-              建立第一個專案，開始追蹤你的任務進度
-            </p>
-          </div>
-        )}
-
-        {/* Project Grid */}
-        {!loading && projects.length > 0 && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="h-full transition-shadow hover:shadow-lg cursor-pointer border-l-4 border-l-brand-accent bg-surface-elevated">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-brand-primary">
-                      {project.name}
-                    </CardTitle>
-                    {project.description && (
-                      <CardDescription className="line-clamp-3">
-                        {project.description}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-brand-green">
-                      建立於 {new Date(project.created_at).toLocaleDateString('zh-TW')}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
       </main>
     </div>
+  )
+}
+
+async function ProjectsContent() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const projects = await fetchProjects()
+  return <ProjectsPageClient initialProjects={projects} />
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<ProjectsSkeleton />}>
+      <ProjectsContent />
+    </Suspense>
   )
 }

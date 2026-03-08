@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireAuth, AuthError } from '@/lib/auth'
 
 /**
  * GET /api/calendar — 取得所有專案中有日期的卡片（跨專案行事曆用）
- * 不需認證（與 GET /api/projects/[id]/columns 一致）
  */
 export async function GET() {
   try {
+    await requireAuth()
     const cards = await query(`
       SELECT c.id, c.card_number, c.title, c.progress, c.priority,
              c.due_date, c.start_date, c.planned_completion_date, c.actual_completion_date,
@@ -41,6 +42,9 @@ export async function GET() {
       projects: Array.from(projectMap.values()),
     })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('GET /api/calendar error:', error)
     return NextResponse.json({
       error: '取得行事曆資料失敗',

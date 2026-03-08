@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import UserNav from '@/components/UserNav'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchNotificationCenter, dismissNotification, restoreNotification } from '@/lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -836,79 +839,78 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export default function NotificationsPage() {
-  const [data, setData] = useState<NotificationData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabKey>('overdue')
   const [dismissedSet, setDismissedSet] = useState<Set<string>>(new Set())
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/notifications/center')
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail || body.error || '無法載入通知中心資料')
-      }
-      const json: NotificationData = await res.json()
-      setData(json)
-      // Initialize dismissed set from API data
-      if (json.dismissed) {
-        setDismissedSet(new Set(json.dismissed.map(d => `${d.card_id}:${d.dismiss_type}`)))
-      }
-    } catch (e) {
-      console.error('載入通知中心錯誤:', e)
-      setError(e instanceof Error ? e.message : '載入失敗，請重新整理頁面')
-    } finally {
-      setLoading(false)
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    refetch: fetchData,
+  } = useQuery({
+    queryKey: queryKeys.notifications.center(),
+    queryFn: () => fetchNotificationCenter() as Promise<NotificationData>,
+  })
+
+  const error = queryError instanceof Error ? queryError.message : queryError ? '載入失敗' : null
+
+  // Initialize dismissed set from query data
+  const initDismissed = useCallback((notifData: NotificationData | undefined) => {
+    if (notifData?.dismissed) {
+      setDismissedSet(new Set(notifData.dismissed.map(d => `${d.card_id}:${d.dismiss_type}`)))
     }
   }, [])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  // Sync dismissed set when data changes
+  useState(() => { initDismissed(data) })
 
-  const handleDismiss = async (cardId: string, type: 'overdue' | 'due_soon') => {
-    const key = `${cardId}:${type}`
-    setDismissedSet(prev => new Set(prev).add(key))
-    try {
-      const res = await fetch('/api/notifications/dismiss', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card_id: cardId, dismiss_type: type }),
-      })
-      if (!res.ok) throw new Error()
+  const dismissMutation = useMutation({
+    mutationFn: ({ cardId, type }: { cardId: string; type: string }) =>
+      dismissNotification(cardId, type),
+    onMutate: async ({ cardId, type }) => {
+      const key = `${cardId}:${type}`
+      setDismissedSet(prev => new Set(prev).add(key))
+    },
+    onSuccess: () => {
       window.dispatchEvent(new Event('notification-dismissed'))
-    } catch {
-      // Revert on failure
+    },
+    onError: (_err, { cardId, type }) => {
+      const key = `${cardId}:${type}`
       setDismissedSet(prev => {
         const next = new Set(prev)
         next.delete(key)
         return next
       })
-    }
+    },
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: ({ cardId, type }: { cardId: string; type: string }) =>
+      restoreNotification(cardId, type),
+    onMutate: async ({ cardId, type }) => {
+      const key = `${cardId}:${type}`
+      setDismissedSet(prev => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    },
+    onSuccess: () => {
+      window.dispatchEvent(new Event('notification-dismissed'))
+    },
+    onError: (_err, { cardId, type }) => {
+      const key = `${cardId}:${type}`
+      setDismissedSet(prev => new Set(prev).add(key))
+    },
+  })
+
+  const handleDismiss = (cardId: string, type: 'overdue' | 'due_soon') => {
+    dismissMutation.mutate({ cardId, type })
   }
 
-  const handleRestore = async (cardId: string, type: 'overdue' | 'due_soon') => {
-    const key = `${cardId}:${type}`
-    setDismissedSet(prev => {
-      const next = new Set(prev)
-      next.delete(key)
-      return next
-    })
-    try {
-      const res = await fetch('/api/notifications/dismiss', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ card_id: cardId, dismiss_type: type }),
-      })
-      if (!res.ok) throw new Error()
-      window.dispatchEvent(new Event('notification-dismissed'))
-    } catch {
-      // Revert on failure
-      setDismissedSet(prev => new Set(prev).add(key))
-    }
+  const handleRestore = (cardId: string, type: 'overdue' | 'due_soon') => {
+    restoreMutation.mutate({ cardId, type })
   }
 
   const counts = data?.counts ?? { due_soon: 0, overdue: 0, recent_changes: 0 }

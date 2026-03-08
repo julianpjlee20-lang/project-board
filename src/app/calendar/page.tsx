@@ -1,77 +1,60 @@
-'use client'
+import { Suspense } from 'react'
+import { redirect } from 'next/navigation'
+import { getCurrentUser } from '@/lib/auth'
+import { fetchCalendarData } from '@/lib/queries'
+import { CalendarPageClient } from './calendar-client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import UserNav from '@/components/UserNav'
-import { GlobalCalendarView, type CalendarCard, type CalendarProject } from './calendar-views'
-
-export default function CalendarPage() {
-  const [cards, setCards] = useState<CalendarCard[]>([])
-  const [projects, setProjects] = useState<CalendarProject[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    async function fetchCalendarData() {
-      try {
-        const res = await fetch('/api/calendar')
-        if (!res.ok) throw new Error('載入失敗')
-        const data = await res.json()
-        setCards(data.cards || [])
-        setProjects(data.projects || [])
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '載入行事曆資料失敗')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchCalendarData()
-  }, [])
-
+// Skeleton for Suspense fallback
+function CalendarSkeleton() {
   return (
     <div id="main-content" className="min-h-screen bg-brand-bg">
-      {/* Header */}
       <header className="border-b bg-brand-primary border-brand-green">
         <div className="container mx-auto px-6 py-8">
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Link
-                  href="/projects"
-                  className="text-sm px-3 py-1 rounded-md transition-colors text-brand-bg/70"
-                >
-                  ← 專案列表
-                </Link>
-              </div>
-              <h1 className="text-3xl font-bold text-brand-bg font-[Inter,sans-serif] tracking-[-0.03em]">
-                全域行事曆
-              </h1>
-              <p className="mt-2 text-brand-bg/70">
-                跨所有專案的任務時程總覽
-              </p>
+              <div className="h-4 w-20 bg-brand-bg/10 rounded animate-pulse mb-2" />
+              <div className="h-9 w-40 bg-brand-bg/20 rounded animate-pulse" />
+              <div className="mt-2 h-4 w-56 bg-brand-bg/10 rounded animate-pulse" />
             </div>
-            <UserNav />
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-6 py-8">
-        {loading && (
-          <div className="flex justify-center py-12">
-            <div className="animate-pulse text-lg text-brand-green">
-              載入中…
+        <div className="space-y-4 animate-pulse">
+          <div className="flex justify-between items-center">
+            <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="flex gap-2">
+              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+              <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded" />
             </div>
           </div>
-        )}
-
-        {error && (
-          <div className="text-center py-12 text-red-500">{error}</div>
-        )}
-
-        {!loading && !error && (
-          <GlobalCalendarView cards={cards} projects={projects} />
-        )}
+          <div className="grid grid-cols-7 gap-px">
+            {Array.from({ length: 7 }, (_, i) => (
+              <div key={i} className="h-6 bg-gray-200 dark:bg-gray-700 rounded" />
+            ))}
+            {Array.from({ length: 35 }, (_, i) => (
+              <div key={i} className="h-24 bg-gray-100 dark:bg-gray-800 rounded" />
+            ))}
+          </div>
+        </div>
       </main>
     </div>
+  )
+}
+
+async function CalendarContent() {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+
+  const { cards, projects } = await fetchCalendarData()
+  return <CalendarPageClient initialCards={cards} initialProjects={projects} />
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<CalendarSkeleton />}>
+      <CalendarContent />
+    </Suspense>
   )
 }

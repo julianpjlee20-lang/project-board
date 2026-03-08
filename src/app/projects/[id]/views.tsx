@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Card, Column, Phase, CalendarMode } from './types'
 
 const PRIORITY_CONFIG = {
@@ -197,26 +198,31 @@ function SortableHeader({
 // List View Component
 // ──────────────────────────────────────────────
 export function ListView({ columns, phases, onCardClick }: { columns: Column[], phases?: Phase[], onCardClick: (card: Card) => void }) {
-  const allCards = columns.flatMap(col =>
-    col.cards.map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
+  const allCards = useMemo(() =>
+    columns.flatMap(col =>
+      col.cards.map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
+    ),
+    [columns]
   )
 
   const [sort, setSort] = useState<SortState>({ key: null, direction: null })
 
   /** Cycle sort: null → asc → desc → null */
-  const handleSort = (key: SortKey) => {
+  const handleSort = useCallback((key: SortKey) => {
     setSort(prev => {
-      if (prev.key !== key) return { key, direction: 'asc' }
-      if (prev.direction === 'asc') return { key, direction: 'desc' }
+      if (prev.key !== key) return { key, direction: 'asc' as SortDirection }
+      if (prev.direction === 'asc') return { key, direction: 'desc' as SortDirection }
       return { key: null, direction: null }
     })
-  }
+  }, [])
+
+  const phaseMap = useMemo(() => new Map(phases?.map(p => [p.id, p]) ?? []), [phases])
 
   /** Resolve phase name for a card */
-  const getPhaseName = (card: Card): string | null => {
+  const getPhaseName = useCallback((card: Card): string | null => {
     if (!card.phase_id || !phases) return null
-    return phases.find(p => p.id === card.phase_id)?.name ?? null
-  }
+    return phaseMap.get(card.phase_id)?.name ?? null
+  }, [phases, phaseMap])
 
   /** Sorted cards (memoised to avoid re-sorting on every render) */
   const sortedCards = useMemo(() => {
@@ -272,95 +278,155 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
           return 0
       }
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCards.length, sort.key, sort.direction])
+  }, [allCards, sort.key, sort.direction, getPhaseName])
+
+  // ── Virtualization ──
+  // 少於 50 張卡片時不需要虛擬化，直接渲染即可
+  const VIRTUALIZE_THRESHOLD = 50
+  const shouldVirtualize = sortedCards.length >= VIRTUALIZE_THRESHOLD
+  const parentRef = useRef<HTMLDivElement>(null)
+  const ROW_HEIGHT = 52 // 每行預估高度 (px)
+
+  const virtualizer = useVirtualizer({
+    count: sortedCards.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10, // 預渲染上下各 10 行，確保捲動平滑
+    enabled: shouldVirtualize,
+  })
+
+  /** Render a single table row for a card */
+  const renderRow = useCallback((card: typeof sortedCards[0], style?: React.CSSProperties) => {
+    const phase = card.phase_id ? phaseMap.get(card.phase_id) ?? null : null
+    const priority = card.priority || 'medium'
+    const config = PRIORITY_CONFIG[priority]
+
+    return (
+      <tr
+        key={card.id}
+        onClick={() => onCardClick(card)}
+        className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+        style={style}
+      >
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: card.columnColor }} />
+            {card.card_number != null && (
+              <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">#{card.card_number}</span>
+            )}
+            <span className="font-medium dark:text-slate-100">{card.title}</span>
+          </div>
+        </td>
+        <td className="px-4 py-3 text-sm">
+          {phase ? (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+              style={{ backgroundColor: phase.color }}
+            >
+              {phase.name}
+            </span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500">-</span>
+          )}
+        </td>
+        <td className="px-4 py-3 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${config.color}`} />
+            <span className="text-slate-600 dark:text-slate-300">{config.label}</span>
+          </span>
+        </td>
+        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{card.columnName}</td>
+        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+          {card.assignees?.[0]?.name || '-'}
+        </td>
+        <td className="px-4 py-3">
+          <ScheduleCell card={card} />
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${card.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                style={{ width: `${card.progress || 0}%` }}
+              />
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-[tabular-nums]">{card.progress || 0}%</span>
+          </div>
+        </td>
+      </tr>
+    )
+  }, [onCardClick, phaseMap])
+
+  // ── Virtualized table header (shared) ──
+  const tableHeader = (
+    <thead className="bg-slate-50 dark:bg-slate-800 border-b">
+      <tr>
+        <SortableHeader label="標題" sortKey="title" currentSort={sort} onSort={handleSort} />
+        <SortableHeader label="階段" sortKey="phase" currentSort={sort} onSort={handleSort} />
+        <SortableHeader label="優先度" sortKey="priority" currentSort={sort} onSort={handleSort} />
+        <SortableHeader label="欄位" sortKey="column" currentSort={sort} onSort={handleSort} />
+        <SortableHeader label="指派" sortKey="assignee" currentSort={sort} onSort={handleSort} />
+        <SortableHeader label="日程" sortKey="due_date" currentSort={sort} onSort={handleSort} />
+        <SortableHeader label="進度" sortKey="progress" currentSort={sort} onSort={handleSort} />
+      </tr>
+    </thead>
+  )
+
+  // ── Non-virtualized path (< 50 cards) ──
+  if (!shouldVirtualize) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow overflow-x-auto">
+        <table className="w-full min-w-[700px]">
+          {tableHeader}
+          <tbody>
+            {sortedCards.map((card) => renderRow(card))}
+            {sortedCards.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                  尚無任務
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  // ── Virtualized path (>= 50 cards) ──
+  const virtualItems = virtualizer.getVirtualItems()
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-lg shadow overflow-x-auto">
+      {/* Sticky header table */}
       <table className="w-full min-w-[700px]">
-        <thead className="bg-slate-50 dark:bg-slate-800 border-b">
-          <tr>
-            <SortableHeader label="標題" sortKey="title" currentSort={sort} onSort={handleSort} />
-            <SortableHeader label="階段" sortKey="phase" currentSort={sort} onSort={handleSort} />
-            <SortableHeader label="優先度" sortKey="priority" currentSort={sort} onSort={handleSort} />
-            <SortableHeader label="欄位" sortKey="column" currentSort={sort} onSort={handleSort} />
-            <SortableHeader label="指派" sortKey="assignee" currentSort={sort} onSort={handleSort} />
-            <SortableHeader label="日程" sortKey="due_date" currentSort={sort} onSort={handleSort} />
-            <SortableHeader label="進度" sortKey="progress" currentSort={sort} onSort={handleSort} />
-          </tr>
-        </thead>
-        <tbody>
-          {sortedCards.map((card) => (
-            <tr
-              key={card.id}
-              onClick={() => onCardClick(card)}
-              className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-            >
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: card.columnColor }} />
-                  {card.card_number != null && (
-                    <span className="text-xs font-mono text-slate-400 dark:text-slate-500 flex-shrink-0">#{card.card_number}</span>
-                  )}
-                  <span className="font-medium dark:text-slate-100">{card.title}</span>
-                </div>
-              </td>
-              <td className="px-4 py-3 text-sm">
-                {(() => {
-                  const phase = card.phase_id ? phases?.find(p => p.id === card.phase_id) : null
-                  return phase ? (
-                    <span
-                      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
-                      style={{ backgroundColor: phase.color }}
-                    >
-                      {phase.name}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 dark:text-slate-500">-</span>
-                  )
-                })()}
-              </td>
-              <td className="px-4 py-3 text-sm">
-                {(() => {
-                  const priority = card.priority || 'medium'
-                  const config = PRIORITY_CONFIG[priority]
-                  return (
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${config.color}`} />
-                      <span className="text-slate-600 dark:text-slate-300">{config.label}</span>
-                    </span>
-                  )
-                })()}
-              </td>
-              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{card.columnName}</td>
-              <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                {card.assignees?.[0]?.name || '-'}
-              </td>
-              <td className="px-4 py-3">
-                <ScheduleCell card={card} />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${card.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                      style={{ width: `${card.progress || 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-[tabular-nums]">{card.progress || 0}%</span>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {sortedCards.length === 0 && (
-            <tr>
-              <td colSpan={7} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
-                尚無任務
-              </td>
-            </tr>
-          )}
-        </tbody>
+        {tableHeader}
       </table>
+      {/* Scrollable virtualized body */}
+      <div
+        ref={parentRef}
+        className="overflow-y-auto"
+        style={{ maxHeight: 'calc(100vh - 260px)' }}
+      >
+        <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+          <table className="w-full min-w-[700px]">
+            <tbody>
+              {virtualItems.map((virtualRow) => {
+                const card = sortedCards[virtualRow.index]
+                return renderRow(card, {
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                  display: 'table-row',
+                })
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
@@ -737,6 +803,33 @@ function YearView({ year, cards, onCardClick, onMonthClick }: {
   onCardClick: (card: Card) => void
   onMonthClick: (month: number) => void
 }) {
+  // Build date index Map: key = "month-day", value = DateEntry[]
+  // This eliminates O(12 × N) repeated collectDateEntries + filter calls
+  const dateIndex = useMemo(() => {
+    const allEntries = collectDateEntries(cards)
+    const index = new Map<string, DateEntry[]>()
+    for (const entry of allEntries) {
+      if (entry.date.getFullYear() !== year) continue
+      const key = `${entry.date.getMonth()}-${entry.date.getDate()}`
+      const arr = index.get(key)
+      if (arr) arr.push(entry)
+      else index.set(key, [entry])
+    }
+    return index
+  }, [cards, year])
+
+  // Build month-level index from dateIndex (each month's all entries)
+  const monthIndex = useMemo(() => {
+    const index = new Map<number, DateEntry[]>()
+    for (const [key, entries] of dateIndex) {
+      const month = parseInt(key.split('-')[0])
+      const arr = index.get(month)
+      if (arr) arr.push(...entries)
+      else index.set(month, [...entries])
+    }
+    return index
+  }, [dateIndex])
+
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
       {Array.from({ length: 12 }, (_, m) => (
@@ -744,7 +837,8 @@ function YearView({ year, cards, onCardClick, onMonthClick }: {
           key={m}
           year={year}
           month={m}
-          cards={cards}
+          monthEntries={monthIndex.get(m) ?? []}
+          dateIndex={dateIndex}
           onCardClick={onCardClick}
           onMonthClick={onMonthClick}
         />
@@ -762,10 +856,11 @@ function heatColor(count: number): string {
 }
 
 /** Single month tile for YearView */
-function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
+function YearMonthTile({ year, month, monthEntries, dateIndex, onCardClick, onMonthClick }: {
   year: number
   month: number
-  cards: CardWithColumn[]
+  monthEntries: DateEntry[]
+  dateIndex: Map<string, DateEntry[]>
   onCardClick: (card: Card) => void
   onMonthClick: (month: number) => void
 }) {
@@ -775,18 +870,12 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
   const blanks = Array.from({ length: firstDay }, (_, i) => i)
   const [hoveredDay, setHoveredDay] = useState<number | null>(null)
 
-  // Collect all date entries for this month
-  const allEntries = collectDateEntries(cards)
-  const monthEntries = allEntries.filter(e =>
-    e.date.getFullYear() === year && e.date.getMonth() === month
-  )
-
   // Count unique cards that have any date in this month
   const uniqueCardIds = new Set(monthEntries.map(e => e.card.id))
   const monthCardCount = uniqueCardIds.size
 
   const entryCountForDay = (day: number) =>
-    monthEntries.filter(e => e.date.getDate() === day).length
+    dateIndex.get(`${month}-${day}`)?.length ?? 0
 
   return (
     <div
@@ -804,8 +893,8 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
         {days.map(day => {
           const cellDate = new Date(year, month, day)
           const isToday = isSameDay(cellDate, today)
-          const count = entryCountForDay(day)
-          const dayEntries = monthEntries.filter(e => e.date.getDate() === day)
+          const dayEntries = dateIndex.get(`${month}-${day}`) ?? []
+          const count = dayEntries.length
 
           return (
             <div
@@ -857,6 +946,12 @@ function YearMonthTile({ year, month, cards, onCardClick, onMonthClick }: {
 // ──────────────────────────────────────────────
 // CalendarView — main container with mode switching & navigation
 // ──────────────────────────────────────────────
+const modeOptions: { id: CalendarMode; label: string }[] = [
+  { id: 'month', label: '月' },
+  { id: 'quarter', label: '季' },
+  { id: 'year', label: '年' },
+]
+
 export function CalendarView({ columns, onCardClick }: { columns: Column[], onCardClick: (card: Card) => void }) {
   const [calendarMode, setCalendarMode] = useState<CalendarMode>('month')
   const [viewDate, setViewDate] = useState(new Date())
@@ -931,12 +1026,6 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
     setViewDate(new Date(viewYear, month, 1))
     setCalendarMode('month')
   }
-
-  const modeOptions: { id: CalendarMode; label: string }[] = [
-    { id: 'month', label: '月' },
-    { id: 'quarter', label: '季' },
-    { id: 'year', label: '年' },
-  ]
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-lg shadow">

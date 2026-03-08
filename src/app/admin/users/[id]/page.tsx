@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
+import { queryKeys } from '@/lib/query-keys'
+import { fetchAdminUserDetail } from '@/lib/api'
 
 // ========================================
 // Types
@@ -129,8 +132,7 @@ export default function AdminUserDetailPage() {
   const userId = params.id as string
 
   const [user, setUser] = useState<UserDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // loading and error are derived from useQuery below
 
   // Editable form state
   const [formName, setFormName] = useState('')
@@ -160,42 +162,34 @@ export default function AdminUserDetailPage() {
     is_active: true,
   })
 
-  // Fetch user detail
+  // Fetch user detail with TanStack Query
+  const {
+    data: userData,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.admin.users.detail(userId),
+    queryFn: () => fetchAdminUserDetail(userId) as Promise<UserDetail>,
+    enabled: !!userId,
+  })
+
+  const error = queryError instanceof Error ? queryError.message : null
+
+  // Sync query data to local state for form editing
   useEffect(() => {
-    async function fetchUser() {
-      setLoading(true)
-      setError(null)
-      try {
-        const res = await fetch(`/api/admin/users/${userId}`, {
-          credentials: 'include',
-        })
-
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || '載入使用者資料失敗')
-        }
-
-        const data: UserDetail = await res.json()
-        setUser(data)
-
-        // Populate form
-        const name = data.name || ''
-        setFormName(name)
-        setFormRole(data.role)
-        setFormActive(data.is_active)
-        setOriginalValues({
-          name,
-          role: data.role,
-          is_active: data.is_active,
-        })
-      } catch (err) {
-        setError(err instanceof Error ? err.message : '載入失敗')
-      } finally {
-        setLoading(false)
-      }
+    if (userData) {
+      setUser(userData)
+      const name = userData.name || ''
+      setFormName(name)
+      setFormRole(userData.role)
+      setFormActive(userData.is_active)
+      setOriginalValues({
+        name,
+        role: userData.role,
+        is_active: userData.is_active,
+      })
     }
-    fetchUser()
-  }, [userId])
+  }, [userData])
 
   // Auto-dismiss toast
   useEffect(() => {

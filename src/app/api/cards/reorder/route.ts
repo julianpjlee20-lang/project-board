@@ -13,10 +13,14 @@ export async function POST(request: NextRequest) {
     const { column_id, cards } = body
 
     // Update positions for all cards
-    for (let i = 0; i < cards.length; i++) {
+    if (cards.length > 0) {
+      const ids = cards.map((c: { id: number }) => c.id)
+      const positions = cards.map((_: unknown, i: number) => i)
       await query(
-        'UPDATE cards SET position = $1, column_id = $2 WHERE id = $3',
-        [i, column_id, cards[i].id]
+        `UPDATE cards SET position = batch.pos, column_id = $3
+         FROM (SELECT unnest($1::int[]) AS id, unnest($2::int[]) AS pos) AS batch
+         WHERE cards.id = batch.id`,
+        [ids, positions, column_id]
       )
     }
 

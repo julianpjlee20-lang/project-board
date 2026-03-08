@@ -207,6 +207,12 @@ select:focus-visible,
   border-radius: 4px;
 }
 
+/* Content-visibility optimization for long lists & off-screen sections */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
 /* UserNav dropdown animation */
 @keyframes userNavFadeIn {
   from {

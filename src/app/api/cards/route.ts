@@ -9,6 +9,8 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 // GET /api/cards?project_id=xxx[&column_id=xxx][&limit=100]
 export async function GET(request: NextRequest) {
   try {
+    await requireAuth()
+
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('project_id')
     const columnId = searchParams.get('column_id')
@@ -80,6 +82,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ total: cards.length, cards })
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('GET /api/cards error:', error)
     return NextResponse.json({
       error: '取得卡片列表失敗',

@@ -9,41 +9,52 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAuth()
+
     const { id } = await params
-    
+
     // Get columns
     const columns = await query(
       'SELECT * FROM columns WHERE project_id = $1 ORDER BY position',
       [id]
     )
     
-    // Get cards for each column
+    // Get all cards in one query (eliminates N+1)
+    const columnIds = columns.map((c: { id: number }) => c.id)
+    const allCards = columnIds.length > 0 ? await query(`
+      SELECT c.id, c.card_number, c.title, c.description, c.progress,
+             c.priority, c.due_date, c.planned_completion_date,
+             c.actual_completion_date, c.start_date, c.position,
+             c.phase_id, c.column_id, c.created_at, c.rolling_due_date,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
+        COALESCE(
+          (SELECT json_agg(json_build_object('id', s.id, 'title', s.title, 'is_completed', s.is_completed, 'position', s.position, 'due_date', s.due_date, 'assignee_id', s.assignee_id, 'assignee_name', sp.name) ORDER BY s.position)
+           FROM subtasks s LEFT JOIN profiles sp ON s.assignee_id = sp.id WHERE s.card_id = c.id),
+          '[]'
+        ) as subtasks,
+        COALESCE(
+          (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
+           FROM tags t JOIN card_tags ct ON t.id = ct.tag_id WHERE ct.card_id = c.id),
+          '[]'
+        ) as tags
+      FROM cards c
+      LEFT JOIN card_assignees ca ON c.id = ca.card_id
+      LEFT JOIN profiles p ON ca.user_id = p.id
+      WHERE c.column_id = ANY($1::int[])
+      GROUP BY c.id
+      ORDER BY c.position
+    `, [columnIds]) : []
+
+    // Group cards by column in JS
     for (const col of columns) {
-      const cards = await query(`
-        SELECT c.*,
-          COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
-          COALESCE(
-            (SELECT json_agg(json_build_object('id', s.id, 'title', s.title, 'is_completed', s.is_completed, 'position', s.position, 'due_date', s.due_date, 'assignee_id', s.assignee_id, 'assignee_name', sp.name) ORDER BY s.position)
-             FROM subtasks s LEFT JOIN profiles sp ON s.assignee_id = sp.id WHERE s.card_id = c.id),
-            '[]'
-          ) as subtasks,
-          COALESCE(
-            (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
-             FROM tags t JOIN card_tags ct ON t.id = ct.tag_id WHERE ct.card_id = c.id),
-            '[]'
-          ) as tags
-        FROM cards c
-        LEFT JOIN card_assignees ca ON c.id = ca.card_id
-        LEFT JOIN profiles p ON ca.user_id = p.id
-        WHERE c.column_id = $1
-        GROUP BY c.id
-        ORDER BY c.position
-      `, [col.id])
-      col.cards = cards
+      col.cards = allCards.filter((c: { column_id: number }) => c.column_id === col.id)
     }
     
     return NextResponse.json(columns)
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error(error)
     return NextResponse.json({ error: 'Failed to fetch columns' }, { status: 500 })
   }
