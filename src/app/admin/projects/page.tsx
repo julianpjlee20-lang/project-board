@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchAdminProjects } from '@/lib/api'
+import { UuidDisplay } from '@/components/ui/UuidDisplay'
 
 // ─── Types ───────────────────────────────────────────────
 interface Project {
@@ -201,12 +202,15 @@ function ProjectCard({ project }: { project: Project }) {
       className="bg-surface-elevated rounded-xl border border-border-default p-4 transition-shadow hover:shadow-md"
     >
       <div className="flex items-start justify-between mb-3">
-        <Link
-          href={`/projects/${project.id}`}
-          className="text-sm font-semibold hover:underline text-blue-400"
-        >
-          {project.name}
-        </Link>
+        <div>
+          <Link
+            href={`/projects/${project.id}`}
+            className="text-sm font-semibold hover:underline text-blue-400"
+          >
+            {project.name}
+          </Link>
+          <UuidDisplay uuid={project.id} label="專案 ID" />
+        </div>
         {project.status && (
           <span
             className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -284,6 +288,7 @@ function ProjectTable({
                 >
                   {project.name}
                 </Link>
+                <UuidDisplay uuid={project.id} label="專案 ID" />
                 {project.description && (
                   <p className="text-xs mt-0.5 line-clamp-1 text-text-tertiary">
                     {project.description}

@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchAdminUserDetail } from '@/lib/api'
+import { UuidDisplay } from '@/components/ui/UuidDisplay'
 
 // ========================================
 // Types
@@ -455,6 +456,7 @@ export default function AdminUserDetailPage() {
               {user.name || '(未設定名稱)'}
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">{user.email}</p>
+            <UuidDisplay uuid={user.id} label="使用者 ID" />
 
             <div className="flex items-center flex-wrap gap-2 mt-3">
               <ProviderBadge method={user.login_method} />

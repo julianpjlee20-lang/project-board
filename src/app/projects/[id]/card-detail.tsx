@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { UuidDisplay } from '@/components/ui/UuidDisplay'
 import { DateInput } from '@/components/ui/DateInput'
 import { AssigneeCombobox } from '@/components/ui/AssigneeCombobox'
 import type { Card, Phase, Subtask, ActivityLog, CardDetailProps, ActiveUser } from './types'
@@ -1357,6 +1359,7 @@ function SaveAsRecurringButton({ cardId }: { cardId: string }) {
 // ---------------------------------------------------------------------------
 
 export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) {
+  const { data: session } = useSession()
   const detail = useCardDetail(card.id, onClose, onUpdate)
 
   useEffect(() => {
@@ -1372,9 +1375,14 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
       <div className="bg-white dark:bg-slate-900 rounded-xl max-sm:rounded-none w-full max-w-lg max-h-[90vh] max-sm:max-h-full max-sm:h-full flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="px-5 py-3 max-sm:px-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
-          <span className="text-sm font-mono text-slate-400 dark:text-slate-500">
-            {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-mono text-slate-400 dark:text-slate-500">
+              {card?.card_number != null ? `#${card.card_number}` : '卡片詳情'}
+            </span>
+            {session?.user?.role === 'admin' && card?.id && (
+              <UuidDisplay uuid={card.id} label="ID" />
+            )}
+          </div>
           <button onClick={onClose} aria-label="關閉" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
