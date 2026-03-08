@@ -1,0 +1,2735 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Project Board API",
+    "description": "團隊專案管理看板系統 REST API。支援專案管理、看板卡片操作、子任務、標籤、階段、通知、模板及 AI 整合。",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Project Board"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://{domain}",
+      "description": "正式環境",
+      "variables": {
+        "domain": {
+          "default": "your-domain.com",
+          "description": "部署域名"
+        }
+      }
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "本地開發環境"
+    }
+  ],
+  "security": [
+    { "BearerApiKey": [] },
+    { "SessionCookie": [] }
+  ],
+  "tags": [
+    { "name": "Health", "description": "系統健康檢查" },
+    { "name": "Projects", "description": "專案 CRUD" },
+    { "name": "Columns", "description": "看板欄位操作" },
+    { "name": "Cards", "description": "卡片 CRUD 與移動" },
+    { "name": "Subtasks", "description": "子任務操作" },
+    { "name": "Tags", "description": "標籤管理" },
+    { "name": "Phases", "description": "階段管理" },
+    { "name": "Activity", "description": "活動日誌" },
+    { "name": "Calendar", "description": "行事曆" },
+    { "name": "Notifications", "description": "通知系統" },
+    { "name": "Users", "description": "用戶管理" },
+    { "name": "AI", "description": "AI 總覽與批次操作" },
+    { "name": "Templates", "description": "模板管理" },
+    { "name": "Admin", "description": "管理員功能" },
+    { "name": "API Keys", "description": "API Key 管理（僅限管理員 JWT）" },
+    { "name": "Auth", "description": "認證與密碼重設" },
+    { "name": "Docs", "description": "API 文件" }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "健康檢查",
+        "description": "檢查系統與資料庫健康狀態。不需要認證。",
+        "operationId": "getHealth",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "系統正常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "系統異常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "取得所有專案",
+        "description": "取得所有專案，按建立時間降序排列。不需要認證。",
+        "operationId": "listProjects",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "專案列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Project" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Projects"],
+        "summary": "建立新專案",
+        "description": "建立新專案，自動建立三個預設欄位：「待辦」、「進行中」、「已完成」。需認證 + 寫入權限。",
+        "operationId": "createProject",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateProjectRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateProjectResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "tags": ["Projects"],
+        "summary": "取得單一專案",
+        "description": "取得單一專案詳情。不需要認證。",
+        "operationId": "getProject",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "專案詳情",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Project" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Projects"],
+        "summary": "刪除專案",
+        "description": "刪除專案及所有相關資料（欄位、卡片、子任務、標籤，透過 CASCADE）。需認證 + 寫入權限。",
+        "operationId": "deleteProject",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/projects/{id}/columns": {
+      "get": {
+        "tags": ["Columns"],
+        "summary": "取得專案欄位（含卡片）",
+        "description": "取得專案的所有欄位，每個欄位包含完整的卡片列表（含 assignees、subtasks、tags）。這是取得看板資料的主要端點。不需要認證。",
+        "operationId": "getProjectColumns",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "欄位與卡片資料",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ColumnWithCards" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Columns"],
+        "summary": "在專案中建立欄位",
+        "description": "在指定專案中建立新欄位。需認證 + 寫入權限。",
+        "operationId": "createProjectColumn",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateProjectColumnRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Column" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/columns": {
+      "get": {
+        "tags": ["Columns"],
+        "summary": "取得所有欄位",
+        "description": "取得所有專案的所有欄位，按 position 排序。不需要認證。",
+        "operationId": "listColumns",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "欄位列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Column" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Columns"],
+        "summary": "建立欄位",
+        "description": "建立新欄位（需指定 project_id）。需認證 + 寫入權限。",
+        "operationId": "createColumn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateColumnRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Column" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["Columns"],
+        "summary": "更新欄位",
+        "description": "更新欄位名稱、顏色或位置。需認證 + 寫入權限。",
+        "operationId": "updateColumn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateColumnRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Column" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Columns"],
+        "summary": "刪除欄位",
+        "description": "刪除欄位（連帶刪除所有卡片）。需認證 + 寫入權限。",
+        "operationId": "deleteColumn",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "欄位 UUID"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/cards": {
+      "post": {
+        "tags": ["Cards"],
+        "summary": "建立卡片",
+        "description": "建立卡片，自動加到欄位末尾，分配專案內流水號。需認證 + 寫入權限。",
+        "operationId": "createCard",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCardRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Card" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/cards/{id}": {
+      "get": {
+        "tags": ["Cards"],
+        "summary": "取得單一卡片",
+        "description": "取得單一卡片，含 assignees、subtasks、tags。不需要認證。",
+        "operationId": "getCard",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "卡片詳情",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CardDetail" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Cards"],
+        "summary": "更新卡片",
+        "description": "更新卡片欄位（僅提供要更新的欄位）。會記錄活動日誌並觸發通知。需認證 + 寫入權限。",
+        "operationId": "updateCard",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCardRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Cards"],
+        "summary": "刪除卡片",
+        "description": "刪除卡片及所有相關資料。需認證 + 寫入權限。",
+        "operationId": "deleteCard",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/cards/move": {
+      "post": {
+        "tags": ["Cards"],
+        "summary": "移動卡片",
+        "description": "將卡片移動到不同欄位（或同欄位不同位置），自動重新排序。需認證 + 寫入權限。",
+        "operationId": "moveCard",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MoveCardRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/cards/reorder": {
+      "post": {
+        "tags": ["Cards"],
+        "summary": "批次重新排序卡片",
+        "description": "批次重新排序欄位內的卡片。卡片按提供的順序分配 position 0, 1, 2...。需認證 + 寫入權限。",
+        "operationId": "reorderCards",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReorderCardsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/cards/{id}/subtasks": {
+      "get": {
+        "tags": ["Subtasks"],
+        "summary": "取得卡片子任務",
+        "description": "取得卡片的所有子任務，按 position 排序。不需要認證。",
+        "operationId": "listSubtasks",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "子任務列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Subtask" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Subtasks"],
+        "summary": "建立子任務",
+        "description": "在卡片中建立子任務。需認證 + 寫入權限。",
+        "operationId": "createSubtask",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateSubtaskRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Subtask" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["Subtasks"],
+        "summary": "更新子任務",
+        "description": "更新子任務。需認證 + 寫入權限。",
+        "operationId": "updateSubtask",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSubtaskRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Subtasks"],
+        "summary": "刪除子任務",
+        "description": "刪除子任務。需認證 + 寫入權限。",
+        "operationId": "deleteSubtask",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" },
+          {
+            "name": "subtask_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "子任務 UUID"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/projects/{id}/tags": {
+      "get": {
+        "tags": ["Tags"],
+        "summary": "取得專案標籤",
+        "description": "取得專案的所有標籤。不需要認證。",
+        "operationId": "listProjectTags",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "標籤列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Tag" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tags"],
+        "summary": "建立標籤",
+        "description": "在專案中建立標籤。需認證 + 寫入權限。",
+        "operationId": "createProjectTag",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTagRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tag" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Tags"],
+        "summary": "刪除標籤",
+        "description": "刪除標籤（同時從所有卡片移除）。需認證 + 寫入權限。",
+        "operationId": "deleteProjectTag",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" },
+          {
+            "name": "tag_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "標籤 UUID"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/cards/{id}/tags": {
+      "get": {
+        "tags": ["Tags"],
+        "summary": "取得卡片標籤",
+        "description": "取得卡片上的標籤。不需要認證。",
+        "operationId": "listCardTags",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "標籤列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CardTag" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Tags"],
+        "summary": "為卡片加標籤",
+        "description": "為卡片加上標籤（冪等操作，重複加不會報錯）。需認證 + 寫入權限。",
+        "operationId": "addCardTag",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["tag_id"],
+                "properties": {
+                  "tag_id": { "type": "string", "format": "uuid", "description": "標籤 UUID" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Tags"],
+        "summary": "移除卡片標籤",
+        "description": "從卡片移除標籤。需認證 + 寫入權限。",
+        "operationId": "removeCardTag",
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" },
+          {
+            "name": "tag_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "標籤 UUID"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/projects/{id}/phases": {
+      "get": {
+        "tags": ["Phases"],
+        "summary": "取得專案階段",
+        "description": "取得專案的所有階段（含自動計算的進度統計）。不需要認證。",
+        "operationId": "listProjectPhases",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "階段列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Phase" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Phases"],
+        "summary": "建立階段",
+        "description": "在專案中建立階段。需認證 + 寫入權限。",
+        "operationId": "createPhase",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreatePhaseRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Phase" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["Phases"],
+        "summary": "更新階段",
+        "description": "更新階段名稱、顏色或位置。需認證 + 寫入權限。",
+        "operationId": "updatePhase",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdatePhaseRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Phases"],
+        "summary": "刪除階段",
+        "description": "刪除階段。可選擇將其卡片遷移到另一個階段。需認證 + 寫入權限。",
+        "operationId": "deletePhase",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "要刪除的階段 UUID"
+          },
+          {
+            "name": "targetPhaseId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "遷移目標階段 UUID（選填）"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/cards/{id}/activity": {
+      "get": {
+        "tags": ["Activity"],
+        "summary": "取得卡片活動日誌",
+        "description": "取得卡片的活動日誌（最近 20 筆，最新在前）。不需要認證。",
+        "operationId": "listCardActivity",
+        "security": [],
+        "parameters": [
+          { "$ref": "#/components/parameters/CardId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "活動日誌列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ActivityLog" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/calendar": {
+      "get": {
+        "tags": ["Calendar"],
+        "summary": "取得行事曆資料",
+        "description": "取得跨專案的行事曆資料 — 所有具有日期欄位的卡片。需認證。",
+        "operationId": "getCalendar",
+        "responses": {
+          "200": {
+            "description": "行事曆資料",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CalendarResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/notifications/center": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "取得通知中心",
+        "description": "取得完整通知中心資料：即將到期的卡片、逾期卡片、最近變更、專案摘要、已忽略的通知。需認證。",
+        "operationId": "getNotificationCenter",
+        "responses": {
+          "200": {
+            "description": "通知中心資料",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationCenterResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/notifications/count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "取得通知計數",
+        "description": "輕量級徽章計數 — 回傳未忽略的逾期 + 即將到期卡片總數。需認證。",
+        "operationId": "getNotificationCount",
+        "responses": {
+          "200": {
+            "description": "通知計數",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": { "type": "integer", "description": "未忽略的通知總數" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/notifications/dismiss": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "忽略通知",
+        "description": "忽略通知（冪等）。需認證。",
+        "operationId": "dismissNotification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DismissNotificationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Notifications"],
+        "summary": "恢復已忽略通知",
+        "description": "恢復已忽略的通知。需認證。",
+        "operationId": "undismissNotification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DismissNotificationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/notifications/preferences": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "取得通知偏好",
+        "description": "取得當前用戶的通知偏好設定。需認證。",
+        "operationId": "getNotificationPreferences",
+        "responses": {
+          "200": {
+            "description": "通知偏好設定",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationPreferences" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "更新通知偏好",
+        "description": "更新通知偏好設定（UPSERT，若無現有記錄則新建）。需認證。",
+        "operationId": "updateNotificationPreferences",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/NotificationPreferences" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後的偏好設定",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/NotificationPreferences" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/notifications/flush": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "合併推播通知",
+        "description": "合併推播 notification_queue 中未發送的通知。不需認證（內部排程用）。",
+        "operationId": "flushNotifications",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "推播結果",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FlushNotificationsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/daily-digest": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "發送每日摘要",
+        "description": "發送每日摘要通知。需認證（CRON_SECRET 或管理員 session）。",
+        "operationId": "sendDailyDigest",
+        "parameters": [
+          {
+            "name": "secret",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "CRON_SECRET（替代認證方式）"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "摘要發送結果",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DailyDigestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "取得當前用戶",
+        "description": "取得當前用戶完整個人資料。需認證。",
+        "operationId": "getCurrentUser",
+        "responses": {
+          "200": {
+            "description": "用戶資料",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserProfile" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "更新當前用戶",
+        "description": "更新當前用戶的個人資料。需認證。",
+        "operationId": "updateCurrentUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/users/me/password": {
+      "put": {
+        "tags": ["Users"],
+        "summary": "變更密碼",
+        "description": "變更密碼（僅限帳密登入的用戶，OAuth 用戶回傳 403）。需認證。",
+        "operationId": "changePassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/users/active": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "取得活躍用戶",
+        "description": "取得所有活躍用戶列表（用於指派選擇器）。需認證。",
+        "operationId": "listActiveUsers",
+        "responses": {
+          "200": {
+            "description": "活躍用戶列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ActiveUser" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/users/me/line": {
+      "delete": {
+        "tags": ["Users"],
+        "summary": "解除 LINE 綁定",
+        "description": "解除當前用戶的 LINE 綁定。需認證。",
+        "operationId": "unlinkLine",
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/ai/overview": {
+      "get": {
+        "tags": ["AI"],
+        "summary": "取得全域總覽",
+        "description": "取得所有專案的全面總覽 — 推薦 AI Agent 或儀表板使用此端點一次取得全貌。需認證。",
+        "operationId": "getAiOverview",
+        "responses": {
+          "200": {
+            "description": "全域總覽",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AiOverviewResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/ai/batch": {
+      "post": {
+        "tags": ["AI"],
+        "summary": "批次更新卡片",
+        "description": "批次更新多張卡片 — 推薦 AI Agent 使用此端點一次更新多張卡片。單次最多 50 筆。需認證 + 寫入權限。",
+        "operationId": "batchUpdateCards",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BatchUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "批次更新結果",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BatchUpdateResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/projects/{id}/templates": {
+      "get": {
+        "tags": ["Templates"],
+        "summary": "取得專案模板",
+        "description": "取得專案的所有模板（含子任務）。需認證。",
+        "operationId": "listProjectTemplates",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "模板列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "templates": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Template" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Templates"],
+        "summary": "建立模板",
+        "description": "建立模板。支援從現有卡片建立或空白建立。需認證 + 寫入權限。",
+        "operationId": "createTemplate",
+        "parameters": [
+          { "$ref": "#/components/parameters/ProjectId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  { "$ref": "#/components/schemas/CreateTemplateFromCardRequest" },
+                  { "$ref": "#/components/schemas/CreateTemplateBlankRequest" }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Template" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/templates/{id}": {
+      "put": {
+        "tags": ["Templates"],
+        "summary": "更新模板",
+        "description": "更新模板。子任務會被完全替換（舊的刪除，新的插入）。需認證 + 寫入權限。",
+        "operationId": "updateTemplate",
+        "parameters": [
+          { "$ref": "#/components/parameters/TemplateId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateTemplateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後的模板",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Template" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["Templates"],
+        "summary": "刪除模板",
+        "description": "刪除模板（子任務透過 CASCADE 自動刪除）。需認證 + 寫入權限。",
+        "operationId": "deleteTemplate",
+        "parameters": [
+          { "$ref": "#/components/parameters/TemplateId" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/templates/{id}/generate": {
+      "post": {
+        "tags": ["Templates"],
+        "summary": "從模板產生卡片",
+        "description": "從模板產生卡片。支援 {{YYYY}} 和 {{MM}} 標題替換，自動計算子任務截止日。需認證 + 寫入權限。",
+        "operationId": "generateFromTemplate",
+        "parameters": [
+          { "$ref": "#/components/parameters/TemplateId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GenerateFromTemplateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "產生的卡片",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GenerateFromTemplateResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "取得系統統計",
+        "description": "取得系統統計資料。僅限管理員。",
+        "operationId": "getAdminStats",
+        "responses": {
+          "200": {
+            "description": "系統統計",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminStatsResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "取得用戶列表",
+        "description": "取得分頁、可篩選、可排序的用戶列表。僅限管理員。",
+        "operationId": "listAdminUsers",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string", "default": "" },
+            "description": "搜尋 name 或 email"
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["", "user", "admin"] },
+            "description": "角色篩選"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["", "true", "false"] },
+            "description": "啟用狀態篩選"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1, "minimum": 1 },
+            "description": "頁碼（1-based）"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 },
+            "description": "每頁筆數"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": { "type": "string", "default": "created_at" },
+            "description": "排序欄位"
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" },
+            "description": "排序方向"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "用戶列表",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminUsersResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "編輯用戶",
+        "description": "編輯用戶名稱、角色或啟用狀態。管理員不能停用自己、不能降級自己、不能移除最後一個管理員。僅限管理員。",
+        "operationId": "patchAdminUser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "用戶 UUID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PatchAdminUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/users/{id}/reset-password": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "強制重設密碼",
+        "description": "強制重設用戶密碼（設定 force_password_change = true）。僅限管理員。",
+        "operationId": "adminResetPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "用戶 UUID"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/users/{id}/generate-reset-link": {
+      "post": {
+        "tags": ["Admin"],
+        "summary": "產生密碼重設連結",
+        "description": "產生密碼重設連結（不寄送 email），有效期 60 分鐘。僅限管理員。",
+        "operationId": "generateResetLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "用戶 UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "重設連結",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "reset_link": { "type": "string", "description": "密碼重設連結" },
+                    "expires_in": { "type": "string", "description": "有效期說明" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/projects": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "取得所有專案（含統計）",
+        "description": "取得所有專案含統計資料（卡片數、成員數、建立者名稱）。僅限管理員。",
+        "operationId": "listAdminProjects",
+        "responses": {
+          "200": {
+            "description": "專案列表（含統計）",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminProjectsResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/admin/notifications/settings": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "取得通知全域設定",
+        "description": "取得通知系統全域設定。僅限管理員。",
+        "operationId": "getAdminNotificationSettings",
+        "responses": {
+          "200": {
+            "description": "通知全域設定",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminNotificationSettingsResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "更新通知全域設定",
+        "description": "更新通知系統全域設定。僅限管理員。",
+        "operationId": "updateAdminNotificationSettings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateAdminNotificationSettingsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後的設定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "settings": { "$ref": "#/components/schemas/AdminNotificationSettings" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/ai/keys": {
+      "get": {
+        "tags": ["API Keys"],
+        "summary": "列出所有 API Key",
+        "description": "列出所有 API Key（僅 metadata，不含明文）。僅限管理員 JWT session，不接受 API Key 認證。",
+        "operationId": "listApiKeys",
+        "responses": {
+          "200": {
+            "description": "API Key 列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "keys": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ApiKeyMeta" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["API Keys"],
+        "summary": "建立 API Key",
+        "description": "建立新 API Key。明文僅回傳一次。僅限管理員 JWT session。",
+        "operationId": "createApiKey",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateApiKeyRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "建立成功（含明文金鑰）",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateApiKeyResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "delete": {
+        "tags": ["API Keys"],
+        "summary": "撤銷 API Key",
+        "description": "撤銷 API Key。僅限管理員 JWT session。",
+        "operationId": "deleteApiKey",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key_id"],
+                "properties": {
+                  "key_id": { "type": "string", "format": "uuid", "description": "API Key UUID" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "忘記密碼",
+        "description": "發送密碼重設 email。不需認證。永遠回傳成功（防止 email 枚舉）。同一 email 5 分鐘內最多 3 次。",
+        "operationId": "forgotPassword",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "description": "用戶 Email" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "永遠成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "驗證重設 token",
+        "description": "驗證密碼重設 token 是否有效。不需認證。",
+        "operationId": "validateResetToken",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "密碼重設 token"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token 有效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": { "type": "boolean" },
+                    "email": { "type": "string", "description": "遮罩後的 email" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Token 無效或過期",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": { "type": "boolean", "enum": [false] },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Auth"],
+        "summary": "重設密碼",
+        "description": "使用 token 重設密碼。不需認證。",
+        "operationId": "resetPassword",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResetPasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "重設成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "tags": ["Docs"],
+        "summary": "取得 API 文件",
+        "description": "取得 API 參考文件的 Markdown 原始碼。不需要認證。",
+        "operationId": "getDocs",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API 文件（Markdown）",
+            "content": {
+              "text/markdown": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/openapi": {
+      "get": {
+        "tags": ["Docs"],
+        "summary": "取得 OpenAPI 規格",
+        "description": "取得 OpenAPI 3.1.0 JSON 規格檔案。不需要認證。",
+        "operationId": "getOpenApiSpec",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 規格",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          },
+          "500": {
+            "description": "讀取失敗",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" },
+                    "detail": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API Key 認證。格式：`pb_` 前綴 + 64 位十六進位字元。適合 AI Agent、CI/CD、腳本等非瀏覽器場景。"
+      },
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "authjs.session-token",
+        "description": "Auth.js v5 JWT session cookie，透過登入流程自動設定。"
+      }
+    },
+    "parameters": {
+      "ProjectId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" },
+        "description": "專案 UUID"
+      },
+      "CardId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" },
+        "description": "卡片 UUID"
+      },
+      "TemplateId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" },
+        "description": "模板 UUID"
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "操作成功",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "enum": [true] }
+              }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "輸入驗證失敗",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "未登入",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "未登入" }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "權限不足",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string", "example": "權限不足" }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "找不到資源",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "example": "輸入驗證失敗" },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string" },
+                "message": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "object",
+            "properties": {
+              "ok": { "type": "boolean" },
+              "time": { "type": "string", "format": "date-time" },
+              "error": { "type": "string" }
+            },
+            "required": ["ok"]
+          },
+          "profiles_table": {
+            "type": "object",
+            "properties": {
+              "ok": { "type": "boolean" },
+              "count": { "type": "integer" }
+            },
+            "required": ["ok", "count"]
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+          "start_date": { "type": ["string", "null"], "format": "date" },
+          "end_date": { "type": ["string", "null"], "format": "date" },
+          "created_by": { "type": ["string", "null"], "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateProjectRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 200, "description": "專案名稱" },
+          "description": { "type": "string", "maxLength": 5000, "description": "專案描述" },
+          "status": { "type": "string", "enum": ["active", "completed", "archived"], "default": "active" },
+          "start_date": { "type": "string", "format": "date", "description": "開始日期（YYYY-MM-DD）" },
+          "end_date": { "type": "string", "format": "date", "description": "結束日期（YYYY-MM-DD，必須 >= start_date）" }
+        }
+      },
+      "CreateProjectResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "status": { "type": "string" },
+          "start_date": { "type": ["string", "null"] },
+          "end_date": { "type": ["string", "null"] }
+        }
+      },
+      "Column": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "position": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ColumnWithCards": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Column" },
+          {
+            "type": "object",
+            "properties": {
+              "cards": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/CardDetail" }
+              }
+            }
+          }
+        ]
+      },
+      "CreateProjectColumnRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "description": "欄位名稱" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$", "default": "#4EA7FC", "description": "顏色（#RRGGBB）" },
+          "position": { "type": "integer", "description": "位置（選填，自動指派若省略）" }
+        }
+      },
+      "CreateColumnRequest": {
+        "type": "object",
+        "required": ["project_id", "name"],
+        "properties": {
+          "project_id": { "type": "string", "format": "uuid", "description": "專案 UUID" },
+          "name": { "type": "string", "maxLength": 100, "description": "欄位名稱" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$", "default": "#4EA7FC" }
+        }
+      },
+      "UpdateColumnRequest": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "position": { "type": "integer" }
+        }
+      },
+      "Card": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "card_number": { "type": ["integer", "null"], "description": "專案內流水號" },
+          "column_id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+          "phase_id": { "type": ["string", "null"], "format": "uuid" },
+          "start_date": { "type": ["string", "null"], "format": "date" },
+          "due_date": { "type": ["string", "null"], "format": "date" },
+          "planned_completion_date": { "type": ["string", "null"], "format": "date" },
+          "actual_completion_date": { "type": ["string", "null"], "format": "date" },
+          "position": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CardDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Card" },
+          {
+            "type": "object",
+            "properties": {
+              "assignees": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Assignee" }
+              },
+              "subtasks": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Subtask" }
+              },
+              "tags": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/CardTag" }
+              }
+            }
+          }
+        ]
+      },
+      "CreateCardRequest": {
+        "type": "object",
+        "required": ["column_id", "title"],
+        "properties": {
+          "column_id": { "type": "string", "format": "uuid", "description": "目標欄位 UUID" },
+          "title": { "type": "string", "maxLength": 200, "description": "卡片標題" },
+          "phase_id": { "type": "string", "format": "uuid", "description": "所屬階段 UUID（選填）" }
+        }
+      },
+      "UpdateCardRequest": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "maxLength": 200 },
+          "description": { "type": "string", "maxLength": 5000, "description": "空字串清空" },
+          "assignee_id": { "type": ["string", "null"], "description": "UUID、空字串或 null 取消指派" },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+          "phase_id": { "type": ["string", "null"], "format": "uuid" },
+          "start_date": { "type": ["string", "null"], "format": "date", "description": "YYYY-MM-DD 或空字串清空" },
+          "due_date": { "type": ["string", "null"], "format": "date", "description": "YYYY-MM-DD 或空字串清空" },
+          "planned_completion_date": { "type": ["string", "null"], "format": "date" },
+          "actual_completion_date": { "type": ["string", "null"], "format": "date" }
+        }
+      },
+      "MoveCardRequest": {
+        "type": "object",
+        "required": ["card_id", "source_column_id", "dest_column_id", "source_index", "dest_index"],
+        "properties": {
+          "card_id": { "type": "string", "format": "uuid" },
+          "source_column_id": { "type": "string", "format": "uuid" },
+          "dest_column_id": { "type": "string", "format": "uuid" },
+          "source_index": { "type": "integer", "minimum": 0 },
+          "dest_index": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ReorderCardsRequest": {
+        "type": "object",
+        "required": ["column_id", "cards"],
+        "properties": {
+          "column_id": { "type": "string", "format": "uuid" },
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": { "type": "string", "format": "uuid" }
+              }
+            }
+          }
+        }
+      },
+      "Subtask": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "card_id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "is_completed": { "type": "boolean" },
+          "position": { "type": "integer" },
+          "due_date": { "type": ["string", "null"], "format": "date" },
+          "assignee_id": { "type": ["string", "null"], "format": "uuid" },
+          "assignee_name": { "type": ["string", "null"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateSubtaskRequest": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 200 },
+          "due_date": { "type": "string", "format": "date" },
+          "assignee_id": { "type": "string", "format": "uuid" }
+        }
+      },
+      "UpdateSubtaskRequest": {
+        "type": "object",
+        "required": ["subtask_id"],
+        "properties": {
+          "subtask_id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "is_completed": { "type": "boolean" },
+          "due_date": { "type": ["string", "null"], "description": "YYYY-MM-DD、空字串或 null 清空" },
+          "assignee_id": { "type": ["string", "null"], "description": "UUID、空字串或 null 清空" }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+        }
+      },
+      "CardTag": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+        }
+      },
+      "CreateTagRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$", "default": "#4EA7FC" }
+        }
+      },
+      "Phase": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "position": { "type": "integer" },
+          "total_cards": { "type": "integer" },
+          "completed_cards": { "type": "integer" },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100, "description": "伺服器端計算的完成百分比" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreatePhaseRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 100 },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+        }
+      },
+      "UpdatePhaseRequest": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "position": { "type": "integer" }
+        }
+      },
+      "Assignee": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" }
+        }
+      },
+      "ActivityLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "action": { "type": "string", "description": "動作類型（如「修改」）" },
+          "target": { "type": "string", "description": "目標欄位（如「標題」）" },
+          "old_value": { "type": ["string", "null"] },
+          "new_value": { "type": ["string", "null"] },
+          "user_name": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CalendarCard": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "card_number": { "type": ["integer", "null"] },
+          "title": { "type": "string" },
+          "progress": { "type": "integer" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+          "due_date": { "type": ["string", "null"], "format": "date" },
+          "start_date": { "type": ["string", "null"], "format": "date" },
+          "planned_completion_date": { "type": ["string", "null"], "format": "date" },
+          "actual_completion_date": { "type": ["string", "null"], "format": "date" },
+          "column_id": { "type": "string", "format": "uuid" },
+          "column_name": { "type": "string" },
+          "column_color": { "type": "string" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "project_name": { "type": "string" },
+          "assignees": { "type": "array", "items": { "$ref": "#/components/schemas/Assignee" } },
+          "tags": { "type": "array", "items": { "$ref": "#/components/schemas/CardTag" } }
+        }
+      },
+      "CalendarResponse": {
+        "type": "object",
+        "properties": {
+          "cards": { "type": "array", "items": { "$ref": "#/components/schemas/CalendarCard" } },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "format": "uuid" },
+                "name": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "NotificationCenterResponse": {
+        "type": "object",
+        "properties": {
+          "due_soon": { "type": "array", "items": { "type": "object" } },
+          "overdue": { "type": "array", "items": { "type": "object" } },
+          "recent_changes": { "type": "array", "items": { "type": "object" } },
+          "project_summary": { "type": "array", "items": { "type": "object" } },
+          "dismissed": { "type": "array", "items": { "type": "object" } },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "due_soon": { "type": "integer" },
+              "overdue": { "type": "integer" },
+              "recent_changes": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "DismissNotificationRequest": {
+        "type": "object",
+        "required": ["card_id", "dismiss_type"],
+        "properties": {
+          "card_id": { "type": "string", "format": "uuid" },
+          "dismiss_type": { "type": "string", "enum": ["overdue", "due_soon"] }
+        }
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "notify_assigned": { "type": "boolean" },
+          "notify_title_changed": { "type": "boolean" },
+          "notify_due_soon": { "type": "boolean" },
+          "notify_moved": { "type": "boolean" },
+          "quiet_hours_start": { "type": ["string", "null"], "description": "安靜時段開始（HH:MM）" },
+          "quiet_hours_end": { "type": ["string", "null"], "description": "安靜時段結束（HH:MM）" }
+        }
+      },
+      "FlushNotificationsResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "sent": { "type": "integer" },
+          "users": { "type": "integer" }
+        }
+      },
+      "DailyDigestResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "sent_count": { "type": "integer" },
+          "skipped_count": { "type": "integer" },
+          "total_users": { "type": "integer" },
+          "digest_summary": {
+            "type": "object",
+            "properties": {
+              "overdue_count": { "type": "integer" },
+              "upcoming_count": { "type": "integer" },
+              "yesterday_changes": { "type": "integer" },
+              "project_count": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "avatar_url": { "type": ["string", "null"] },
+          "role": { "type": "string", "enum": ["user", "admin"] },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "avatar_url": { "type": "string", "description": "有效 URL，空字串清空" }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": ["current_password", "new_password", "confirm_password"],
+        "properties": {
+          "current_password": { "type": "string" },
+          "new_password": { "type": "string", "minLength": 6, "maxLength": 100 },
+          "confirm_password": { "type": "string", "minLength": 6, "maxLength": 100 }
+        }
+      },
+      "ActiveUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "avatar_url": { "type": ["string", "null"] }
+        }
+      },
+      "AiOverviewResponse": {
+        "type": "object",
+        "properties": {
+          "total_projects": { "type": "integer" },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "format": "uuid" },
+                "name": { "type": "string" },
+                "status": { "type": "string", "enum": ["active", "completed", "archived"] },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "name": { "type": "string" },
+                      "color": { "type": "string" },
+                      "position": { "type": "integer" },
+                      "card_count": { "type": "integer" }
+                    }
+                  }
+                },
+                "stats": {
+                  "type": "object",
+                  "properties": {
+                    "total_cards": { "type": "integer" },
+                    "completed_cards": { "type": "integer" },
+                    "overdue_cards": { "type": "integer" },
+                    "avg_progress": { "type": "integer" }
+                  }
+                },
+                "phases": { "type": "array", "items": { "$ref": "#/components/schemas/Phase" } },
+                "recent_cards": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "card_number": { "type": ["integer", "null"] },
+                      "title": { "type": "string" },
+                      "progress": { "type": "integer" },
+                      "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+                      "column_name": { "type": "string" },
+                      "assignees": { "type": "array", "items": { "$ref": "#/components/schemas/Assignee" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "BatchUpdateRequest": {
+        "type": "object",
+        "required": ["updates"],
+        "properties": {
+          "project_id": { "type": "string", "format": "uuid", "description": "選填，用於 move_to_column 查找欄位" },
+          "updates": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "required": ["card_id"],
+              "properties": {
+                "card_id": { "type": "string", "format": "uuid" },
+                "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "description": { "type": "string", "maxLength": 5000 },
+                "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+                "due_date": { "type": "string", "format": "date" },
+                "start_date": { "type": "string", "format": "date" },
+                "phase_id": { "type": "string", "format": "uuid" },
+                "assignee_id": { "type": "string", "format": "uuid" },
+                "move_to_column": { "type": "string", "description": "目標欄位名稱（需提供 project_id）" }
+              }
+            }
+          }
+        }
+      },
+      "BatchUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "summary": { "type": "string" },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "card_id": { "type": "string", "format": "uuid" },
+                "status": { "type": "string", "enum": ["ok", "error"] },
+                "card_number": { "type": ["integer", "null"] },
+                "error": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "Template": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "project_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "title_pattern": { "type": "string", "description": "支援 {{YYYY}} 和 {{MM}} 替換" },
+          "description": { "type": ["string", "null"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+          "target_column_id": { "type": ["string", "null"], "format": "uuid" },
+          "rolling_due_date": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "subtasks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TemplateSubtask" }
+          }
+        }
+      },
+      "TemplateSubtask": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "position": { "type": "integer" },
+          "day_of_month": { "type": ["integer", "null"], "description": "每月幾號截止（超過月份天數自動調整到月底）" },
+          "assignee_id": { "type": ["string", "null"], "format": "uuid" },
+          "assignee_name": { "type": ["string", "null"] }
+        }
+      },
+      "CreateTemplateFromCardRequest": {
+        "type": "object",
+        "required": ["source_card_id"],
+        "properties": {
+          "source_card_id": { "type": "string", "format": "uuid", "description": "來源卡片 UUID" }
+        }
+      },
+      "CreateTemplateBlankRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "title_pattern": { "type": "string" },
+          "description": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high"], "default": "medium" },
+          "target_column_id": { "type": "string", "format": "uuid" },
+          "rolling_due_date": { "type": "boolean", "default": false },
+          "subtasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["title"],
+              "properties": {
+                "title": { "type": "string" },
+                "position": { "type": "integer" },
+                "day_of_month": { "type": "integer" },
+                "assignee_id": { "type": "string", "format": "uuid" }
+              }
+            }
+          }
+        }
+      },
+      "UpdateTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "title_pattern": { "type": "string" },
+          "description": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+          "target_column_id": { "type": "string", "format": "uuid" },
+          "rolling_due_date": { "type": "boolean" },
+          "subtasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["title"],
+              "properties": {
+                "title": { "type": "string" },
+                "position": { "type": "integer" },
+                "day_of_month": { "type": ["integer", "null"] },
+                "assignee_id": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      },
+      "GenerateFromTemplateRequest": {
+        "type": "object",
+        "required": ["start_month", "count"],
+        "properties": {
+          "start_month": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "description": "起始月份（YYYY-MM）" },
+          "count": { "type": "integer", "minimum": 1, "description": "產生幾個月份的卡片" }
+        }
+      },
+      "GenerateFromTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "format": "uuid" },
+                "column_id": { "type": "string", "format": "uuid" },
+                "title": { "type": "string" },
+                "description": { "type": ["string", "null"] },
+                "priority": { "type": "string" },
+                "position": { "type": "integer" },
+                "card_number": { "type": "integer" },
+                "due_date": { "type": ["string", "null"], "format": "date" }
+              }
+            }
+          },
+          "count": { "type": "integer" }
+        }
+      },
+      "AdminStatsResponse": {
+        "type": "object",
+        "properties": {
+          "total_users": { "type": "integer" },
+          "active_users": { "type": "integer" },
+          "disabled_users": { "type": "integer" },
+          "total_projects": { "type": "integer" },
+          "total_cards": { "type": "integer" },
+          "users_this_month": { "type": "integer" },
+          "credentials_users": { "type": "integer" },
+          "discord_users": { "type": "integer" }
+        }
+      },
+      "AdminUsersResponse": {
+        "type": "object",
+        "properties": {
+          "users": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserProfile" }
+          },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" }
+        }
+      },
+      "PatchAdminUserRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "role": { "type": "string", "enum": ["user", "admin"] },
+          "is_active": { "type": "boolean" }
+        }
+      },
+      "AdminProjectsResponse": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/components/schemas/Project" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "card_count": { "type": "integer" },
+                    "member_count": { "type": "integer" },
+                    "created_by_name": { "type": ["string", "null"] }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "AdminNotificationSettings": {
+        "type": "object",
+        "properties": {
+          "boss_user_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "daily_digest_enabled": { "type": "boolean" },
+          "digest_include_upcoming": { "type": "boolean" },
+          "digest_include_overdue": { "type": "boolean" },
+          "digest_include_yesterday_changes": { "type": "boolean" },
+          "digest_include_project_stats": { "type": "boolean" },
+          "digest_send_hour": { "type": "integer", "minimum": 0, "maximum": 23 }
+        }
+      },
+      "AdminNotificationSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "settings": { "$ref": "#/components/schemas/AdminNotificationSettings" },
+          "boss_users": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "format": "uuid" },
+                "name": { "type": "string" },
+                "email": { "type": "string", "format": "email" }
+              }
+            }
+          }
+        }
+      },
+      "UpdateAdminNotificationSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "boss_user_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "daily_digest_enabled": { "type": "boolean" },
+          "digest_include_upcoming": { "type": "boolean" },
+          "digest_include_overdue": { "type": "boolean" },
+          "digest_include_yesterday_changes": { "type": "boolean" },
+          "digest_include_project_stats": { "type": "boolean" },
+          "digest_send_hour": { "type": "integer", "minimum": 0, "maximum": 23 }
+        }
+      },
+      "ApiKeyMeta": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "key_prefix": { "type": "string", "description": "金鑰前綴（pb_xxxxxx）" },
+          "permissions": { "type": "string", "enum": ["full", "read_only"] },
+          "is_active": { "type": "boolean" },
+          "last_used_at": { "type": ["string", "null"], "format": "date-time" },
+          "expires_at": { "type": ["string", "null"], "format": "date-time" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateApiKeyRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 100, "description": "API Key 名稱" },
+          "permissions": { "type": "string", "enum": ["full", "read_only"], "default": "full" },
+          "expires_at": { "type": "string", "format": "date", "description": "過期日期（選填）" }
+        }
+      },
+      "CreateApiKeyResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "key": { "$ref": "#/components/schemas/ApiKeyMeta" },
+          "api_key": { "type": "string", "description": "完整 API Key 明文（僅此一次）" },
+          "warning": { "type": "string" }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["token", "new_password"],
+        "properties": {
+          "token": { "type": "string" },
+          "new_password": { "type": "string", "minLength": 6 }
+        }
+      }
+    }
+  }
+}

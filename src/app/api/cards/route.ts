@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { column_id, title, phase_id } = validation.data
+    const { column_id, title, phase_id, assignee_id } = validation.data
 
     // 取得 project_id（透過 column_id）
     const colResult = await query(
@@ -145,6 +145,14 @@ export async function POST(request: NextRequest) {
       FROM next_number
       RETURNING *
     `, [projectId, column_id, title, position, phase_id ?? null])
+
+    // 若有 assignee_id，驗證 profile 存在後寫入 card_assignees
+    if (assignee_id) {
+      const targetUser = await query('SELECT id FROM profiles WHERE id = $1', [assignee_id])
+      if (targetUser.length > 0) {
+        await query('INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)', [result[0].id, assignee_id])
+      }
+    }
 
     return NextResponse.json(result[0])
   } catch (error) {
