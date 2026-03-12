@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { query } from '@/lib/db'
-import { updateCardSchema, validateData } from '@/lib/validations'
+import { updateCardSchema, patchCardSchema, validateData } from '@/lib/validations'
 import { sendNotification } from '@/lib/notifications'
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
@@ -292,6 +292,134 @@ export async function PUT(
       detail: errMsg,
       step
     }, { status: 500 })
+  }
+}
+
+// PATCH /api/cards/[id] — MCP partial update
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await requireAuth()
+    checkWritePermission(user)
+
+    const { id } = await params
+    const body = await request.json()
+
+    // Zod 驗證
+    const validation = validateData(patchCardSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({
+        error: '輸入驗證失敗',
+        details: validation.errors
+      }, { status: 400 })
+    }
+
+    const { title, description, status, assignee, due_date } = validation.data
+
+    // 確認 card 存在
+    const existing = await query('SELECT * FROM cards WHERE id = $1', [id])
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+    }
+    const card = existing[0]
+
+    // 收集要更新的欄位
+    const setClauses: string[] = []
+    const values: (string | number | boolean | null)[] = []
+    let paramIndex = 1
+
+    if (title !== undefined) {
+      setClauses.push(`title = $${paramIndex++}`)
+      values.push(title)
+    }
+
+    if (description !== undefined) {
+      setClauses.push(`description = $${paramIndex++}`)
+      values.push(description)
+    }
+
+    if (due_date !== undefined) {
+      setClauses.push(`due_date = $${paramIndex++}`)
+      values.push(due_date)
+    }
+
+    // status → 映射到 column
+    if (status !== undefined) {
+      // 透過 card 的 column_id 查出 project_id
+      const colResult = await query('SELECT project_id FROM columns WHERE id = $1', [card.column_id])
+      if (colResult.length === 0) {
+        return NextResponse.json({ error: 'Card column not found' }, { status: 500 })
+      }
+      const projectId = colResult[0].project_id
+
+      // 查出該 project 的所有 columns，按 position 排序
+      const columns = await query(
+        'SELECT id, name, position FROM columns WHERE project_id = $1 ORDER BY position',
+        [projectId]
+      )
+
+      const statusPositionMap: Record<string, number> = {
+        todo: 0,
+        in_progress: 1,
+        done: 2,
+      }
+      const targetPosition = statusPositionMap[status]
+      const targetColumn = columns.find((c: { position: number }) => c.position === targetPosition)
+
+      if (!targetColumn) {
+        return NextResponse.json({
+          error: `No column found for status "${status}" (position ${targetPosition})`
+        }, { status: 400 })
+      }
+
+      setClauses.push(`column_id = $${paramIndex++}`)
+      values.push(targetColumn.id)
+    }
+
+    // assignee → 查 profiles（先 id 再 name）
+    if (assignee !== undefined) {
+      let profileId: string | null = null
+
+      // 先試 id 匹配
+      const byId = await query('SELECT id FROM profiles WHERE id::text = $1', [assignee])
+      if (byId.length > 0) {
+        profileId = byId[0].id
+      } else {
+        // 再試 name 匹配
+        const byName = await query('SELECT id FROM profiles WHERE name = $1', [assignee])
+        if (byName.length > 0) {
+          profileId = byName[0].id
+        }
+      }
+
+      if (profileId) {
+        // 清除舊的 assignee，插入新的
+        await query('DELETE FROM card_assignees WHERE card_id = $1', [id])
+        await query('INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)', [id, profileId])
+      }
+      // 若找不到 profile，靜默忽略（MCP 場景不需要報錯）
+    }
+
+    // 執行 UPDATE（如果有欄位要更新）
+    if (setClauses.length > 0) {
+      setClauses.push(`updated_at = NOW()`)
+      values.push(id)
+      const sql = `UPDATE cards SET ${setClauses.join(', ')} WHERE id = $${paramIndex}`
+      await query(sql, values)
+    }
+
+    // 回傳更新後的完整 card
+    const updated = await query('SELECT * FROM cards WHERE id = $1', [id])
+    return NextResponse.json(updated[0])
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('[PATCH /api/cards] Error:', errMsg)
+    return NextResponse.json({ error: 'Failed to patch card', detail: errMsg }, { status: 500 })
   }
 }
 

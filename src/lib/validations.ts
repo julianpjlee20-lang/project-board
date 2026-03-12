@@ -134,6 +134,22 @@ export const updateCardSchema = z.object({
   path: ['start_date'],
 })
 
+/** PATCH /api/cards/[id] - MCP 部分更新卡片 */
+export const patchCardSchema = z.object({
+  title: z.string().min(1, { message: '標題不可為空' }).max(500, { message: '標題不可超過 500 字元' }).optional(),
+  description: z.string().optional(),
+  status: z.enum(['todo', 'in_progress', 'done'], { message: '狀態必須為 todo, in_progress 或 done' }).optional(),
+  assignee: z.string().optional(),
+  due_date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: '日期格式需為 YYYY-MM-DD' })
+    .refine((val) => {
+      const [y, m, d] = val.split('-').map(Number)
+      const date = new Date(y, m - 1, d)
+      return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
+    }, { message: '無效的日期' })
+    .optional(),
+})
+
 // ========================================
 // Subtasks API 驗證
 // ========================================

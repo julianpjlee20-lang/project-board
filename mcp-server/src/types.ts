@@ -13,7 +13,7 @@ export interface Phase {
   id: string;
   project_id: string;
   name: string;
-  order?: number;
+  position?: number;
   created_at?: string;
 }
 

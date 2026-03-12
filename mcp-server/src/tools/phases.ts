@@ -17,7 +17,7 @@ export function registerPhaseTools(server: McpServer): void {
 Args:
   - project_id (string): The project ID from uphouse_list_projects
 
-Returns: Array of phases with id, name, and order.
+Returns: Array of phases with id, name, and position.
 Use phase IDs when calling uphouse_create_card or uphouse_list_cards.`,
       inputSchema: z.object({
         project_id: z.string().min(1).describe('Project ID to list phases for'),
@@ -41,7 +41,7 @@ Use phase IDs when calling uphouse_create_card or uphouse_list_cards.`,
         }
 
         const text = phases
-          .map((p, i) => `- [${p.id}] ${p.name} (order: ${p.order ?? i})`)
+          .map((p, i) => `- [${p.id}] ${p.name} (position: ${p.position ?? i})`)
           .join('\n');
 
         return {
@@ -64,14 +64,14 @@ Use phase IDs when calling uphouse_create_card or uphouse_list_cards.`,
 Args:
   - project_id (string): The project ID to add the phase to
   - name (string): Phase name
-  - order (number, optional): Display order (lower = first)
+  - color (string, optional): Display color in hex format (e.g. #FF5733)
 
 Returns: The created phase object with its new id.
 After creating phases, use uphouse_create_card to add cards/tasks.`,
       inputSchema: z.object({
         project_id: z.string().min(1).describe('Project ID'),
         name: z.string().min(1).max(200).describe('Phase name'),
-        order: z.number().int().min(0).optional().describe('Display order'),
+        color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe('Display color in hex format (e.g. #FF5733)'),
       }).strict(),
       annotations: {
         readOnlyHint: false,
@@ -80,11 +80,11 @@ After creating phases, use uphouse_create_card to add cards/tasks.`,
         openWorldHint: false,
       },
     },
-    async ({ project_id, name, order }) => {
+    async ({ project_id, name, color }) => {
       try {
         const phase = await uphouse<Phase>(`/api/projects/${project_id}/phases`, 'POST', {
           name,
-          ...(order !== undefined ? { order } : {}),
+          ...(color !== undefined ? { color } : {}),
         });
 
         return {
