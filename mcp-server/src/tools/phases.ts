@@ -5,6 +5,10 @@ import { z } from 'zod';
 import { uphouse, formatError } from '../services/api.js';
 import type { Phase, PhasesApiResponse } from '../types.js';
 
+// 與前端 PRESET_COLORS 一致，用於自動分配顏色
+const PRESET_COLORS = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444', '#06B6D4'];
+let colorIndex = 0;
+
 export function registerPhaseTools(server: McpServer): void {
 
   // LIST PHASES
@@ -82,9 +86,11 @@ After creating phases, use uphouse_create_card to add cards/tasks.`,
     },
     async ({ project_id, name, color }) => {
       try {
+        // 沒傳顏色時自動循環分配不同顏色
+        const resolvedColor = color ?? PRESET_COLORS[colorIndex++ % PRESET_COLORS.length];
         const phase = await uphouse<Phase>(`/api/projects/${project_id}/phases`, 'POST', {
           name,
-          ...(color !== undefined ? { color } : {}),
+          color: resolvedColor,
         });
 
         return {

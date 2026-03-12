@@ -23,6 +23,7 @@ import {
   createPhase as createPhaseApi,
   deletePhase as deletePhaseApi,
 } from '@/lib/api'
+import { exportToXlsx, exportToPdf } from '@/lib/export'
 
 const ListView = dynamic(() => import('./views').then(m => ({ default: m.ListView })))
 const CalendarView = dynamic(() => import('./views').then(m => ({ default: m.CalendarView })))
@@ -361,7 +362,7 @@ function PhaseFilterBar({ phases, selectedPhase, onSelect, onAddPhase, onDeleteP
               e.stopPropagation()
               setPendingDeletePhase(phase)
             }}
-            className="hidden group-hover:flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-500 hover:bg-red-200 text-xs ml-1"
+            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white hover:bg-red-600 text-[10px] leading-none transition-opacity z-10"
           >
             ✕
           </button>
@@ -496,6 +497,8 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
   const [showRecurringPanel, setShowRecurringPanel] = useState(false)
   // Archive panel
   const [showArchivePanel, setShowArchivePanel] = useState(false)
+  // Export dropdown
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   const [, startTransition] = useTransition()
 
@@ -722,6 +725,45 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
                 {tab.label}
               </button>
             ))}
+          </div>
+          {/* Export dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors min-h-[36px] whitespace-nowrap flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="max-sm:hidden">匯出</span>
+            </button>
+            {showExportMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 min-w-[160px]">
+                  <button
+                    onClick={() => {
+                      exportToXlsx(project.name, filteredColumns, phases)
+                      setShowExportMenu(false)
+                    }}
+                    className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200"
+                  >
+                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    下載 Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportToPdf(project.name, filteredColumns, phases)
+                      setShowExportMenu(false)
+                    }}
+                    className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200"
+                  >
+                    <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    列印 / 存為 PDF
+                  </button>
+                </div>
+              </>
+            )}
           </div>
           <button
             onClick={() => setShowArchivePanel(true)}

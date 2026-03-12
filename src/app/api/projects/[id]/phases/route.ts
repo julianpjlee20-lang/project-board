@@ -4,6 +4,9 @@ import { createPhaseSchema, updatePhaseSchema, deletePhaseSchema, validateData }
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
 
+// 預設顏色循環（與前端 PRESET_COLORS 一致）
+const PRESET_COLORS = ['#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444', '#06B6D4']
+
 interface PhaseRow {
   id: string
   project_id: string
@@ -72,16 +75,20 @@ export async function POST(
 
     const { name, color } = validation.data
 
-    // Auto-assign position
+    // Auto-assign position + count existing phases for color fallback
     const posResult = await query(
-      'SELECT COALESCE(MAX(position), -1) + 1 as pos FROM phases WHERE project_id = $1',
+      'SELECT COALESCE(MAX(position), -1) + 1 as pos, COUNT(*)::int as count FROM phases WHERE project_id = $1',
       [projectId]
     )
     const position = posResult[0]?.pos || 0
+    const existingCount = posResult[0]?.count || 0
+
+    // 沒傳顏色時，根據已有階段數量循環分配不同顏色
+    const resolvedColor = color || PRESET_COLORS[existingCount % PRESET_COLORS.length]
 
     const result = await query(
       'INSERT INTO phases (project_id, name, color, position) VALUES ($1, $2, $3, $4) RETURNING *',
-      [projectId, name, color || '#4EA7FC', position]
+      [projectId, name, resolvedColor, position]
     )
 
     return NextResponse.json(result[0])
