@@ -16,14 +16,18 @@ export function registerCardTools(server: McpServer): void {
     'uphouse_list_cards',
     {
       title: 'List Cards',
-      description: `List all cards/tasks in a specific phase.
+      description: `List cards/tasks. Provide either project_id (all cards in project) or phase_id (cards in a specific phase).
 
 Args:
-  - phase_id (string): The phase ID from uphouse_list_phases
+  - project_id (string, optional): The project ID — returns ALL cards in the project
+  - phase_id (string, optional): The phase ID — returns only cards assigned to that phase
+
+At least one must be provided. If both are provided, project_id takes priority.
 
 Returns: Array of cards with id, title, description, status, assignee, due_date.`,
       inputSchema: z.object({
-        phase_id: z.string().min(1).describe('Phase ID to list cards for'),
+        project_id: z.string().min(1).optional().describe('Project ID to list all cards for'),
+        phase_id: z.string().min(1).optional().describe('Phase ID to list cards for (only cards assigned to this phase)'),
       }).strict(),
       annotations: {
         readOnlyHint: true,
@@ -32,15 +36,24 @@ Returns: Array of cards with id, title, description, status, assignee, due_date.
         openWorldHint: false,
       },
     },
-    async ({ phase_id }) => {
+    async ({ project_id, phase_id }) => {
       try {
-        const data = await uphouse<CardsApiResponse>(`/api/phases/${phase_id}/cards`);
+        if (!project_id && !phase_id) {
+          return { content: [{ type: 'text' as const, text: 'Error: Provide either project_id or phase_id.' }] };
+        }
+
+        const url = project_id
+          ? `/api/cards?project_id=${project_id}`
+          : `/api/phases/${phase_id}/cards`;
+
+        const data = await uphouse<CardsApiResponse>(url);
         const cards: Card[] = Array.isArray(data)
           ? data
           : ('cards' in data ? data.cards : data.data);
 
         if (!cards.length) {
-          return { content: [{ type: 'text' as const, text: `No cards found in phase ${phase_id}.` }] };
+          const scope = project_id ? `project ${project_id}` : `phase ${phase_id}`;
+          return { content: [{ type: 'text' as const, text: `No cards found in ${scope}.` }] };
         }
 
         const text = cards

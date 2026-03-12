@@ -80,7 +80,16 @@ export async function GET(request: NextRequest) {
       cards = await query(q.sql, q.params)
     }
 
-    return NextResponse.json({ total: cards.length, cards })
+    // 為 MCP server 補上 status / assignee 映射欄位
+    const enrichedCards = cards.map((c: Record<string, unknown>) => ({
+      ...c,
+      status: c.column_name,
+      assignee: Array.isArray(c.assignees) && (c.assignees as Array<{ name: string }>).length > 0
+        ? (c.assignees as Array<{ name: string }>)[0].name
+        : null,
+    }))
+
+    return NextResponse.json({ total: enrichedCards.length, cards: enrichedCards })
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
