@@ -19,6 +19,7 @@ import {
   updateCard,
   moveCard,
   createColumn as createColumnApi,
+  deleteColumn as deleteColumnApi,
   createPhase as createPhaseApi,
   deletePhase as deletePhaseApi,
 } from '@/lib/api'
@@ -30,6 +31,7 @@ const GanttView = dynamic(() => import('./gantt').then(m => ({ default: m.GanttV
 const CardModal = dynamic(() => import('./card-detail').then(m => ({ default: m.CardModal })))
 const SlideInPane = dynamic(() => import('./card-detail').then(m => ({ default: m.SlideInPane })))
 const RecurringTasksPanel = dynamic(() => import('./recurring-tasks').then(m => ({ default: m.RecurringTasksPanel })))
+const ArchivePanel = dynamic(() => import('./archive-panel').then(m => ({ default: m.ArchivePanel })))
 
 // Priority color mapping (Tailwind border-left classes)
 const PRIORITY_BORDER_CLASSES: Record<Card['priority'], string> = {
@@ -125,15 +127,32 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
   )
 }
 
-function ColumnDroppable({ column, phases, onCardClick, onAddCard, selectedPhase }: {
+function ColumnDroppable({ column, allColumns, phases, onCardClick, onAddCard, onDeleteColumn, selectedPhase }: {
   column: Column,
+  allColumns: Column[],
   phases: Phase[],
   onCardClick: (card: Card) => void,
   onAddCard: (columnId: string, title: string, phaseId?: string | null) => void,
+  onDeleteColumn: (columnId: string, targetColumnId?: string | null) => void,
   selectedPhase?: string | null,
 }) {
   const [newCardTitle, setNewCardTitle] = useState('')
   const [showAddCard, setShowAddCard] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [targetColumnId, setTargetColumnId] = useState<string>('')
+
+  // 已完成欄位摺疊：超過 5 張卡片時預設收合
+  const isDoneColumn = /done|完成/i.test(column.name)
+  const [isDoneCollapsed, setIsDoneCollapsed] = useState(true)
+  const shouldCollapse = isDoneColumn && (column.cards?.length || 0) > 5
+  const visibleCards = shouldCollapse && isDoneCollapsed
+    ? column.cards.slice(0, 5)
+    : column.cards
+  const hiddenCount = shouldCollapse ? (column.cards?.length || 0) - 5 : 0
+
+  // 使用未篩選的 allColumns 取得真實卡片數（Phase 篩選時 column.cards 只包含篩選後的卡片）
+  const realColumn = allColumns.find(c => c.id === column.id)
+  const realCardCount = realColumn?.cards.length || 0
 
   const handleAddCard = (e: React.FormEvent) => {
     e.preventDefault()
@@ -152,28 +171,40 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard, selectedPhase
           {...provided.droppableProps}
           className="w-72 max-sm:w-full flex-shrink-0 flex flex-col"
         >
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 group/col">
             <h2 className="font-semibold text-slate-700 dark:text-slate-200">
               {column.name}
               <span className="ml-2 text-sm text-slate-400 dark:text-slate-500">{column.cards?.length || 0}</span>
             </h2>
-            {!showAddCard && (
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => setShowAddCard(true)}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                title="新增卡片"
+                onClick={() => setShowDeleteDialog(true)}
+                className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover/col:opacity-100"
+                title="刪除欄位"
+                aria-label={`刪除欄位 ${column.name}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
               </button>
-            )}
+              {!showAddCard && (
+                <button
+                  onClick={() => setShowAddCard(true)}
+                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  title="新增卡片"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           <div
             className={`flex-1 space-y-2 overflow-y-auto min-h-[100px] rounded ${snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-950' : ''}`}
           >
-            {column.cards?.map((card, index) => (
+            {visibleCards?.map((card, index) => (
               <CardItem
                 key={card.id}
                 card={card}
@@ -183,6 +214,16 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard, selectedPhase
               />
             ))}
             {provided.placeholder}
+            {shouldCollapse && (
+              <button
+                onClick={() => setIsDoneCollapsed(!isDoneCollapsed)}
+                className="w-full mt-2 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors text-center"
+              >
+                {isDoneCollapsed
+                  ? `+${hiddenCount} 張隱藏中 — 點擊展開`
+                  : '收合'}
+              </button>
+            )}
           </div>
 
           {showAddCard && (
@@ -200,6 +241,54 @@ function ColumnDroppable({ column, phases, onCardClick, onAddCard, selectedPhase
               </div>
             </form>
           )}
+
+          {/* 刪除欄位確認對話框 */}
+          <Dialog open={showDeleteDialog} onOpenChange={(open) => { if (!open) { setShowDeleteDialog(false); setTargetColumnId('') } }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>刪除欄位</DialogTitle>
+                <DialogDescription>
+                  確定要刪除欄位「{column.name}」嗎？此操作無法復原。
+                </DialogDescription>
+              </DialogHeader>
+              {realCardCount > 0 && (
+                <div className="rounded-md bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
+                  <p className="font-medium">此欄位包含 {realCardCount} 個卡片</p>
+                  {allColumns.filter(c => c.id !== column.id).length > 0 ? (
+                    <>
+                      <p className="mt-1 text-amber-700 dark:text-amber-300">請選擇要將卡片移至哪個欄位：</p>
+                      <select
+                        value={targetColumnId}
+                        onChange={(e) => setTargetColumnId(e.target.value)}
+                        className="mt-2 w-full rounded-md border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus-visible:border-blue-500 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                      >
+                        <option value="">— 請選擇目標欄位 —</option>
+                        {allColumns.filter(c => c.id !== column.id).map(c => (
+                          <option key={c.id} value={c.id}>{c.name}（{c.cards.length} 個卡片）</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-red-600 dark:text-red-400">無其他欄位可遷移卡片，無法刪除此欄位。</p>
+                  )}
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setShowDeleteDialog(false); setTargetColumnId('') }}>取消</Button>
+                <Button
+                  variant="destructive"
+                  disabled={realCardCount > 0 && (!targetColumnId || allColumns.filter(c => c.id !== column.id).length === 0)}
+                  onClick={() => {
+                    onDeleteColumn(column.id, targetColumnId || null)
+                    setShowDeleteDialog(false)
+                    setTargetColumnId('')
+                  }}
+                >
+                  確認刪除
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </Droppable>
@@ -405,6 +494,8 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
 
   // Recurring tasks panel
   const [showRecurringPanel, setShowRecurringPanel] = useState(false)
+  // Archive panel
+  const [showArchivePanel, setShowArchivePanel] = useState(false)
 
   const [, startTransition] = useTransition()
 
@@ -469,6 +560,16 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
     },
   })
 
+  const deleteColumnMutation = useMutation({
+    mutationFn: (data: { id: string; targetColumnId?: string | null }) =>
+      deleteColumnApi(data.id, data.targetColumnId),
+    onSuccess: () => invalidateBoard(),
+    onError: (error: Error) => {
+      console.error('刪除欄位錯誤:', error)
+      alert(error.message || '刪除欄位失敗')
+    },
+  })
+
   // Wrapper functions to maintain existing component API
   function addPhase(name: string, color: string) {
     addPhaseMutation.mutate({ name, color })
@@ -484,6 +585,10 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
 
   function addColumn(name: string) {
     addColumnMutation.mutate(name)
+  }
+
+  function deleteColumnHandler(id: string, targetColumnId?: string | null) {
+    deleteColumnMutation.mutate({ id, targetColumnId })
   }
 
   // Apply phase filter to columns
@@ -619,6 +724,15 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
             ))}
           </div>
           <button
+            onClick={() => setShowArchivePanel(true)}
+            className="px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors min-h-[36px] whitespace-nowrap flex items-center gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            <span className="max-sm:hidden">封存</span>
+          </button>
+          <button
             onClick={() => setShowRecurringPanel(true)}
             className="px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors min-h-[36px] whitespace-nowrap flex items-center gap-1.5"
           >
@@ -645,9 +759,11 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
                 <div key={column.id} className="max-sm:snap-center max-sm:flex-shrink-0 max-sm:w-[85vw]">
                   <ColumnDroppable
                     column={column}
+                    allColumns={columns}
                     phases={phases}
                     onCardClick={setSelectedCard}
                     onAddCard={addCard}
+                    onDeleteColumn={deleteColumnHandler}
                     selectedPhase={selectedPhase}
                   />
                 </div>
@@ -693,6 +809,13 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
         columns={columns}
         isOpen={showRecurringPanel}
         onClose={() => setShowRecurringPanel(false)}
+        onRefreshBoard={invalidateBoard}
+      />
+
+      <ArchivePanel
+        projectId={projectId}
+        isOpen={showArchivePanel}
+        onClose={() => setShowArchivePanel(false)}
         onRefreshBoard={invalidateBoard}
       />
     </DragDropContext>

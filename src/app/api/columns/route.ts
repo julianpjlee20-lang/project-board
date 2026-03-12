@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { query } from '@/lib/db'
+import { query, getClient } from '@/lib/db'
 import { createColumnSchema, updateColumnSchema, deleteColumnSchema, validateData } from '@/lib/validations'
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
@@ -98,9 +98,13 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    const targetColumnId = searchParams.get('targetColumnId')
 
     // Zod 驗證
-    const validation = validateData(deleteColumnSchema, { id })
+    const validation = validateData(deleteColumnSchema, {
+      id,
+      targetColumnId: targetColumnId ?? undefined,
+    })
     if (!validation.success) {
       return NextResponse.json({
         error: '輸入驗證失敗',
@@ -108,7 +112,62 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 })
     }
 
-    await query('DELETE FROM columns WHERE id = $1', [validation.data.id])
+    // 檢查欄位內卡片數量
+    const countResult = await query(
+      'SELECT COUNT(*)::int as count FROM cards WHERE column_id = $1',
+      [validation.data.id]
+    )
+    const cardCount = countResult[0]?.count || 0
+
+    if (cardCount > 0 && !validation.data.targetColumnId) {
+      return NextResponse.json({
+        error: `此欄位包含 ${cardCount} 個卡片，請指定目標欄位以遷移卡片`,
+        cardCount,
+      }, { status: 400 })
+    }
+
+    // 驗證目標欄位存在且屬於同一 project
+    if (validation.data.targetColumnId) {
+      const targetCheck = await query(
+        `SELECT id FROM columns
+         WHERE id = $1
+           AND project_id = (SELECT project_id FROM columns WHERE id = $2)`,
+        [validation.data.targetColumnId, validation.data.id]
+      )
+      if (targetCheck.length === 0) {
+        return NextResponse.json({
+          error: '目標欄位不存在或不屬於同一專案',
+        }, { status: 400 })
+      }
+    }
+
+    // 使用 transaction 確保遷移 + 刪除的原子性
+    const client = await getClient()
+    try {
+      await client.query('BEGIN')
+
+      // 若有卡片，先遷移到目標欄位
+      if (cardCount > 0 && validation.data.targetColumnId) {
+        const posResult = await client.query(
+          'SELECT COALESCE(MAX(position), -1) + 1 as offset FROM cards WHERE column_id = $1 FOR UPDATE',
+          [validation.data.targetColumnId]
+        )
+        const offset = posResult.rows[0]?.offset || 0
+
+        await client.query(
+          'UPDATE cards SET column_id = $1, position = position + $2 WHERE column_id = $3',
+          [validation.data.targetColumnId, offset, validation.data.id]
+        )
+      }
+
+      await client.query('DELETE FROM columns WHERE id = $1', [validation.data.id])
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK')
+      throw e
+    } finally {
+      client.release()
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

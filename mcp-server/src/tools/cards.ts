@@ -28,6 +28,7 @@ Returns: Array of cards with id, title, description, status, assignee, due_date.
       inputSchema: z.object({
         project_id: z.string().min(1).optional().describe('Project ID to list all cards for'),
         phase_id: z.string().min(1).optional().describe('Phase ID to list cards for (only cards assigned to this phase)'),
+        include_archived: z.boolean().optional().describe('Include archived cards (default: false, only active cards are returned)'),
       }).strict(),
       annotations: {
         readOnlyHint: true,
@@ -36,15 +37,15 @@ Returns: Array of cards with id, title, description, status, assignee, due_date.
         openWorldHint: false,
       },
     },
-    async ({ project_id, phase_id }) => {
+    async ({ project_id, phase_id, include_archived }) => {
       try {
         if (!project_id && !phase_id) {
           return { content: [{ type: 'text' as const, text: 'Error: Provide either project_id or phase_id.' }] };
         }
 
         const url = project_id
-          ? `/api/cards?project_id=${project_id}`
-          : `/api/phases/${phase_id}/cards`;
+          ? `/api/cards?project_id=${project_id}${include_archived ? '&include_archived=true' : ''}`
+          : `/api/phases/${phase_id}/cards${include_archived ? '?include_archived=true' : ''}`;
 
         const data = await uphouse<CardsApiResponse>(url);
         const cards: Card[] = Array.isArray(data)
@@ -238,6 +239,130 @@ Returns: Summary of created cards with their IDs.`,
         content: [{ type: 'text' as const, text: lines.join('\n') }],
         structuredContent: { results, succeeded: succeeded.length, failed: failed.length },
       };
+    }
+  );
+
+  // PREVIEW DELETE CARDS (read-only)
+  server.registerTool(
+    'uphouse_preview_delete_cards',
+    {
+      title: 'Preview Delete Cards',
+      description: `Preview cards before deletion. This is a read-only operation that fetches card details so the user can confirm before actual deletion.
+
+Args:
+  - card_ids (string[]): Array of card IDs to preview (1–20)
+
+Returns: A summary of cards that will be deleted, including title and status.
+After confirmation, use uphouse_delete_cards to execute.`,
+      inputSchema: z.object({
+        card_ids: z.array(z.string().min(1)).min(1).max(20).describe('Card IDs to preview for deletion'),
+      }).strict(),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ card_ids }) => {
+      try {
+        const settled = await Promise.allSettled(
+          card_ids.map(id => uphouse<Card>(`/api/cards/${id}`))
+        );
+
+        const found: { id: string; title: string; status?: string }[] = [];
+        const notFound: { id: string; reason: string }[] = [];
+
+        settled.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            found.push({ id: r.value.id, title: r.value.title, status: r.value.status });
+          } else {
+            notFound.push({ id: card_ids[i], reason: formatError(r.reason) });
+          }
+        });
+
+        const lines: string[] = [
+          `⚠️ 即將刪除以下 ${found.length} 張卡片（此操作不可逆）：`,
+          '',
+        ];
+
+        found.forEach((c, i) => {
+          lines.push(`${i + 1}. [${c.title}] (ID: ${c.id}) — 狀態: ${c.status ?? 'N/A'}`);
+        });
+
+        if (notFound.length) {
+          lines.push('', '找不到的卡片：');
+          notFound.forEach(n => {
+            lines.push(`- ID ${n.id}: ${n.reason}`);
+          });
+        }
+
+        lines.push('', '請確認後使用 uphouse_delete_cards 執行刪除。');
+
+        return {
+          content: [{ type: 'text' as const, text: lines.join('\n') }],
+          structuredContent: { found, notFound, totalFound: found.length, totalNotFound: notFound.length },
+        };
+      } catch (err) {
+        return { content: [{ type: 'text' as const, text: `Error: ${formatError(err)}` }] };
+      }
+    }
+  );
+
+  // DELETE CARDS (destructive)
+  server.registerTool(
+    'uphouse_delete_cards',
+    {
+      title: 'Delete Cards',
+      description: `⚠️ 破壞性操作！必須先呼叫 uphouse_preview_delete_cards 預覽，取得使用者確認後才能使用此工具。
+
+Permanently delete one or more cards by ID.
+
+Args:
+  - card_ids (string[]): Array of card IDs to delete (1–20)
+
+Returns: Summary of deletion results (succeeded / failed).`,
+      inputSchema: z.object({
+        card_ids: z.array(z.string().min(1)).min(1).max(20).describe('Card IDs to delete'),
+      }).strict(),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ card_ids }) => {
+      try {
+        const settled = await Promise.allSettled(
+          card_ids.map(id => uphouse<Record<string, unknown>>(`/api/cards/${id}`, 'DELETE'))
+        );
+
+        const succeeded: string[] = [];
+        const failed: { id: string; error: string }[] = [];
+
+        settled.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            succeeded.push(card_ids[i]);
+          } else {
+            failed.push({ id: card_ids[i], error: formatError(r.reason) });
+          }
+        });
+
+        const lines = [
+          `刪除完成：${succeeded.length}/${card_ids.length} 成功`,
+          '',
+          ...succeeded.map(id => `✅ ${id}`),
+          ...(failed.length ? ['\n失敗：', ...failed.map(f => `❌ ${f.id}: ${f.error}`)] : []),
+        ];
+
+        return {
+          content: [{ type: 'text' as const, text: lines.join('\n') }],
+          structuredContent: { succeeded, failed, totalSucceeded: succeeded.length, totalFailed: failed.length },
+        };
+      } catch (err) {
+        return { content: [{ type: 'text' as const, text: `Error: ${formatError(err)}` }] };
+      }
     }
   );
 }

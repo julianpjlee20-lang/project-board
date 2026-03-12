@@ -115,7 +115,9 @@ export default async function globalSetup() {
         start_date TIMESTAMP WITH TIME ZONE,
         created_by UUID REFERENCES profiles(id),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        is_archived BOOLEAN DEFAULT FALSE,
+        archived_at TIMESTAMP WITH TIME ZONE
       )
     `)
 

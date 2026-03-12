@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('project_id')
     const columnId = searchParams.get('column_id')
+    const includeArchived = searchParams.get('include_archived') === 'true'
     const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10) || 100, 500)
 
     if (!projectId) {
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
         (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
          FROM tags t JOIN card_tags ct ON t.id = ct.tag_id WHERE ct.card_id = c.id), '[]') as tags`
 
+    // 封存過濾條件：預設排除已封存卡片
+    const archiveFilter = includeArchived ? '' : 'AND (c.is_archived = false OR c.is_archived IS NULL)'
+
     // 嘗試帶 card_number 查詢，失敗則 fallback
     const buildSql = (withCardNumber: boolean) => {
       const select = withCardNumber
@@ -55,6 +59,7 @@ export async function GET(request: NextRequest) {
             FROM cards c
             JOIN columns col ON c.column_id = col.id
             WHERE col.project_id = $1 AND c.column_id = $2
+            ${archiveFilter}
             ORDER BY c.position
             LIMIT $3`,
           params: [projectId, columnId, limit],
@@ -65,6 +70,7 @@ export async function GET(request: NextRequest) {
           FROM cards c
           JOIN columns col ON c.column_id = col.id
           WHERE col.project_id = $1
+          ${archiveFilter}
           ORDER BY col.position, c.position
           LIMIT $2`,
         params: [projectId, limit],

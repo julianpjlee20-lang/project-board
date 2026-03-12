@@ -33,6 +33,18 @@ export async function fetchProject(projectId: string): Promise<ProjectRow | null
 // ──────────────────────────────────────────────
 
 export async function fetchColumnsWithCards(projectId: string) {
+  // Auto-archive: 完成超過 7 天的卡片自動封存
+  await query(`
+    UPDATE cards SET is_archived = true, archived_at = NOW()
+    WHERE column_id IN (
+      SELECT id FROM columns WHERE project_id = $1
+      AND (name ILIKE '%done%' OR name ILIKE '%完成%')
+    )
+    AND actual_completion_date IS NOT NULL
+    AND actual_completion_date < NOW() - INTERVAL '7 days'
+    AND (is_archived = false OR is_archived IS NULL)
+  `, [projectId])
+
   // Get columns
   const columns = await query(
     'SELECT * FROM columns WHERE project_id = $1 ORDER BY position',
@@ -61,6 +73,7 @@ export async function fetchColumnsWithCards(projectId: string) {
     LEFT JOIN card_assignees ca ON c.id = ca.card_id
     LEFT JOIN profiles p ON ca.user_id = p.id
     WHERE c.column_id = ANY($1::uuid[])
+      AND (c.is_archived = false OR c.is_archived IS NULL)
     GROUP BY c.id
     ORDER BY c.position
   `, [columnIds]) : []
@@ -94,7 +107,7 @@ export async function fetchPhases(projectId: string) {
       COUNT(c.id)::int AS total_cards,
       COUNT(c.id) FILTER (WHERE col.name ILIKE '%done%' OR col.name ILIKE '%完成%')::int AS completed_cards
     FROM phases p
-    LEFT JOIN cards c ON c.phase_id = p.id
+    LEFT JOIN cards c ON c.phase_id = p.id AND (c.is_archived = false OR c.is_archived IS NULL)
     LEFT JOIN columns col ON c.column_id = col.id
     WHERE p.project_id = $1
     GROUP BY p.id
@@ -129,9 +142,10 @@ export async function fetchCalendarData() {
     FROM cards c
     JOIN columns col ON c.column_id = col.id
     JOIN projects p ON col.project_id = p.id
-    WHERE c.due_date IS NOT NULL
+    WHERE (c.is_archived = false OR c.is_archived IS NULL)
+      AND (c.due_date IS NOT NULL
        OR c.planned_completion_date IS NOT NULL
-       OR c.actual_completion_date IS NOT NULL
+       OR c.actual_completion_date IS NOT NULL)
     ORDER BY COALESCE(c.due_date, c.planned_completion_date, c.actual_completion_date)
   `)
 

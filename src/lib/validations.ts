@@ -151,6 +151,15 @@ export const patchCardSchema = z.object({
 })
 
 // ========================================
+// Archive 驗證
+// ========================================
+
+/** PATCH /api/cards/[id]/archive - 封存/取消封存卡片 */
+export const archiveCardSchema = z.object({
+  is_archived: z.boolean(),
+})
+
+// ========================================
 // Subtasks API 驗證
 // ========================================
 
@@ -225,6 +234,7 @@ export const updateColumnSchema = z.object({
 /** DELETE /api/columns - 刪除欄位（URL 參數） */
 export const deleteColumnSchema = z.object({
   id: uuidSchema,
+  targetColumnId: uuidSchema.optional(),
 })
 
 // ========================================

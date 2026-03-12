@@ -20,6 +20,8 @@ export interface Card {
   assignees: { id: string; name: string }[]
   tags: { id: string; name: string; color: string }[]
   rolling_due_date: boolean
+  is_archived: boolean
+  archived_at: string | null
   subtasks: Subtask[]
 }
 

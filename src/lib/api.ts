@@ -108,6 +108,12 @@ export async function createColumn(data: { project_id: string; name: string }) {
   return postJson('/api/columns', data)
 }
 
+export async function deleteColumn(columnId: string, targetColumnId?: string | null) {
+  let url = `/api/columns?id=${columnId}`
+  if (targetColumnId) url += `&targetColumnId=${targetColumnId}`
+  return deleteJson(url)
+}
+
 export async function createPhase(projectId: string, data: { name: string; color: string }) {
   return postJson(`/api/projects/${projectId}/phases`, data)
 }
@@ -225,4 +231,37 @@ export async function fetchActiveUsers() {
 
 export async function adminResetPassword(userId: string, newPassword: string) {
   return putJson(`/api/admin/users/${userId}/password`, { new_password: newPassword })
+}
+
+// ─── Archive ───────────────────────────────────────────────
+
+export interface ArchivedCard {
+  id: string
+  card_number: number | null
+  title: string
+  description: string | null
+  priority: 'low' | 'medium' | 'high'
+  actual_completion_date: string | null
+  archived_at: string
+  phase_id: string | null
+  phase_name: string | null
+  phase_color: string | null
+  column_name: string
+  column_color: string
+  assignees: { id: string; name: string }[]
+  tags: { id: string; name: string; color: string }[]
+}
+
+export async function fetchArchivedCards(projectId: string, search?: string) {
+  const params = new URLSearchParams({ project_id: projectId })
+  if (search) params.set('search', search)
+  return fetchJson<{ total: number; cards: ArchivedCard[] }>(`/api/cards/archived?${params}`)
+}
+
+export async function archiveCard(cardId: string, isArchived: boolean) {
+  return fetchJson(`/api/cards/${cardId}/archive`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_archived: isArchived }),
+  })
 }

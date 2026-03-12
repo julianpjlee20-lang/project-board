@@ -676,6 +676,9 @@ interface UseCardDetailReturn {
   showDeleteConfirm: boolean
   setShowDeleteConfirm: (v: boolean) => void
   deleteCard: () => Promise<void>
+  // Archive
+  isArchiving: boolean
+  archiveCard: () => Promise<void>
   // Computed
   scheduleSummary: string | null
   collapsedDisplay: { text: string; icon: string; color: string } | null
@@ -830,6 +833,26 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
     }
   }, [cardId, onUpdate, onCloseFn])
 
+  const [isArchiving, setIsArchiving] = useState(false)
+
+  const archiveCard = useCallback(async () => {
+    setIsArchiving(true)
+    try {
+      const res = await fetch(`/api/cards/${cardId}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_archived: true }),
+      })
+      if (!res.ok) throw new Error('封存失敗')
+      onCloseFn()
+      onUpdate()
+    } catch (err) {
+      console.error('Archive error:', err)
+    } finally {
+      setIsArchiving(false)
+    }
+  }, [cardId, onCloseFn, onUpdate])
+
   const handleCancel = useCallback(() => {
     setTitle(originalData.title)
     setDescription(originalData.description)
@@ -869,6 +892,8 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
     isDeleting,
     showDeleteConfirm, setShowDeleteConfirm,
     deleteCard,
+    isArchiving,
+    archiveCard,
     scheduleSummary,
     collapsedDisplay,
     onUpdate,
@@ -1397,6 +1422,15 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
             <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
               <div className="flex items-center gap-1">
                 <button
+                  onClick={detail.archiveCard}
+                  disabled={detail.isArchiving}
+                  className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                  title="封存卡片"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                  封存
+                </button>
+                <button
                   onClick={() => detail.setShowDeleteConfirm(true)}
                   className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
                 >
@@ -1482,13 +1516,24 @@ export function SlideInPane({ card, phases, onClose, onUpdate }: CardDetailProps
             <CardDetailContent card={card} phases={phases} detail={detail} />
           </div>
           <div className="px-5 py-3 max-sm:px-4 max-sm:py-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
-            <button
-              onClick={() => detail.setShowDeleteConfirm(true)}
-              className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              刪除
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={detail.archiveCard}
+                disabled={detail.isArchiving}
+                className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                title="封存卡片"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                封存
+              </button>
+              <button
+                onClick={() => detail.setShowDeleteConfirm(true)}
+                className="px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg min-h-[44px] flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                刪除
+              </button>
+            </div>
             <div className="flex gap-2">
               <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>
               <button onClick={detail.saveCard} disabled={detail.isSaving} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 min-h-[44px]">

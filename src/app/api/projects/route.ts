@@ -331,6 +331,9 @@ export async function PUT() {
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS card_number INTEGER")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS rolling_due_date BOOLEAN DEFAULT FALSE")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITH TIME ZONE")
+      await query("CREATE INDEX IF NOT EXISTS idx_cards_archived ON cards (is_archived) WHERE is_archived = true")
     } catch (_e) {
       // Ignore if columns already exist
     }

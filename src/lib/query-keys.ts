@@ -16,6 +16,7 @@ export const queryKeys = {
     all: (projectId: string) => ['board', projectId] as const,
     columns: (projectId: string) => ['board', projectId, 'columns'] as const,
     phases: (projectId: string) => ['board', projectId, 'phases'] as const,
+    archived: (projectId: string) => ['board', projectId, 'archived'] as const,
   },
 
   // ─── Calendar ──────────────────────────────────────────────
