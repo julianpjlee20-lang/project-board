@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "description": "MCP Server for Uphouse Dashboard - enables AI tools to manage projects, phases, and cards",
-  "main": "dist/index.js",
+  "main": "src/index.ts",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "build": "echo 'Using tsx runtime, no build needed'",
+    "start": "tsx src/index.ts",
     "dev": "tsx --env-file=.env src/index.ts"
   },
   "dependencies": {
@@ -14,11 +14,11 @@
     "@types/express": "^4.17.21",
     "@types/node": "^20.0.0",
     "express": "^4.18.2",
-    "typescript": "^5.3.3",
+    "tsx": "^4.0.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "tsx": "^4.0.0"
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=18"
