@@ -1,0 +1,102 @@
+// src/tools/phases.ts
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { uphouse, formatError } from '../services/api.js';
+import type { Phase, PhasesApiResponse } from '../types.js';
+
+export function registerPhaseTools(server: McpServer): void {
+
+  // LIST PHASES
+  server.registerTool(
+    'uphouse_list_phases',
+    {
+      title: 'List Phases',
+      description: `List all phases in a specific project.
+
+Args:
+  - project_id (string): The project ID from uphouse_list_projects
+
+Returns: Array of phases with id, name, and order.
+Use phase IDs when calling uphouse_create_card or uphouse_list_cards.`,
+      inputSchema: z.object({
+        project_id: z.string().min(1).describe('Project ID to list phases for'),
+      }).strict(),
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ project_id }) => {
+      try {
+        const data = await uphouse<PhasesApiResponse>(`/api/projects/${project_id}/phases`);
+        const phases: Phase[] = Array.isArray(data)
+          ? data
+          : ('phases' in data ? data.phases : data.data);
+
+        if (!phases.length) {
+          return { content: [{ type: 'text' as const, text: `No phases found for project ${project_id}.` }] };
+        }
+
+        const text = phases
+          .map((p, i) => `- [${p.id}] ${p.name} (order: ${p.order ?? i})`)
+          .join('\n');
+
+        return {
+          content: [{ type: 'text' as const, text: `Found ${phases.length} phase(s):\n\n${text}` }],
+          structuredContent: { phases },
+        };
+      } catch (err) {
+        return { content: [{ type: 'text' as const, text: `Error: ${formatError(err)}` }] };
+      }
+    }
+  );
+
+  // CREATE PHASE
+  server.registerTool(
+    'uphouse_create_phase',
+    {
+      title: 'Create Phase',
+      description: `Create a new phase inside a project.
+
+Args:
+  - project_id (string): The project ID to add the phase to
+  - name (string): Phase name
+  - order (number, optional): Display order (lower = first)
+
+Returns: The created phase object with its new id.
+After creating phases, use uphouse_create_card to add cards/tasks.`,
+      inputSchema: z.object({
+        project_id: z.string().min(1).describe('Project ID'),
+        name: z.string().min(1).max(200).describe('Phase name'),
+        order: z.number().int().min(0).optional().describe('Display order'),
+      }).strict(),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+    },
+    async ({ project_id, name, order }) => {
+      try {
+        const phase = await uphouse<Phase>(`/api/projects/${project_id}/phases`, 'POST', {
+          name,
+          ...(order !== undefined ? { order } : {}),
+        });
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: `Phase created!\nID: ${phase.id}\nName: ${phase.name}`,
+          }],
+          structuredContent: { phase },
+        };
+      } catch (err) {
+        return { content: [{ type: 'text' as const, text: `Error: ${formatError(err)}` }] };
+      }
+    }
+  );
+}
