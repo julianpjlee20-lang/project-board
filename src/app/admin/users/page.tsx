@@ -50,7 +50,7 @@ const DEBOUNCE_MS = 300
 // ========================================
 
 type SortDirection = 'asc' | 'desc' | null
-type UserSortKey = 'name' | 'email' | 'role' | 'is_active' | 'login_method' | 'created_at'
+type UserSortKey = 'id' | 'name' | 'email' | 'role' | 'is_active' | 'login_method' | 'created_at'
 
 interface SortState {
   key: UserSortKey | null
@@ -621,6 +621,7 @@ function UsersContent() {
             <thead>
               <tr className="border-b bg-muted">
                 <SortableHeader label="使用者" sortKey="name" currentSort={sort} onSort={handleSort} />
+                <SortableHeader label="UUID" sortKey="id" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="Email" sortKey="email" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="角色" sortKey="role" currentSort={sort} onSort={handleSort} />
                 <SortableHeader label="狀態" sortKey="is_active" currentSort={sort} onSort={handleSort} />
@@ -632,13 +633,13 @@ function UsersContent() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
                     載入中…
                   </td>
                 </tr>
               ) : sortedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={8} className="text-center py-12 text-slate-400">
                     {debouncedSearch || roleFilter || statusFilter
                       ? '沒有符合條件的使用者'
                       : '尚無使用者'}
@@ -658,6 +659,15 @@ function UsersContent() {
                           {user.name || '(未設定)'}
                         </span>
                       </div>
+                    </td>
+                    {/* UUID */}
+                    <td className="px-4 py-3">
+                      <span
+                        className="text-xs font-mono text-slate-500 dark:text-slate-400 cursor-default"
+                        title={user.id}
+                      >
+                        {user.id.slice(0, 8)}…
+                      </span>
                     </td>
                     {/* Email */}
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">

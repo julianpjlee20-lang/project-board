@@ -10,6 +10,7 @@ import { registerProjectTools } from './tools/projects.js';
 import { registerPhaseTools } from './tools/phases.js';
 import { registerCardTools } from './tools/cards.js';
 import { registerSubtaskTools } from './tools/subtasks.js';
+import { registerUserTools } from './tools/users.js';
 
 // ── Helper: create and configure a new MCP server instance ──────────────────
 
@@ -23,6 +24,7 @@ function createServer(): McpServer {
   registerPhaseTools(server);
   registerCardTools(server);
   registerSubtaskTools(server);
+  registerUserTools(server);
 
   return server;
 }

@@ -58,3 +58,21 @@ export interface Subtask {
   assignee_name?: string;
   created_at?: string;
 }
+
+export interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  avatar_url: string | null;
+  role: 'admin' | 'user';
+  is_active: boolean;
+  login_method: string;
+  created_at: string;
+}
+
+export interface UsersApiResponse {
+  users: User[];
+  total: number;
+  page: number;
+  limit: number;
+}
