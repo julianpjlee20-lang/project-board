@@ -238,8 +238,8 @@ export async function PUT(
           )
 
           afterTasks.push(() => query(
-            'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
-            [projectId, id, '指派', '負責人', oldAssigneeName, newAssigneeName]
+            'INSERT INTO activity_logs (project_id, card_id, user_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [projectId, id, user.id, '指派', '負責人', oldAssigneeName, newAssigneeName]
           ))
 
           afterTasks.push(() => sendNotification({

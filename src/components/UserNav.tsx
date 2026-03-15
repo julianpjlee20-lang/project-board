@@ -23,6 +23,9 @@ export default function UserNav() {
   useEffect(() => {
     if (status !== 'authenticated') return
     fetchCount()
+    // 每 60 秒輪詢刷新通知數量
+    const interval = setInterval(fetchCount, 60000)
+    return () => clearInterval(interval)
   }, [status])
 
   // 監聽 dismiss 事件，即時更新 badge

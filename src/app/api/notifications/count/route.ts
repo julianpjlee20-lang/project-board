@@ -1,6 +1,6 @@
 /**
  * 通知計數 API（輕量 Badge 用）
- * GET - 回傳未完成的 overdue + due_soon 合計數量
+ * GET - 回傳未完成的 overdue + due_soon + assigned_recent 合計數量
  */
 
 import { NextResponse } from "next/server"
@@ -45,8 +45,24 @@ export async function GET() {
 
     const { overdue_count, due_soon_count } = rows[0]
 
+    // 最近 24 小時內被指派給當前用戶的卡片（排除自己指派給自己）
+    const assignedRows = await query(`
+      SELECT COUNT(DISTINCT al.card_id) AS assigned_recent
+      FROM activity_logs al
+      WHERE al.action = '指派'
+        AND al.target = '負責人'
+        AND al.created_at >= NOW() - INTERVAL '24 hours'
+        AND (al.user_id IS NULL OR al.user_id != $1)
+        AND EXISTS (
+          SELECT 1 FROM card_assignees ca
+          WHERE ca.card_id = al.card_id AND ca.user_id = $1
+        )
+    `, [user.id])
+
+    const assignedRecent = Number(assignedRows[0]?.assigned_recent ?? 0)
+
     return NextResponse.json({
-      count: Number(overdue_count) + Number(due_soon_count),
+      count: Number(overdue_count) + Number(due_soon_count) + assignedRecent,
     })
   } catch (error) {
     if (error instanceof AuthError) {
