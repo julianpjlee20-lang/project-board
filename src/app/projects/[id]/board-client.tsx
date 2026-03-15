@@ -9,6 +9,7 @@ import UserNav from '@/components/UserNav'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import dynamic from 'next/dynamic'
 import type { Card, Column, Project, ViewType, Phase } from './types'
+import { getSubtaskUrgency } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { queryKeys } from '@/lib/query-keys'
@@ -60,6 +61,8 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
   const totalSubtasks = card.subtasks?.length || 0
   const assigneeName = card.assignees?.[0]?.name || ''
   const assigneeInitial = assigneeName ? assigneeName.charAt(0) : ''
+  const urgency = useMemo(() => getSubtaskUrgency(card.subtasks || []), [card.subtasks])
+  const showUrgency = urgency.level === 'overdue' || urgency.level === 'today' || urgency.level === 'soon'
 
   return (
     <Draggable draggableId={card.id} index={index}>
@@ -74,7 +77,7 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
           }}
           className={`bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm hover:shadow-md border-l-[3px] mb-2 cursor-pointer ${priorityBorderClass} ${
             snapshot.isDragging ? 'shadow-lg rotate-2' : ''
-          }`}
+          } ${urgency.level === 'overdue' ? 'ring-1 ring-red-200 dark:ring-red-800/50' : ''}`}
           style={{
             ...provided.draggableProps.style,
             opacity: snapshot.isDragging ? 0.9 : 1,
@@ -100,16 +103,29 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
             <p className="font-medium text-sm leading-snug line-clamp-2">{card.title}</p>
           </div>
 
-          {/* Bottom row: assignee avatar (left) + subtask count (right) */}
-          {(assigneeInitial || totalSubtasks > 0) && (
+          {/* Bottom row: assignee avatar + urgency (left) + subtask count (right) */}
+          {(assigneeInitial || totalSubtasks > 0 || showUrgency) && (
             <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center">
+              <div className="flex items-center gap-1.5">
                 {assigneeInitial && (
                   <span
                     className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-semibold"
                     title={assigneeName}
                   >
                     {assigneeInitial}
+                  </span>
+                )}
+                {showUrgency && (
+                  <span className="inline-flex items-center gap-1" title={`${urgency.urgentCount} 個子任務即將到期`}>
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      urgency.level === 'soon' ? 'bg-amber-500' : 'bg-red-500 animate-pulse'
+                    }`} />
+                    {urgency.level === 'overdue' && (
+                      <span className="text-[10px] text-red-500 dark:text-red-400 font-medium leading-none">逾期{Math.abs(urgency.days!)}天</span>
+                    )}
+                    {urgency.level === 'today' && (
+                      <span className="text-[10px] text-red-500 dark:text-red-400 font-medium leading-none">今天</span>
+                    )}
                   </span>
                 )}
               </div>

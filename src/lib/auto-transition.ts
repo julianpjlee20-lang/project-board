@@ -32,7 +32,7 @@ async function getCardColumnContext(cardId: string) {
  * - 移到最後欄自動填 actual_completion_date，移出最後欄自動清除
  * - 寫入活動日誌
  */
-async function moveCardToColumnByPosition(
+export async function moveCardToColumnByPosition(
   cardId: string,
   projectId: string,
   targetPosition: number
@@ -153,6 +153,61 @@ export async function autoTransitionOnAllSubtasksCompleted(cardId: string): Prom
   if (ctx.column_position === ctx.max_position) return NO_MOVE
 
   return moveCardToColumnByPosition(cardId, ctx.project_id, ctx.max_position)
+}
+
+/**
+ * 看板載入時的追溯校正：檢查卡片是否應該在不同欄位
+ * - 規則 A（對應 autoTransitionOnDateSet）：待辦欄 + 有日期 → 移到進行中
+ * - 規則 B（對應 autoTransitionOnAllSubtasksCompleted）：所有子任務完成 + 不在最後欄 → 移到已完成
+ * 注意：規則 A 先執行，規則 B 後執行。同時符合兩規則的卡片會被移動兩次（待辦→進行中→已完成）
+ */
+export async function reconcileProjectCards(projectId: string): Promise<{ moved: number }> {
+  const columns = await query(
+    'SELECT id, position FROM columns WHERE project_id = $1 ORDER BY position',
+    [projectId]
+  )
+  if (columns.length < 2) return { moved: 0 }
+
+  const maxPos = columns[columns.length - 1].position
+  const firstColId = columns[0].id
+  const lastColId = columns[columns.length - 1].id
+  // 使用實際第二欄的 position，避免欄位刪除造成跳號
+  const secondCol = columns.length >= 2 ? columns[1] : null
+  const columnIds = columns.map((c: { id: string }) => c.id)
+
+  let movedCount = 0
+
+  // 規則 A：在第一欄 + 有日期 → 移到第二欄（不能是最後欄，避免 2 欄直接完成）
+  if (secondCol && secondCol.position < maxPos) {
+    const stuckCards = await query(
+      `SELECT id FROM cards
+       WHERE column_id = $1
+         AND (start_date IS NOT NULL OR due_date IS NOT NULL)
+         AND is_archived = false`,
+      [firstColId]
+    )
+    for (const card of stuckCards) {
+      const result = await moveCardToColumnByPosition(card.id, projectId, secondCol.position)
+      if (result.moved) movedCount++
+    }
+  }
+
+  // 規則 B：所有子任務完成 + 不在最後欄 → 移到最後欄
+  const completedCards = await query(
+    `SELECT c.id FROM cards c
+     WHERE c.column_id != $1
+       AND c.is_archived = false
+       AND EXISTS (SELECT 1 FROM subtasks WHERE card_id = c.id)
+       AND NOT EXISTS (SELECT 1 FROM subtasks WHERE card_id = c.id AND is_completed = false)
+       AND c.column_id = ANY($2::uuid[])`,
+    [lastColId, columnIds]
+  )
+  for (const card of completedCards) {
+    const result = await moveCardToColumnByPosition(card.id, projectId, maxPos)
+    if (result.moved) movedCount++
+  }
+
+  return { moved: movedCount }
 }
 
 /**

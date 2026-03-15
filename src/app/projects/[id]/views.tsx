@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Card, Column, Phase, CalendarMode } from './types'
+import { getDerivedDueDate } from './types'
 
 const PRIORITY_CONFIG = {
   high:   { color: 'bg-red-500',    label: '高' },
@@ -123,12 +124,13 @@ function MiniTimelineBar({ card }: { card: Card }) {
  * TimelineTooltip — hover tooltip showing three dates for a card
  */
 function TimelineTooltipContent({ card }: { card: Card }) {
+  const derived = !card.due_date ? getDerivedDueDate(card.subtasks) : null
   return (
     <div className="text-xs space-y-1">
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
         <span className="text-slate-500 dark:text-slate-400">截止日：</span>
-        <span className="font-medium dark:text-slate-200">{card.due_date ? formatDateShort(card.due_date) : '-'}</span>
+        <span className="font-medium dark:text-slate-200">{card.due_date ? formatDateShort(card.due_date) : derived ? `↑ ${formatDateShort(derived)}` : '-'}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
@@ -263,8 +265,10 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
         }
 
         case 'due_date': {
-          const da = a.due_date ? new Date(a.due_date).getTime() : null
-          const db = b.due_date ? new Date(b.due_date).getTime() : null
+          const derivedA = getDerivedDueDate(a.subtasks)
+          const derivedB = getDerivedDueDate(b.subtasks)
+          const da = a.due_date ? new Date(a.due_date).getTime() : derivedA ? new Date(derivedA).getTime() : null
+          const db = b.due_date ? new Date(b.due_date).getTime() : derivedB ? new Date(derivedB).getTime() : null
           if (da === null && db === null) return 0
           if (da === null) return 1  // no due date last
           if (db === null) return -1
@@ -435,8 +439,10 @@ export function ListView({ columns, phases, onCardClick }: { columns: Column[], 
 function ScheduleCell({ card }: { card: Card }) {
   const [showTooltip, setShowTooltip] = useState(false)
 
+  const derivedDueDate = !card.due_date ? getDerivedDueDate(card.subtasks) : null
   const hasDueDate = !!card.due_date
-  const hasAnyDate = hasDueDate || !!card.planned_completion_date || !!card.actual_completion_date
+  const hasDerivedDueDate = !!derivedDueDate
+  const hasAnyDate = hasDueDate || hasDerivedDueDate || !!card.planned_completion_date || !!card.actual_completion_date
 
   if (!hasAnyDate) {
     return <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
@@ -464,7 +470,12 @@ function ScheduleCell({ card }: { card: Card }) {
             截止 {formatDateShort(card.due_date!)}
           </span>
         )}
-        {!hasDueDate && card.planned_completion_date && (
+        {!hasDueDate && hasDerivedDueDate && (
+          <span className="text-slate-400 dark:text-slate-500 border-b border-dashed border-slate-300 dark:border-slate-600" title="衍生自子任務截止日">
+            ↑ 截止 {formatDateShort(derivedDueDate!)}
+          </span>
+        )}
+        {!hasDueDate && !hasDerivedDueDate && card.planned_completion_date && (
           <span className="text-blue-500">
             預計 {formatDateShort(card.planned_completion_date)}
           </span>
@@ -489,7 +500,7 @@ function ScheduleCell({ card }: { card: Card }) {
 type CardWithColumn = Card & { columnName: string; columnColor: string }
 
 /** Date entry types for calendar display */
-type DateEntryType = 'due' | 'planned' | 'actual'
+type DateEntryType = 'due' | 'derived_due' | 'planned' | 'actual'
 
 interface DateEntry {
   card: CardWithColumn
@@ -499,9 +510,10 @@ interface DateEntry {
 
 /** Style config for each date entry type in calendar */
 const DATE_TYPE_STYLES: Record<DateEntryType, { label: string; dotClass: string; ringClass: string }> = {
-  due:     { label: '截止日',   dotClass: 'bg-current',                                    ringClass: '' },
-  planned: { label: '預計完成', dotClass: 'bg-transparent ring-2 ring-blue-400',            ringClass: 'ring-2 ring-blue-400' },
-  actual:  { label: '實際完成', dotClass: 'bg-emerald-400 ring-2 ring-emerald-400/50',      ringClass: 'ring-2 ring-emerald-400' },
+  due:         { label: '截止日',       dotClass: 'bg-current',                                    ringClass: '' },
+  derived_due: { label: '截止日 (↑子任務)', dotClass: 'bg-transparent ring-2 ring-dashed ring-slate-400', ringClass: 'ring-2 ring-dashed ring-slate-400' },
+  planned:     { label: '預計完成',     dotClass: 'bg-transparent ring-2 ring-blue-400',            ringClass: 'ring-2 ring-blue-400' },
+  actual:      { label: '實際完成',     dotClass: 'bg-emerald-400 ring-2 ring-emerald-400/50',      ringClass: 'ring-2 ring-emerald-400' },
 }
 
 /** Compute calendar grid data for a given month */
@@ -523,6 +535,11 @@ function collectDateEntries(cards: CardWithColumn[]): DateEntry[] {
   for (const card of cards) {
     if (card.due_date) {
       entries.push({ card, type: 'due', date: parseDueDate(card.due_date) })
+    } else {
+      const derived = getDerivedDueDate(card.subtasks)
+      if (derived) {
+        entries.push({ card, type: 'derived_due', date: parseDueDate(derived) })
+      }
     }
     if (card.planned_completion_date) {
       entries.push({ card, type: 'planned', date: parseDueDate(card.planned_completion_date) })
@@ -601,6 +618,13 @@ function MonthView({ year, month, cards, onCardClick }: {
                       className="w-1.5 h-1.5 rounded-full"
                       style={{ backgroundColor: card.columnColor }}
                       title="截止日"
+                    />
+                  )}
+                  {types.includes('derived_due') && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-transparent border border-dashed"
+                      style={{ borderColor: card.columnColor }}
+                      title="截止日 (↑衍生自子任務)"
                     />
                   )}
                   {types.includes('planned') && (
@@ -704,6 +728,10 @@ function MiniMonth({ year, month, cards, onCardClick }: {
             const dueCards = dayEntries.filter(e => e.type === 'due')
             dueCards.slice(0, 1).forEach(e => dots.push({ key: `due-${e.card.id}`, type: 'due', color: e.card.columnColor }))
           }
+          if (typesInDay.has('derived_due')) {
+            const derivedCards = dayEntries.filter(e => e.type === 'derived_due')
+            derivedCards.slice(0, 1).forEach(e => dots.push({ key: `derived-${e.card.id}`, type: 'derived_due', color: e.card.columnColor }))
+          }
           if (typesInDay.has('planned')) {
             dots.push({ key: 'planned', type: 'planned', color: 'blue-400' })
           }
@@ -747,6 +775,15 @@ function MiniMonth({ year, month, cards, onCardClick }: {
                         />
                       )
                     }
+                    if (dot.type === 'derived_due') {
+                      return (
+                        <span
+                          key={dot.key}
+                          className="w-1.5 h-1.5 rounded-full bg-transparent border border-dashed"
+                          style={{ borderColor: dot.color }}
+                        />
+                      )
+                    }
                     // due
                     return (
                       <span
@@ -773,6 +810,9 @@ function MiniMonth({ year, month, cards, onCardClick }: {
                     >
                       {entry.type === 'due' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.card.columnColor }} />
+                      )}
+                      {entry.type === 'derived_due' && (
+                        <span className="w-2 h-2 rounded-full flex-shrink-0 bg-transparent border border-dashed" style={{ borderColor: entry.card.columnColor }} />
                       )}
                       {entry.type === 'planned' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0 bg-transparent ring-1.5 ring-blue-400" />
@@ -923,6 +963,9 @@ function YearMonthTile({ year, month, monthEntries, dateIndex, onCardClick, onMo
                       {entry.type === 'due' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.card.columnColor }} />
                       )}
+                      {entry.type === 'derived_due' && (
+                        <span className="w-2 h-2 rounded-full flex-shrink-0 bg-transparent border border-dashed" style={{ borderColor: entry.card.columnColor }} />
+                      )}
                       {entry.type === 'planned' && (
                         <span className="w-2 h-2 rounded-full flex-shrink-0 bg-transparent ring-1.5 ring-blue-400" />
                       )}
@@ -959,11 +1002,14 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
   const today = new Date()
 
   // Pre-compute all cards with any date + column metadata
-  // A card appears if it has at least one of: due_date, planned_completion_date, actual_completion_date
-  const cardsWithDates: CardWithColumn[] = columns.flatMap(col =>
-    col.cards
-      .filter(c => c.due_date || c.planned_completion_date || c.actual_completion_date)
-      .map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
+  // A card appears if it has at least one of: due_date, planned_completion_date, actual_completion_date, or derived due date from subtasks
+  const cardsWithDates = useMemo<CardWithColumn[]>(() =>
+    columns.flatMap(col =>
+      col.cards
+        .filter(c => c.due_date || c.planned_completion_date || c.actual_completion_date || getDerivedDueDate(c.subtasks) !== null)
+        .map(card => ({ ...card, columnName: col.name, columnColor: col.color }))
+    ),
+    [columns]
   )
 
   // --- Navigation ---
@@ -1087,6 +1133,10 @@ export function CalendarView({ columns, onCardClick }: { columns: Column[], onCa
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-slate-400" />
           截止日
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-transparent border border-dashed border-slate-400" />
+          截止日 (↑子任務)
         </span>
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-transparent ring-1.5 ring-blue-400" />

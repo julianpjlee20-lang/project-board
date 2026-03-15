@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireAuth, AuthError } from '@/lib/auth'
 import { checkWritePermission } from '@/lib/api-key-guard'
+import { reconcileProjectCards } from '@/lib/auto-transition'
 
 // GET /api/projects/[id]/columns
 export async function GET(
@@ -12,6 +13,13 @@ export async function GET(
     await requireAuth()
 
     const { id } = await params
+
+    // 追溯校正：檢查卡片是否應該在不同欄位（有日期→進行中、全完成→已完成）
+    try {
+      await reconcileProjectCards(id)
+    } catch (err) {
+      console.error('[reconcile] failed, skipping:', err)
+    }
 
     // Get columns
     const columns = await query(

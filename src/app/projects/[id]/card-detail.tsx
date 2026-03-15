@@ -8,6 +8,7 @@ import { UuidDisplay } from '@/components/ui/UuidDisplay'
 import { DateInput } from '@/components/ui/DateInput'
 import { AssigneeCombobox } from '@/components/ui/AssigneeCombobox'
 import type { Card, Phase, Subtask, ActivityLog, CardDetailProps, ActiveUser } from './types'
+import { getDerivedDueDate, getDaysUntil } from './types'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -60,8 +61,7 @@ function toDateOnly(dateStr: string): string {
 }
 
 function getDaysUntilDue(dateStr: string): number {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  return Math.round((new Date(toDateOnly(dateStr) + 'T00:00:00').getTime() - today.getTime()) / 86400000)
+  return getDaysUntil(toDateOnly(dateStr))
 }
 
 function formatShortDate(dateStr: string): string {
@@ -930,10 +930,18 @@ function CardDetailContent({ card, phases, detail }: {
     onUpdate,
   } = detail
 
+  // Derived due date from subtasks (when no manual due date is set)
+  const derivedDueDate = useMemo(() => {
+    if (dueDate) return null
+    return getDerivedDueDate(cardSubtasks)
+  }, [dueDate, cardSubtasks])
+
   // Compute due date display for Zone B
   const dueDateDisplay = useMemo(() => {
-    if (!dueDate) return null
-    const due = new Date(dueDate + 'T00:00:00')
+    const effectiveDate = dueDate || derivedDueDate
+    if (!effectiveDate) return null
+    const isDerived = !dueDate && !!derivedDueDate
+    const due = new Date(effectiveDate + 'T00:00:00')
     const today = new Date(); today.setHours(0, 0, 0, 0)
     const diffDays = Math.round((due.getTime() - today.getTime()) / 86400000)
     const dateText = due.toLocaleDateString('zh-TW')
@@ -949,8 +957,8 @@ function CardDetailContent({ card, phases, detail }: {
     } else {
       badge = { text: `剩 ${diffDays} 天`, className: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' }
     }
-    return { dateText, badge }
-  }, [dueDate, actualDate])
+    return { dateText, badge, isDerived }
+  }, [dueDate, derivedDueDate, actualDate])
 
   return (
     <div className="px-5 py-4 max-sm:px-4">
@@ -1060,9 +1068,19 @@ function CardDetailContent({ card, phases, detail }: {
           <div className="flex-1 min-w-0 flex items-center gap-2">
             {dueDateDisplay ? (
               <>
-                <span className="text-sm text-slate-700 dark:text-slate-200">{dueDateDisplay.dateText}</span>
+                <span
+                  className={`text-sm ${dueDateDisplay.isDerived
+                    ? 'text-slate-400 dark:text-slate-500 border-b border-dashed border-slate-300 dark:border-slate-600'
+                    : 'text-slate-700 dark:text-slate-200'}`}
+                  title={dueDateDisplay.isDerived ? '衍生自子任務截止日' : undefined}
+                >
+                  {dueDateDisplay.isDerived && '↑ '}
+                  {dueDateDisplay.dateText}
+                </span>
                 {dueDateDisplay.badge && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${dueDateDisplay.badge.className}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${dueDateDisplay.isDerived
+                    ? 'bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-dashed border-slate-300 dark:border-slate-600'
+                    : dueDateDisplay.badge.className}`}>
                     {dueDateDisplay.badge.text}
                   </span>
                 )}
