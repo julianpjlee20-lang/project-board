@@ -58,7 +58,10 @@ Returns: Array of cards with id, title, description, status, assignee, due_date.
         }
 
         const text = cards
-          .map(c => `- [${c.id}] ${c.title}${c.status ? ` — ${c.status}` : ''}${c.assignee ? ` (@${c.assignee})` : ''}`)
+          .map(c => {
+            const recur = c.recurrence_rule ? ` 🔄${c.recurrence_rule.frequency}` : '';
+            return `- [${c.id}] ${c.title}${c.status ? ` — ${c.status}` : ''}${c.assignee ? ` (@${c.assignee})` : ''}${recur}`;
+          })
           .join('\n');
 
         return {
@@ -139,6 +142,7 @@ Args:
   - status (enum, optional): New status: "todo", "in_progress", "done"
   - assignee (string, optional): New assignee
   - due_date (string, optional): New due date YYYY-MM-DD
+  - recurrence_rule (object|null, optional): Set recurrence rule. When card is moved to "done" column, a new card is auto-created. Set to null to clear. Fields: frequency (daily/weekly/monthly/yearly), day_of_week (0-6, weekly only), day_of_month (1-31, monthly/yearly), auto_suffix (bool, append date to title)
 
 At least one optional field must be provided.
 Returns: The updated card object.`,
@@ -149,6 +153,13 @@ Returns: The updated card object.`,
         status: cardStatusSchema.optional().describe('New status'),
         assignee: z.string().optional().describe('New assignee'),
         due_date: dueDateSchema.optional().describe('New due date YYYY-MM-DD'),
+        recurrence_rule: z.object({
+          frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+          day_of_week: z.number().int().min(0).max(6).optional(),
+          day_of_month: z.number().int().min(1).max(31).optional(),
+          month_of_year: z.number().int().min(1).max(12).optional(),
+          auto_suffix: z.boolean().optional(),
+        }).nullable().optional().describe('Set recurrence rule (frequency + details), or null to clear recurrence'),
       }).strict(),
       annotations: {
         readOnlyHint: false,

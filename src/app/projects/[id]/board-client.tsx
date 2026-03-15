@@ -8,7 +8,7 @@ import Link from 'next/link'
 import UserNav from '@/components/UserNav'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import dynamic from 'next/dynamic'
-import type { Card, Column, Project, ViewType, Phase } from './types'
+import type { Card, Column, Project, ViewType, Phase, Subtask } from './types'
 import { getSubtaskUrgency } from './types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -23,8 +23,10 @@ import {
   deleteColumn as deleteColumnApi,
   createPhase as createPhaseApi,
   deletePhase as deletePhaseApi,
+  batchUpdateSubtasks,
 } from '@/lib/api'
 import { exportToXlsx, exportToPdf } from '@/lib/export'
+import Toast from '@/components/ui/toast'
 
 const ListView = dynamic(() => import('./views').then(m => ({ default: m.ListView })))
 const CalendarView = dynamic(() => import('./views').then(m => ({ default: m.CalendarView })))
@@ -32,7 +34,6 @@ const ProgressView = dynamic(() => import('./views').then(m => ({ default: m.Pro
 const GanttView = dynamic(() => import('./gantt').then(m => ({ default: m.GanttView })))
 const CardModal = dynamic(() => import('./card-detail').then(m => ({ default: m.CardModal })))
 const SlideInPane = dynamic(() => import('./card-detail').then(m => ({ default: m.SlideInPane })))
-const RecurringTasksPanel = dynamic(() => import('./recurring-tasks').then(m => ({ default: m.RecurringTasksPanel })))
 const ArchivePanel = dynamic(() => import('./archive-panel').then(m => ({ default: m.ArchivePanel })))
 
 // Priority color mapping (Tailwind border-left classes)
@@ -101,6 +102,13 @@ function CardItem({ card, index, onClick, phases }: { card: Card, index: number,
               <span className="text-xs font-mono text-slate-400 dark:text-slate-500 mt-[2px] flex-shrink-0">#{card.card_number}</span>
             )}
             <p className="font-medium text-sm leading-snug line-clamp-2">{card.title}</p>
+            {card.recurrence_rule && (
+              <span className="flex-shrink-0 mt-[2px]" title="定期任務">
+                <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </span>
+            )}
           </div>
 
           {/* Bottom row: assignee avatar + urgency (left) + subtask count (right) */}
@@ -509,19 +517,41 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
 
   const [selectedPhase, setSelectedPhase] = useState<string | null>(null)
 
-  // Recurring tasks panel
-  const [showRecurringPanel, setShowRecurringPanel] = useState(false)
   // Archive panel
   const [showArchivePanel, setShowArchivePanel] = useState(false)
   // Export dropdown
   const [showExportMenu, setShowExportMenu] = useState(false)
 
+  // 未完成子任務確認對話框
+  const [pendingDrag, setPendingDrag] = useState<{
+    result: DropResult
+    card: Card
+    sourceColumnId: string
+    incompleteSubtasks: Subtask[]
+  } | null>(null)
+
+  // Undo toast
+  const [undoToast, setUndoToast] = useState<{
+    message: string
+    snapshot: {
+      cardId: string
+      sourceColumnId: string
+      destColumnId: string
+      sourceIndex: number
+      destIndex: number
+      subtaskIds: string[]
+      prevColumns: Column[]
+    }
+  } | null>(null)
+
   const [, startTransition] = useTransition()
 
   // Helper to invalidate board data
-  const invalidateBoard = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: queryKeys.board.columns(projectId) })
-    queryClient.invalidateQueries({ queryKey: queryKeys.board.phases(projectId) })
+  const invalidateBoard = useCallback(async () => {
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: queryKeys.board.columns(projectId) }),
+      queryClient.refetchQueries({ queryKey: queryKeys.board.phases(projectId) }),
+    ])
   }, [queryClient, projectId])
 
   // Auto-open card from URL query param (e.g. from notification center)
@@ -621,11 +651,222 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
     [columns, selectedPhase]
   )
 
+  // 執行卡片移動 + 子任務批次完成的核心邏輯
+  const executeDragWithBatchComplete = useCallback(async (
+    result: DropResult,
+    card: Card,
+    incompleteSubtaskIds: string[],
+  ) => {
+    const { destination, source, draggableId } = result
+    if (!destination) return
+
+    // Dismiss any existing undo toast before proceeding
+    setUndoToast(null)
+
+    // 1. Snapshot for undo (deep clone subtasks to avoid reference pollution)
+    const prevColumns = columns.map(col => ({
+      ...col,
+      cards: col.cards.map(c => ({ ...c, subtasks: c.subtasks.map(s => ({ ...s })) }))
+    }))
+
+    // 2. Optimistic update: move card + mark subtasks complete
+    const sourceColumn = columns.find(c => c.id === source.droppableId)
+    const destColumn = columns.find(c => c.id === destination.droppableId)
+    if (!sourceColumn || !destColumn) return
+
+    const sourceCards = [...sourceColumn.cards]
+    const [movedCard] = sourceCards.splice(source.index, 1)
+    const destCards = [...destColumn.cards]
+    // Mark subtasks complete on moved card
+    const now = new Date()
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const updatedCard = {
+      ...movedCard,
+      subtasks: movedCard.subtasks.map(s =>
+        incompleteSubtaskIds.includes(s.id) ? { ...s, is_completed: true } : s
+      ),
+      actual_completion_date: todayStr,
+    }
+    destCards.splice(destination.index, 0, updatedCard)
+
+    const newColumns = columns.map(col => {
+      if (col.id === source.droppableId) return { ...col, cards: sourceCards }
+      if (col.id === destination.droppableId) return { ...col, cards: destCards }
+      return col
+    })
+    setColumns(newColumns)
+
+    // 3. API calls (parallel)
+    try {
+      const [, moveResult] = await Promise.all([
+        batchUpdateSubtasks(draggableId, {
+          action: 'complete_all',
+          subtask_ids: incompleteSubtaskIds,
+          skip_auto_transition: true,
+        }),
+        moveCard({
+          card_id: draggableId,
+          source_column_id: source.droppableId,
+          dest_column_id: destination.droppableId,
+          source_index: source.index,
+          dest_index: destination.index,
+        }),
+        updateCard(draggableId, {
+          title: card.title,
+          actual_completion_date: todayStr,
+        }),
+      ])
+      if (moveResult?.recurring_card_created) {
+        invalidateBoard()
+      }
+    } catch (e) {
+      console.error('Failed to save:', e)
+      setColumns(prevColumns) // rollback
+      await invalidateBoard() // sync with server truth
+      alert('操作失敗，已還原到最新狀態，請重試')
+      return
+    }
+
+    // 4. Show undo toast
+    setUndoToast({
+      message: `已將 ${incompleteSubtaskIds.length} 個子任務標記完成`,
+      snapshot: {
+        cardId: draggableId,
+        sourceColumnId: source.droppableId,
+        destColumnId: destination.droppableId,
+        sourceIndex: source.index,
+        destIndex: destination.index,
+        subtaskIds: incompleteSubtaskIds,
+        prevColumns,
+      },
+    })
+  }, [columns, invalidateBoard])
+
+  // 僅移動卡片（不動子任務）
+  const executeDragMoveOnly = useCallback(async (result: DropResult) => {
+    const { destination, source, draggableId } = result
+    if (!destination) return
+
+    const sourceColumn = columns.find(c => c.id === source.droppableId)
+    const destColumn = columns.find(c => c.id === destination.droppableId)
+    if (!sourceColumn || !destColumn) return
+
+    const sourceCards = [...sourceColumn.cards]
+    const [movedCard] = sourceCards.splice(source.index, 1)
+    const destCards = [...destColumn.cards]
+    destCards.splice(destination.index, 0, movedCard)
+
+    const newColumns = columns.map(col => {
+      if (col.id === source.droppableId) return { ...col, cards: sourceCards }
+      if (col.id === destination.droppableId) return { ...col, cards: destCards }
+      return col
+    })
+    setColumns(newColumns)
+
+    // Auto-fill actual_completion_date
+    const isLastColumn = columns[columns.length - 1]?.id === destination.droppableId
+    if (isLastColumn && !movedCard.actual_completion_date) {
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      setColumns(prev => prev.map(col => ({
+        ...col,
+        cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: todayStr } : c)
+      })))
+      try {
+        await updateCard(draggableId, { title: movedCard.title, actual_completion_date: todayStr })
+      } catch {
+        setColumns(prev => prev.map(col => ({
+          ...col,
+          cards: col.cards.map(c => c.id === draggableId ? { ...c, actual_completion_date: null } : c)
+        })))
+      }
+    }
+
+    try {
+      const moveResult = await moveCard({
+        card_id: draggableId,
+        source_column_id: source.droppableId,
+        dest_column_id: destination.droppableId,
+        source_index: source.index,
+        dest_index: destination.index,
+      })
+      if (moveResult?.recurring_card_created) {
+        invalidateBoard()
+      }
+    } catch (e) {
+      console.error('Failed to save:', e)
+      invalidateBoard()
+    }
+  }, [columns, invalidateBoard])
+
+  // Toast dismiss (stable reference to avoid timer resets)
+  const handleToastDismiss = useCallback(() => setUndoToast(null), [])
+
+  // Undo 復原
+  const handleUndo = useCallback(async () => {
+    if (!undoToast) return
+    const { snapshot } = undoToast
+
+    // Find the card title from CURRENT columns (not snapshot) to avoid overwriting recent edits
+    const currentCard = columns
+      .flatMap(col => col.cards)
+      .find(c => c.id === snapshot.cardId)
+
+    // 1. Client-side rollback
+    setColumns(snapshot.prevColumns)
+    setUndoToast(null)
+
+    // 2. Server-side rollback (parallel)
+    try {
+      await Promise.all([
+        batchUpdateSubtasks(snapshot.cardId, {
+          action: 'uncomplete_all',
+          subtask_ids: snapshot.subtaskIds,
+          skip_auto_transition: true,
+        }),
+        moveCard({
+          card_id: snapshot.cardId,
+          source_column_id: snapshot.destColumnId,
+          dest_column_id: snapshot.sourceColumnId,
+          source_index: snapshot.destIndex,
+          dest_index: snapshot.sourceIndex,
+        }),
+        updateCard(snapshot.cardId, {
+          title: currentCard?.title || snapshot.prevColumns.flatMap(c => c.cards).find(c => c.id === snapshot.cardId)?.title || '',
+          actual_completion_date: snapshot.prevColumns.flatMap(c => c.cards).find(c => c.id === snapshot.cardId)?.actual_completion_date ?? null,
+        }),
+      ])
+    } catch (e) {
+      console.error('Undo failed:', e)
+      invalidateBoard()
+    }
+  }, [undoToast, columns, invalidateBoard])
+
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
 
     if (!destination) return
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
+
+    // ── 攔截：拖到完成欄時檢查未完成子任務 ──
+    const isMovingToLastColumn = columns[columns.length - 1]?.id === destination.droppableId
+    if (isMovingToLastColumn && source.droppableId !== destination.droppableId) {
+      const sourceCol = columns.find(c => c.id === source.droppableId)
+      const card = sourceCol?.cards[source.index]
+      if (card) {
+        const incompleteSubtasks = (card.subtasks || []).filter(s => !s.is_completed)
+        if (incompleteSubtasks.length > 0) {
+          // 開啟確認對話框，暫停拖放
+          setPendingDrag({
+            result,
+            card,
+            sourceColumnId: source.droppableId,
+            incompleteSubtasks,
+          })
+          return // 不執行移動，等待使用者選擇
+        }
+      }
+    }
 
     // Find the column and card
     const sourceColumn = columns.find(c => c.id === source.droppableId)
@@ -701,13 +942,16 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
 
     // Save to server
     try {
-      await moveCard({
+      const moveResult = await moveCard({
         card_id: draggableId,
         source_column_id: source.droppableId,
         dest_column_id: destination.droppableId,
         source_index: source.index,
         dest_index: destination.index,
       })
+      if (moveResult?.recurring_card_created) {
+        invalidateBoard()
+      }
     } catch (e) {
       console.error('Failed to save:', e)
       invalidateBoard() // Refresh on error
@@ -790,13 +1034,6 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
             </svg>
             <span className="max-sm:hidden">封存</span>
           </button>
-          <button
-            onClick={() => setShowRecurringPanel(true)}
-            className="px-3 py-1.5 rounded-md text-sm font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors min-h-[36px] whitespace-nowrap flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            <span className="max-sm:hidden">定期任務</span>
-          </button>
         </header>
 
         {/* Phase Filter Bar */}
@@ -862,20 +1099,78 @@ export function BoardPageClient({ projectId, initialProject, initialColumns, ini
         )}
       </div>
 
-      <RecurringTasksPanel
-        projectId={projectId}
-        columns={columns}
-        isOpen={showRecurringPanel}
-        onClose={() => setShowRecurringPanel(false)}
-        onRefreshBoard={invalidateBoard}
-      />
-
       <ArchivePanel
         projectId={projectId}
         isOpen={showArchivePanel}
         onClose={() => setShowArchivePanel(false)}
         onRefreshBoard={invalidateBoard}
       />
+
+      {/* 未完成子任務確認對話框 */}
+      <Dialog open={!!pendingDrag} onOpenChange={(open) => { if (!open) setPendingDrag(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>子任務未完成</DialogTitle>
+            <DialogDescription>
+              「{pendingDrag?.card.title}」尚有 {pendingDrag?.incompleteSubtasks.length} 個子任務未完成
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {pendingDrag?.incompleteSubtasks.map(st => (
+              <div key={st.id} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                <span className="w-4 h-4 border rounded flex-shrink-0" />
+                <span className="truncate">{st.title}</span>
+                {st.due_date && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">
+                    {new Date(st.due_date).toLocaleDateString('zh-TW')}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="default"
+              onClick={() => {
+                if (pendingDrag) {
+                  const ids = pendingDrag.incompleteSubtasks.map(s => s.id)
+                  executeDragWithBatchComplete(pendingDrag.result, pendingDrag.card, ids)
+                  setPendingDrag(null)
+                }
+              }}
+            >
+              全部標記完成
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (pendingDrag) {
+                  executeDragMoveOnly(pendingDrag.result)
+                  setPendingDrag(null)
+                }
+              }}
+            >
+              僅移動卡片
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setPendingDrag(null)}
+            >
+              取消
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Toast */}
+      {undoToast && (
+        <Toast
+          message={undoToast.message}
+          action={{ label: '復原', onClick: handleUndo }}
+          duration={8000}
+          onDismiss={handleToastDismiss}
+        />
+      )}
     </DragDropContext>
   )
 }

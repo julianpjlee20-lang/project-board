@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UuidDisplay } from '@/components/ui/UuidDisplay'
 import { DateInput } from '@/components/ui/DateInput'
 import { AssigneeCombobox } from '@/components/ui/AssigneeCombobox'
-import type { Card, Phase, Subtask, ActivityLog, CardDetailProps, ActiveUser } from './types'
+import type { Card, Phase, Subtask, ActivityLog, CardDetailProps, ActiveUser, RecurrenceRule } from './types'
 import { getDerivedDueDate, getDaysUntil } from './types'
 
 // ---------------------------------------------------------------------------
@@ -316,6 +316,42 @@ function ScheduleTimelineBar({ dueDate, plannedDate, actualDate, createdAt }: {
 // SubtaskChecklist
 // ---------------------------------------------------------------------------
 
+/** 取得使用者名稱的首字母（支援中文） */
+function getInitial(name: string): string {
+  if (!name) return '?'
+  return (Array.from(name)[0] ?? '?').toUpperCase()
+}
+
+/** 根據名稱產生一致的背景色 */
+function getAvatarColor(name: string): string {
+  const colors = [
+    'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
+    'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-rose-500',
+  ]
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+}
+
+/** 取得截止日圓點的顏色 class */
+function getDueDotColor(days: number, isCompleted: boolean): string {
+  if (isCompleted) return 'bg-slate-300 dark:bg-slate-600'
+  if (days <= 0) return 'bg-red-500'
+  if (days <= 3) return 'bg-orange-500'
+  return 'bg-slate-400 dark:bg-slate-500'
+}
+
+/** 取得截止日圓點的 tooltip 文字 */
+function getDueDotTooltip(dateStr: string, days: number, isCompleted: boolean, isInherited: boolean): string {
+  const base = isCompleted
+    ? formatShortDate(dateStr)
+    : formatDueDateLabel(dateStr, days)
+  const suffix = isInherited ? ' (繼承自卡片)' : ''
+  return base + suffix
+}
+
 function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange, activeUsers, cardDueDate, onBoardUpdate }: {
   cardId: string
   subtasks: Subtask[]
@@ -329,9 +365,15 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
   const [newDueDate, setNewDueDate] = useState('')
   const [newAssigneeId, setNewAssigneeId] = useState('')
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isSubmittingRef = useRef(false)
+
+  // activeUsers with avatar_url for AssigneeCombobox
+  const comboboxUsers = useMemo(
+    () => activeUsers.map(u => ({ ...u, avatar_url: null as string | null })),
+    [activeUsers]
+  )
 
   useEffect(() => {
     setSubtasks(initialSubtasks || [])
@@ -400,9 +442,9 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
     }
   }
 
-  const addSubtask = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newTitle.trim()) return
+  const submitNewSubtask = async () => {
+    if (!newTitle.trim() || isSubmittingRef.current) return
+    isSubmittingRef.current = true
 
     try {
       const res = await fetch(`/api/cards/${cardId}/subtasks`, {
@@ -424,13 +466,22 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
       setNewAssigneeId('')
     } catch (err) {
       console.error('新增子任務錯誤:', err)
+      // 失敗時不清空，讓使用者可以重試
+    } finally {
+      isSubmittingRef.current = false
     }
+  }
+
+  const addSubtask = (e: React.FormEvent) => {
+    e.preventDefault()
+    submitNewSubtask()
   }
 
   const deleteSubtask = async (id: string) => {
     const newSubtasks = subtasks.filter(s => s.id !== id)
     setSubtasks(newSubtasks)
     onSubtasksChange(newSubtasks)
+    setEditingSubtaskId(null)
 
     try {
       const res = await fetch(`/api/cards/${cardId}/subtasks?subtask_id=${id}`, {
@@ -473,159 +524,198 @@ function SubtaskChecklist({ cardId, subtasks: initialSubtasks, onSubtasksChange,
 
       {/* Subtask list */}
       <div className="space-y-0.5 mb-2">
-        {subtasks.map(subtask => (
-          <div key={subtask.id}>
-            <div
-              className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800"
-              onMouseEnter={() => setHoveredId(subtask.id)}
-              onMouseLeave={() => setHoveredId(null)}
-            >
-              <input
-                type="checkbox"
-                checked={subtask.is_completed}
-                onChange={() => toggleSubtask(subtask)}
-                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-500 cursor-pointer dark:bg-slate-800"
-              />
-              <span
-                className={`flex-1 text-sm cursor-pointer ${subtask.is_completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}
-                onClick={() => setEditingSubtaskId(editingSubtaskId === subtask.id ? null : subtask.id)}
+        {subtasks.map(subtask => {
+          const isExpanded = editingSubtaskId === subtask.id
+          const effectiveDueDate = subtask.due_date || cardDueDate || null
+          const isInherited = !subtask.due_date && !!cardDueDate
+          const days = effectiveDueDate ? getDaysUntilDue(effectiveDueDate) : null
+
+          return (
+            <div key={subtask.id}>
+              {/* Compact row */}
+              <div
+                className={`flex items-center gap-2 py-1.5 px-1 rounded cursor-pointer transition-colors ${
+                  isExpanded
+                    ? 'bg-slate-100 dark:bg-slate-800'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }`}
+                onClick={() => setEditingSubtaskId(isExpanded ? null : subtask.id)}
               >
-                {subtask.title}
-              </span>
-              {/* Due date badge */}
-              {(() => {
-                const effectiveDueDate = subtask.due_date || cardDueDate || null
-                if (!effectiveDueDate) return null
-                const isInherited = !subtask.due_date && !!cardDueDate
-                const days = getDaysUntilDue(effectiveDueDate)
-                return (
-                  <span
-                    className={`text-xs px-1.5 py-0.5 rounded whitespace-nowrap ${
-                      isInherited
-                        ? 'text-slate-400 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-300 dark:border-slate-600'
-                        : getDueDateStyle(days, subtask.is_completed)
-                    }`}
-                    title={isInherited ? '繼承自卡片截止日' : undefined}
-                  >
-                    {subtask.is_completed
-                      ? formatShortDate(effectiveDueDate)
-                      : formatDueDateLabel(effectiveDueDate, days)
-                    }
-                    {isInherited && ' ↑'}
-                  </span>
-                )
-              })()}
-              {/* Assignee name */}
-              {subtask.assignee_name && (
-                <span className={`text-xs whitespace-nowrap ${subtask.is_completed ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {subtask.assignee_name}
-                </span>
-              )}
-              {hoveredId === subtask.id && (
-                <button
-                  onClick={() => {
-                    if (pendingDeleteId === subtask.id) {
-                      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
-                      setPendingDeleteId(null)
-                      deleteSubtask(subtask.id)
-                    } else {
-                      setPendingDeleteId(subtask.id)
-                      deleteTimerRef.current = setTimeout(() => {
-                        setPendingDeleteId(null)
-                      }, 1500)
-                    }
-                  }}
-                  className={`text-xs px-1 transition-colors ${
-                    pendingDeleteId === subtask.id
-                      ? 'text-red-600 font-medium'
-                      : 'text-slate-400 hover:text-red-500'
+                <input
+                  type="checkbox"
+                  checked={subtask.is_completed}
+                  onChange={() => toggleSubtask(subtask)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-blue-500 cursor-pointer dark:bg-slate-800 shrink-0"
+                />
+                <span
+                  className={`flex-1 text-sm truncate ${
+                    subtask.is_completed
+                      ? 'line-through text-slate-400'
+                      : 'text-slate-700 dark:text-slate-200'
                   }`}
                 >
-                  {pendingDeleteId === subtask.id ? '確認？' : '✕'}
-                </button>
-              )}
-            </div>
-            {/* Inline edit for due_date and assignee */}
-            {editingSubtaskId === subtask.id && (
-              <div className="flex items-center gap-3 pl-7 py-1 text-xs">
-                <label className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                  名稱
-                  <input
-                    type="text"
-                    defaultValue={subtask.title}
-                    onBlur={e => {
-                      const val = e.target.value.trim()
-                      if (val && val !== subtask.title) {
-                        updateSubtaskField(subtask.id, 'title', val)
-                      }
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const val = (e.target as HTMLInputElement).value.trim()
+                  {subtask.title}
+                </span>
+
+                {/* Icon indicators (right-aligned) */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Due date dot */}
+                  {effectiveDueDate && days !== null && (
+                    <span
+                      role="img"
+                      aria-label={getDueDotTooltip(effectiveDueDate, days, subtask.is_completed, isInherited)}
+                      className={`w-2 h-2 rounded-full ${getDueDotColor(days, subtask.is_completed)} ${
+                        isInherited ? 'ring-1 ring-offset-1 ring-slate-300 dark:ring-slate-600 dark:ring-offset-slate-900' : ''
+                      }`}
+                      title={getDueDotTooltip(effectiveDueDate, days, subtask.is_completed, isInherited)}
+                    />
+                  )}
+                  {/* Assignee mini avatar */}
+                  {subtask.assignee_name && (
+                    <div
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-medium shrink-0 ${getAvatarColor(subtask.assignee_name)}`}
+                      title={subtask.assignee_name}
+                    >
+                      {getInitial(subtask.assignee_name)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded edit panel */}
+              {isExpanded && (
+                <div className="ml-8 mr-2 mb-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 space-y-3">
+                  {/* Title input */}
+                  <div>
+                    <label htmlFor={`subtask-title-${subtask.id}`} className="block text-xs text-slate-500 dark:text-slate-400 mb-1">名稱</label>
+                    <input
+                      id={`subtask-title-${subtask.id}`}
+                      key={`${subtask.id}-${subtask.title}`}
+                      type="text"
+                      defaultValue={subtask.title}
+                      onBlur={e => {
+                        const val = e.target.value.trim()
                         if (val && val !== subtask.title) {
                           updateSubtaskField(subtask.id, 'title', val)
                         }
-                        setEditingSubtaskId(null)
-                      }
-                      if (e.key === 'Escape') setEditingSubtaskId(null)
-                    }}
-                    className="border rounded px-1.5 py-0.5 text-xs w-40 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
-                    autoFocus
-                  />
-                </label>
-                <label className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                  截止
-                  <input type="date" value={subtask.due_date ? toDateOnly(subtask.due_date) : ''}
-                    onChange={e => updateSubtaskField(subtask.id, 'due_date', e.target.value)}
-                    className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200" />
-                </label>
-                <label className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                  負責人
-                  <select value={subtask.assignee_id || ''}
-                    onChange={e => updateSubtaskField(subtask.id, 'assignee_id', e.target.value)}
-                    className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200">
-                    <option value="">--</option>
-                    {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                </label>
-              </div>
-            )}
-          </div>
-        ))}
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const val = (e.target as HTMLInputElement).value.trim()
+                          if (val && val !== subtask.title) {
+                            updateSubtaskField(subtask.id, 'title', val)
+                          }
+                        }
+                        if (e.key === 'Escape') setEditingSubtaskId(null)
+                      }}
+                      className="w-full text-sm border rounded-md px-3 py-2 dark:bg-slate-900 dark:border-slate-600 dark:text-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Due date + Assignee row */}
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">截止日</label>
+                      <DateInput
+                        value={subtask.due_date ? toDateOnly(subtask.due_date) : ''}
+                        onChange={val => updateSubtaskField(subtask.id, 'due_date', val)}
+                        className="w-full dark:bg-slate-900 dark:border-slate-600 dark:text-slate-200"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">負責人</label>
+                      <AssigneeCombobox
+                        users={comboboxUsers}
+                        value={subtask.assignee_id || ''}
+                        onChange={val => updateSubtaskField(subtask.id, 'assignee_id', val)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom actions: delete (left) + collapse (right) */}
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (pendingDeleteId === subtask.id) {
+                          if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+                          setPendingDeleteId(null)
+                          deleteSubtask(subtask.id)
+                        } else {
+                          setPendingDeleteId(subtask.id)
+                          deleteTimerRef.current = setTimeout(() => {
+                            setPendingDeleteId(null)
+                          }, 1500)
+                        }
+                      }}
+                      className={`text-xs px-2 py-1 rounded transition-colors ${
+                        pendingDeleteId === subtask.id
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium'
+                          : 'text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                      }`}
+                    >
+                      {pendingDeleteId === subtask.id ? '再次點擊確認刪除' : '刪除子任務'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingSubtaskId(null)}
+                      className="text-xs px-2 py-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      收合
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* Add subtask */}
-      <form onSubmit={addSubtask} className="flex gap-2">
-        <input
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          placeholder="新增子任務…"
-          className="flex-1 text-sm border rounded px-2 py-1.5 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200"
-        />
-        <button
-          type="submit"
-          className="text-sm px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-600 rounded dark:text-slate-200"
-        >
-          +
-        </button>
+      <form onSubmit={addSubtask}>
+        <div className="flex items-center gap-3">
+          <div className="w-5 shrink-0" />
+          <input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder="新增子任務...按 Enter 送出"
+            className="flex-1 text-sm border-0 border-b border-dashed border-slate-300 dark:border-slate-600 bg-transparent px-1 py-2 focus:border-blue-500 focus:outline-none placeholder:text-slate-400 dark:text-slate-200"
+          />
+        </div>
       </form>
-      {/* Optional fields for new subtask */}
+      {/* Optional fields for new subtask (shown when title is non-empty) */}
       {newTitle.trim() && (
-        <div className="flex items-center gap-3 pl-1 pt-1 text-xs text-slate-500 dark:text-slate-400">
-          <label className="flex items-center gap-1">
-            截止
-            <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-              className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200" />
-          </label>
-          <label className="flex items-center gap-1">
-            負責人
-            <select value={newAssigneeId} onChange={e => setNewAssigneeId(e.target.value)}
-              className="border rounded px-1.5 py-0.5 text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200">
-              <option value="">--</option>
-              {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </label>
+        <div className="ml-8 mt-2 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-dashed border-blue-200 dark:border-blue-800 space-y-3">
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">截止日（選填）</label>
+              <DateInput
+                value={newDueDate}
+                onChange={setNewDueDate}
+                className="w-full dark:bg-slate-900 dark:border-slate-600 dark:text-slate-200"
+              />
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">負責人（選填）</label>
+              <AssigneeCombobox
+                users={comboboxUsers}
+                value={newAssigneeId}
+                onChange={setNewAssigneeId}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={submitNewSubtask}
+              className="text-sm px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
+              新增
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -679,14 +769,17 @@ interface UseCardDetailReturn {
   // Archive
   isArchiving: boolean
   archiveCard: () => Promise<void>
+  // Recurrence
+  recurrenceRule: RecurrenceRule | null
+  setRecurrenceRule: (v: RecurrenceRule | null) => void
   // Computed
   scheduleSummary: string | null
   collapsedDisplay: { text: string; icon: string; color: string } | null
   // Board refresh
-  onUpdate: () => void
+  onUpdate: () => Promise<void>
 }
 
-function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => void): UseCardDetailReturn {
+function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => Promise<void>): UseCardDetailReturn {
   const onCloseFnRef = useRef(onCloseFn)
   onCloseFnRef.current = onCloseFn
   const [isFormReady, setIsFormReady] = useState(false)
@@ -715,6 +808,8 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
   const [phaseId, setPhaseId] = useState<string | null>(null)
   const [activity, setActivity] = useState<ActivityLog[]>([])
   const [cardSubtasks, setCardSubtasks] = useState<Subtask[]>([])
+
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | null>(null)
 
   const [editingDate, setEditingDate] = useState<string | null>(null)
   const [scheduleExpanded, setScheduleExpanded] = useState(false)
@@ -768,6 +863,7 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
       setOriginalData(formData)
       setActivity(activityData)
       setCardSubtasks(cardData.subtasks || [])
+      setRecurrenceRule(cardData.recurrence_rule || null)
       setIsFormReady(true)
     }).catch(err => {
       console.error('載入卡片錯誤:', err)
@@ -795,6 +891,7 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
         actual_completion_date: actualDate || null,
         priority,
         phase_id: phaseId,
+        recurrence_rule: recurrenceRule,
       }
       console.log('[saveCard] payload:', JSON.stringify(payload))
       const res = await fetch('/api/cards/' + cardId, {
@@ -806,8 +903,8 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
       const data = await res.json()
 
       if (res.ok) {
+        try { await onUpdate() } catch (e) { console.error('[saveCard] onUpdate failed:', e) }
         onCloseFn()
-        onUpdate()
       } else {
         console.error('[saveCard] API error:', JSON.stringify(data))
         alert('儲存失敗: ' + (data.error || '未知錯誤') + (data.detail ? '\n詳情: ' + data.detail : '') + (data.step ? '\n步驟: ' + data.step : ''))
@@ -818,14 +915,14 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
       alert('儲存失敗')
       setIsSaving(false)
     }
-  }, [isSaving, title, description, assigneeId, startDate, dueDate, plannedDate, actualDate, priority, phaseId, cardId, onCloseFn, onUpdate])
+  }, [isSaving, title, description, assigneeId, startDate, dueDate, plannedDate, actualDate, priority, phaseId, recurrenceRule, cardId, onCloseFn, onUpdate])
 
   const deleteCard = useCallback(async () => {
     setIsDeleting(true)
     try {
       const res = await fetch(`/api/cards/${cardId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete card')
-      onUpdate()
+      try { await onUpdate() } catch (e) { console.error('[deleteCard] onUpdate failed:', e) }
       onCloseFn()
     } catch (error) {
       console.error('Delete card error:', error)
@@ -844,8 +941,8 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
         body: JSON.stringify({ is_archived: true }),
       })
       if (!res.ok) throw new Error('封存失敗')
+      try { await onUpdate() } catch (e) { console.error('[archiveCard] onUpdate failed:', e) }
       onCloseFn()
-      onUpdate()
     } catch (err) {
       console.error('Archive error:', err)
     } finally {
@@ -883,6 +980,7 @@ function useCardDetail(cardId: string, onCloseFn: () => void, onUpdate: () => vo
     phaseId, setPhaseId,
     activity,
     cardSubtasks, setCardSubtasks,
+    recurrenceRule, setRecurrenceRule,
     editingDate, setEditingDate,
     scheduleExpanded, setScheduleExpanded,
     isSaving,
@@ -923,6 +1021,7 @@ function CardDetailContent({ card, phases, detail }: {
     phaseId, setPhaseId,
     activity,
     cardSubtasks, setCardSubtasks,
+    recurrenceRule, setRecurrenceRule,
     editingDate, setEditingDate,
     scheduleExpanded, setScheduleExpanded,
     scheduleSummary,
@@ -1202,6 +1301,11 @@ function CardDetailContent({ card, phases, detail }: {
               </div>
             </div>
 
+            {/* Recurrence selector */}
+            <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
+              <RecurrenceSelector value={recurrenceRule} onChange={setRecurrenceRule} />
+            </div>
+
             {/* Completion tracking divider */}
             <div className="text-xs font-medium text-slate-400 dark:text-slate-500 tracking-wide pt-2 pb-1 border-t border-slate-200 dark:border-slate-700 mt-2">完成追蹤</div>
 
@@ -1346,54 +1450,159 @@ function DeleteConfirmDialog({ cardTitle, isDeleting, onConfirm, onCancel }: {
 }
 
 // ---------------------------------------------------------------------------
-// SaveAsRecurringButton — save current card as a recurring task template
+// RecurrenceSelector — inline recurrence rule editor
 // ---------------------------------------------------------------------------
 
-function SaveAsRecurringButton({ cardId }: { cardId: string }) {
-  const params = useParams()
-  const projectId = params.id as string
-  const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState(false)
+function RecurrenceSelector({
+  value,
+  onChange
+}: {
+  value: RecurrenceRule | null
+  onChange: (rule: RecurrenceRule | null) => void
+}) {
+  const enabled = value !== null
 
-  async function handleSave() {
-    setSaving(true)
-    try {
-      // Use source_card_id mode — the API will copy card data into the template
-      const body = { source_card_id: cardId }
-
-      const res = await fetch(`/api/projects/${projectId}/templates`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || '建立定期任務失敗')
-      }
-
-      setDone(true)
-      setTimeout(() => setDone(false), 2000)
-    } catch (error) {
-      console.error('Save as recurring error:', error)
-      alert(error instanceof Error ? error.message : '建立定期任務失敗')
-    } finally {
-      setSaving(false)
+  const handleToggle = () => {
+    if (enabled) {
+      onChange(null)
+    } else {
+      onChange({ frequency: 'monthly', auto_suffix: true })
     }
   }
 
+  const handleFrequencyChange = (freq: RecurrenceRule['frequency']) => {
+    const base: RecurrenceRule = { frequency: freq, auto_suffix: value?.auto_suffix ?? true }
+    if (freq === 'weekly') base.day_of_week = new Date().getDay()
+    if (freq === 'monthly') base.day_of_month = new Date().getDate()
+    if (freq === 'yearly') {
+      base.month_of_year = new Date().getMonth() + 1
+      base.day_of_month = new Date().getDate()
+    }
+    onChange(base)
+  }
+
+  const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+
   return (
-    <button
-      onClick={handleSave}
-      disabled={saving || done}
-      className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg min-h-[44px] flex items-center gap-1.5 disabled:opacity-50"
-      title="設為定期任務"
-    >
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-      {done ? '已建立' : saving ? '建立中...' : '設為定期任務'}
-    </button>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            enabled ? 'bg-blue-600' : 'bg-gray-600'
+          }`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-4.5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+        <div className="flex items-center gap-1.5 text-sm text-gray-300">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          重複
+        </div>
+      </div>
+
+      {enabled && value && (
+        <div className="pl-2 space-y-2 border-l-2 border-blue-600/30">
+          {/* 頻率選擇 */}
+          <div className="flex gap-1.5 flex-wrap">
+            {(['daily', 'weekly', 'monthly', 'yearly'] as const).map(freq => (
+              <button
+                key={freq}
+                type="button"
+                onClick={() => handleFrequencyChange(freq)}
+                className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                  value.frequency === freq
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {{ daily: '每日', weekly: '每週', monthly: '每月', yearly: '每年' }[freq]}
+              </button>
+            ))}
+          </div>
+
+          {/* 週幾選擇 */}
+          {value.frequency === 'weekly' && (
+            <div className="flex gap-1">
+              {dayNames.map((name, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onChange({ ...value, day_of_week: i })}
+                  className={`w-7 h-7 text-xs rounded-md transition-colors ${
+                    value.day_of_week === i
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 幾號選擇 */}
+          {value.frequency === 'monthly' && (
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              <span>每月</span>
+              <select
+                value={value.day_of_month || 1}
+                onChange={e => onChange({ ...value, day_of_month: Number(e.target.value) })}
+                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+              >
+                {Array.from({ length: 31 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+              <span>號</span>
+            </div>
+          )}
+
+          {/* 每年：月+日 */}
+          {value.frequency === 'yearly' && (
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              <span>每年</span>
+              <select
+                value={value.month_of_year || 1}
+                onChange={e => onChange({ ...value, month_of_year: Number(e.target.value) })}
+                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+              >
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1} 月</option>
+                ))}
+              </select>
+              <select
+                value={value.day_of_month || 1}
+                onChange={e => onChange({ ...value, day_of_month: Number(e.target.value) })}
+                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+              >
+                {Array.from({ length: 31 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+              <span>號</span>
+            </div>
+          )}
+
+          {/* 自動後綴 */}
+          <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={value.auto_suffix !== false}
+              onChange={e => onChange({ ...value, auto_suffix: e.target.checked })}
+              className="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+            />
+            自動在標題加上日期後綴
+          </label>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1455,7 +1664,6 @@ export function CardModal({ card, phases, onClose, onUpdate }: CardDetailProps) 
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   刪除
                 </button>
-                <SaveAsRecurringButton cardId={card.id} />
               </div>
               <div className="flex gap-2">
                 <button onClick={detail.handleCancel} className="px-4 py-2.5 max-sm:py-3 text-sm max-sm:text-base border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 min-h-[44px] dark:text-slate-200">取消</button>

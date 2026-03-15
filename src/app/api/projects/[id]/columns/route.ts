@@ -34,6 +34,7 @@ export async function GET(
              c.priority, c.due_date, c.planned_completion_date,
              c.actual_completion_date, c.start_date, c.position,
              c.phase_id, c.column_id, c.created_at, c.rolling_due_date,
+             c.recurrence_rule, c.recurrence_source_id, c.original_column_id,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ca.user_id, 'name', p.name)) FILTER (WHERE ca.user_id IS NOT NULL), '[]') as assignees,
         COALESCE(
           (SELECT json_agg(json_build_object('id', s.id, 'title', s.title, 'is_completed', s.is_completed, 'position', s.position, 'due_date', s.due_date, 'assignee_id', s.assignee_id, 'assignee_name', sp.name) ORDER BY s.position)
@@ -58,7 +59,9 @@ export async function GET(
       col.cards = allCards.filter((c: { column_id: number }) => c.column_id === col.id)
     }
     
-    return NextResponse.json(columns)
+    const response = NextResponse.json(columns)
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status })

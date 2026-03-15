@@ -80,7 +80,7 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    const { title, description, assignee_id, progress, priority, phase_id } = validation.data
+    const { title, description, assignee_id, progress, priority, phase_id, recurrence_rule } = validation.data
     let { start_date, due_date, planned_completion_date, actual_completion_date } = validation.data
 
     // Fix: Convert empty string to null for date fields
@@ -101,6 +101,7 @@ export async function PUT(
     const oldStartDate = oldCard[0]?.start_date
     const oldPlannedCompletionDate = oldCard[0]?.planned_completion_date
     const oldActualCompletionDate = oldCard[0]?.actual_completion_date
+    const oldRecurrenceRule = oldCard[0]?.recurrence_rule
 
     // Get project_id
     const column = oldCard[0]?.column_id ?
@@ -114,9 +115,21 @@ export async function PUT(
 
     // Update card
     step = 'update-card'
+
+    // Determine recurrence_rule and original_column_id values
+    const recurrenceRuleValue = recurrence_rule !== undefined
+      ? (recurrence_rule !== null ? JSON.stringify(recurrence_rule) : null)
+      : undefined
+    // 只在首次設定時記錄 original_column_id，之後不覆蓋
+    const originalColumnIdValue = recurrence_rule !== undefined
+      ? (recurrence_rule !== null
+          ? (oldCard[0]?.original_column_id || oldCard[0]?.column_id)  // 保留已有值
+          : null)
+      : undefined
+
     await query(
-      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, start_date = CASE WHEN $9::boolean THEN $10::timestamptz ELSE start_date END, planned_completion_date = CASE WHEN $11::boolean THEN $12::date ELSE planned_completion_date END, actual_completion_date = CASE WHEN $13::boolean THEN $14::date ELSE actual_completion_date END, updated_at = NOW() WHERE id = $8`,
-      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id, start_date !== undefined, start_date ?? null, planned_completion_date !== undefined, planned_completion_date ?? null, actual_completion_date !== undefined, actual_completion_date ?? null]
+      `UPDATE cards SET title = $1, description = $2, due_date = $3, progress = COALESCE($4, progress), priority = COALESCE($5, priority), phase_id = CASE WHEN $6::boolean THEN $7::uuid ELSE phase_id END, start_date = CASE WHEN $9::boolean THEN $10::timestamptz ELSE start_date END, planned_completion_date = CASE WHEN $11::boolean THEN $12::date ELSE planned_completion_date END, actual_completion_date = CASE WHEN $13::boolean THEN $14::date ELSE actual_completion_date END, recurrence_rule = CASE WHEN $15::boolean THEN $16::jsonb ELSE recurrence_rule END, original_column_id = CASE WHEN $15::boolean THEN $17::uuid ELSE original_column_id END, updated_at = NOW() WHERE id = $8`,
+      [title, description, due_date, progress, priority, phase_id !== undefined, phase_id ?? null, id, start_date !== undefined, start_date ?? null, planned_completion_date !== undefined, planned_completion_date ?? null, actual_completion_date !== undefined, actual_completion_date ?? null, recurrence_rule !== undefined, recurrenceRuleValue ?? null, originalColumnIdValue ?? null]
     )
 
     // Collect non-critical tasks (activity logs + notifications) for after()
@@ -213,6 +226,19 @@ export async function PUT(
         'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
         [projectId, id, '修改', '實際完成日', oldDate, newDate]
       ))
+    }
+
+    if (recurrence_rule !== undefined) {
+      const oldRuleStr = oldRecurrenceRule ? JSON.stringify(oldRecurrenceRule) : null
+      const newRuleStr = recurrence_rule ? JSON.stringify(recurrence_rule) : null
+      if (oldRuleStr !== newRuleStr) {
+        const oldLabel = oldRecurrenceRule ? '已設定' : '(未設定)'
+        const newLabel = recurrence_rule ? '已設定' : '(未設定)'
+        afterTasks.push(() => query(
+          'INSERT INTO activity_logs (project_id, card_id, action, target, old_value, new_value) VALUES ($1, $2, $3, $4, $5, $6)',
+          [projectId, id, '修改', '重複規則', oldLabel, newLabel]
+        ))
+      }
     }
 
     // Handle assignee (by user ID) — business logic stays blocking, logs/notifications deferred
@@ -316,7 +342,7 @@ export async function PATCH(
       }, { status: 400 })
     }
 
-    const { title, description, status, assignee, due_date } = validation.data
+    const { title, description, status, assignee, due_date, recurrence_rule } = validation.data
 
     // 確認 card 存在
     const existing = await query('SELECT * FROM cards WHERE id = $1', [id])
@@ -400,6 +426,21 @@ export async function PATCH(
         await query('INSERT INTO card_assignees (card_id, user_id) VALUES ($1, $2)', [id, profileId])
       }
       // 若找不到 profile，靜默忽略（MCP 場景不需要報錯）
+    }
+
+    // recurrence_rule → JSONB
+    if (recurrence_rule !== undefined) {
+      if (recurrence_rule === null) {
+        setClauses.push(`recurrence_rule = NULL, original_column_id = NULL`)
+      } else {
+        setClauses.push(`recurrence_rule = $${paramIndex++}::jsonb`)
+        values.push(JSON.stringify(recurrence_rule))
+        // 只在尚無 original_column_id 時設定
+        if (!card.original_column_id) {
+          setClauses.push(`original_column_id = $${paramIndex++}`)
+          values.push(card.column_id)
+        }
+      }
     }
 
     // 執行 UPDATE（如果有欄位要更新）

@@ -20,6 +20,14 @@ export interface Phase {
 export const CARD_STATUSES = ['todo', 'in_progress', 'done'] as const;
 export type CardStatus = (typeof CARD_STATUSES)[number];
 
+export interface RecurrenceRule {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  day_of_week?: number;
+  day_of_month?: number;
+  month_of_year?: number;
+  auto_suffix?: boolean;
+}
+
 export interface Card {
   id: string;
   phase_id: string;
@@ -28,6 +36,7 @@ export interface Card {
   status?: CardStatus;
   assignee?: string;
   due_date?: string;
+  recurrence_rule?: RecurrenceRule | null;
   created_at?: string;
   updated_at?: string;
 }

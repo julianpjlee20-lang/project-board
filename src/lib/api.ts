@@ -6,7 +6,7 @@
 // ─── Generic helpers ────────────────────────────────────────
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
+  const res = await fetch(url, { cache: 'no-store', ...init })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || body.detail || `HTTP ${res.status}`)
@@ -25,6 +25,14 @@ async function postJson<T>(url: string, data: unknown): Promise<T> {
 async function putJson<T>(url: string, data: unknown): Promise<T> {
   return fetchJson<T>(url, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+}
+
+async function patchJson<T>(url: string, data: unknown): Promise<T> {
+  return fetchJson<T>(url, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
@@ -94,14 +102,19 @@ export async function updateCard(cardId: string, data: Record<string, unknown>) 
   return putJson(`/api/cards/${cardId}`, data)
 }
 
+export interface MoveCardResult {
+  success?: boolean
+  recurring_card_created?: Record<string, unknown>
+}
+
 export async function moveCard(data: {
   card_id: string
   source_column_id: string
   dest_column_id: string
   source_index: number
   dest_index: number
-}) {
-  return postJson('/api/cards/move', data)
+}): Promise<MoveCardResult> {
+  return postJson<MoveCardResult>('/api/cards/move', data)
 }
 
 export async function createColumn(data: { project_id: string; name: string }) {
@@ -256,6 +269,17 @@ export async function fetchArchivedCards(projectId: string, search?: string) {
   const params = new URLSearchParams({ project_id: projectId })
   if (search) params.set('search', search)
   return fetchJson<{ total: number; cards: ArchivedCard[] }>(`/api/cards/archived?${params}`)
+}
+
+export async function batchUpdateSubtasks(cardId: string, data: {
+  action: 'complete_all' | 'uncomplete_all'
+  subtask_ids: string[]
+  skip_auto_transition?: boolean
+}) {
+  return patchJson<{ updated_count: number }>(`/api/cards/${cardId}/subtasks/batch`, {
+    ...data,
+    skip_auto_transition: data.skip_auto_transition ?? true,
+  })
 }
 
 export async function archiveCard(cardId: string, isArchived: boolean) {

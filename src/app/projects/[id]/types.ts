@@ -4,6 +4,14 @@ export type CalendarMode = 'month' | 'quarter' | 'year'
 
 export type GanttScale = 'week' | 'month'
 
+export interface RecurrenceRule {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  day_of_week?: number
+  day_of_month?: number
+  month_of_year?: number
+  auto_suffix?: boolean
+}
+
 export interface Card {
   id: string
   card_number: number | null
@@ -22,6 +30,9 @@ export interface Card {
   rolling_due_date: boolean
   is_archived: boolean
   archived_at: string | null
+  recurrence_rule: RecurrenceRule | null
+  recurrence_source_id: string | null
+  original_column_id: string | null
   subtasks: Subtask[]
 }
 
@@ -69,7 +80,7 @@ export interface CardDetailProps {
   card: Card
   phases: Phase[]
   onClose: () => void
-  onUpdate: () => void
+  onUpdate: () => Promise<void>
 }
 
 export interface ActiveUser {

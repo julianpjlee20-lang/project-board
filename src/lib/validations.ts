@@ -45,8 +45,32 @@ export const prioritySchema = z.enum(['low', 'medium', 'high'], {
 }).optional()
 
 // ========================================
+// Recurrence Rule 驗證
+// ========================================
+
+/** 重複規則 */
+export const recurrenceRuleSchema = z.object({
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly'], {
+    message: '頻率必須為 daily, weekly, monthly 或 yearly'
+  }),
+  day_of_week: z.number().int().min(0).max(6).optional(),
+  day_of_month: z.number().int().min(1).max(31).optional(),
+  month_of_year: z.number().int().min(1).max(12).optional(),
+  auto_suffix: z.boolean().optional().default(true),
+}).nullable().optional()
+
+// ========================================
 // Cards API 驗證
 // ========================================
+
+/** POST /api/cards/move - 移動卡片 */
+export const moveCardSchema = z.object({
+  card_id: uuidSchema,
+  source_column_id: uuidSchema,
+  dest_column_id: uuidSchema,
+  source_index: z.number().int().min(0),
+  dest_index: z.number().int().min(0),
+})
 
 /** POST /api/cards - 建立卡片 */
 export const createCardSchema = z.object({
@@ -119,6 +143,7 @@ export const updateCardSchema = z.object({
     z.null(),
     z.undefined()
   ]),
+  recurrence_rule: recurrenceRuleSchema,
 }).refine((data) => {
   // 跨欄位驗證：start_date 必須 <= due_date（若兩者皆有有效值）
   const startDate = data.start_date
@@ -148,6 +173,7 @@ export const patchCardSchema = z.object({
       return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d
     }, { message: '無效的日期' })
     .optional(),
+  recurrence_rule: recurrenceRuleSchema,
 })
 
 // ========================================
@@ -395,6 +421,17 @@ export const updateTemplateSchema = z.object({
 export const generateFromTemplateSchema = z.object({
   start_month: z.string().regex(/^\d{4}-\d{2}$/, { message: '月份格式必須為 YYYY-MM' }),
   count: z.number().int().min(1).max(24, { message: '產生數量必須在 1-24 之間' }),
+})
+
+// ========================================
+// Subtasks Batch API 驗證
+// ========================================
+
+/** PATCH /api/cards/[id]/subtasks/batch - 批次更新子任務 */
+export const batchUpdateSubtaskSchema = z.object({
+  action: z.enum(['complete_all', 'uncomplete_all']),
+  subtask_ids: z.array(z.string().uuid()).min(1).max(500),
+  skip_auto_transition: z.boolean().default(true),
 })
 
 // ========================================

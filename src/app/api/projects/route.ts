@@ -333,6 +333,9 @@ export async function PUT() {
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS rolling_due_date BOOLEAN DEFAULT FALSE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE")
       await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITH TIME ZONE")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS recurrence_rule JSONB DEFAULT NULL")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS recurrence_source_id UUID REFERENCES cards(id) ON DELETE SET NULL")
+      await query("ALTER TABLE cards ADD COLUMN IF NOT EXISTS original_column_id UUID REFERENCES columns(id) ON DELETE SET NULL")
       await query("CREATE INDEX IF NOT EXISTS idx_cards_archived ON cards (is_archived) WHERE is_archived = true")
     } catch (_e) {
       // Ignore if columns already exist
