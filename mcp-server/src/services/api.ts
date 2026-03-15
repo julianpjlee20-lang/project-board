@@ -10,7 +10,7 @@ export interface ApiError {
 
 export async function uphouse<T>(
   path: string,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
   body?: unknown
 ): Promise<T> {
   const token = process.env.UPHOUSE_API_TOKEN;

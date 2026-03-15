@@ -46,3 +46,15 @@ export type CardsApiResponse =
   | { cards: Card[] }
   | { data: Card[] }
   | Card[];
+
+export interface Subtask {
+  id: string;
+  card_id: string;
+  title: string;
+  is_completed: boolean;
+  position: number;
+  due_date?: string;
+  assignee_id?: string;
+  assignee_name?: string;
+  created_at?: string;
+}
